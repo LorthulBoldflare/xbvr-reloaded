@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -49,6 +50,11 @@ type mcpScrapeSceneArgs struct {
 	SceneID string `json:"scene_id,omitempty" jsonschema:"scene ID (excluding site prefix) - required for wetvr.com scenes"`
 }
 
+type mcpMatchFileArgs struct {
+	Filename string `json:"filename" jsonschema:"exact filename on disk, e.g. site-12345_8k.mp4"`
+	SceneID  string `json:"scene_id" jsonschema:"scene id as determined by the scraper (as returned by the scrape_scene tool)"`
+}
+
 func mcpTextResult(text string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: text}},
@@ -82,6 +88,15 @@ func newMCPServer(version string) *mcp.Server {
 		Description: "Start generating video preview clips for all scenes. " +
 			"Same as Options -> Previews -> 'Start generating previews' in the web UI. Runs asynchronously.",
 	}, mcpGeneratePreviews)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "match_file",
+		Description: "Match a file on disk to a scraped scene, assigning the file to the scene. " +
+			"Same as the assign action on the Files page in the web UI, but without any fuzzy matching: " +
+			"the filename must match exactly one file known to xbvr and the scene_id must match exactly " +
+			"one scene. Typical workflow: scrape_scene, download the file into a watched folder, " +
+			"rescan_storage, then match_file. Fails if the file is already matched to a different scene.",
+	}, mcpMatchFile)
 
 	return server
 }
@@ -287,4 +302,71 @@ func mcpScrapeScene(ctx context.Context, req *mcp.CallToolRequest, args mcpScrap
 	}
 
 	return mcpTextResult(scene.SceneID), nil, nil
+}
+
+func mcpMatchFile(ctx context.Context, req *mcp.CallToolRequest, args mcpMatchFileArgs) (*mcp.CallToolResult, any, error) {
+	if args.Filename == "" {
+		return nil, nil, fmt.Errorf("filename is required")
+	}
+	if args.SceneID == "" {
+		return nil, nil, fmt.Errorf("scene_id is required")
+	}
+
+	// The scene id must resolve to exactly one scene.
+	commonDb, _ := models.GetCommonDB()
+	var scenes []models.Scene
+	commonDb.Where("scene_id = ?", args.SceneID).Find(&scenes)
+	if len(scenes) == 0 {
+		return nil, nil, fmt.Errorf("no scene found with scene_id %q - scrape it first", args.SceneID)
+	}
+	if len(scenes) > 1 {
+		dupes := make([]string, 0, len(scenes))
+		for _, s := range scenes {
+			dupes = append(dupes, fmt.Sprintf("%q (db id %d)", s.Title, s.ID))
+		}
+		return nil, nil, fmt.Errorf("scene_id %q matches %d scenes (%s) - refusing to guess", args.SceneID, len(scenes), strings.Join(dupes, ", "))
+	}
+	scene := scenes[0]
+
+	// The filename must resolve to exactly one known file.
+	db, _ := models.GetDB()
+	var files []models.File
+	db.Preload("Volume").Where("filename = ?", args.Filename).Find(&files)
+	if len(files) == 0 {
+		return nil, nil, fmt.Errorf("no file named %q found - download it into a watched folder and run rescan_storage first", args.Filename)
+	}
+	if len(files) > 1 {
+		paths := make([]string, 0, len(files))
+		for _, f := range files {
+			paths = append(paths, f.GetPath())
+		}
+		return nil, nil, fmt.Errorf("filename %q matches %d files (%s) - refusing to guess", args.Filename, len(files), strings.Join(paths, ", "))
+	}
+	f := files[0]
+
+	// The file must actually exist on disk.
+	if f.Volume.Type == "local" {
+		if _, err := os.Stat(f.GetPath()); err != nil {
+			return nil, nil, fmt.Errorf("file record for %q exists but the file is missing on disk (%s) - run rescan_storage", args.Filename, f.GetPath())
+		}
+	}
+
+	// Refuse to silently re-assign a file that is already matched.
+	if f.SceneID != 0 {
+		if f.SceneID == scene.ID {
+			return mcpTextResult(fmt.Sprintf("File %s is already matched to scene %s (%q)", f.GetPath(), scene.SceneID, scene.Title)), nil, nil
+		}
+		var other models.Scene
+		otherDesc := fmt.Sprintf("db id %d", f.SceneID)
+		if err := other.GetIfExistByPK(f.SceneID); err == nil {
+			otherDesc = fmt.Sprintf("%s (%q)", other.SceneID, other.Title)
+		}
+		return nil, nil, fmt.Errorf("file %q is already matched to scene %s - unmatch it in the web UI first", args.Filename, otherDesc)
+	}
+
+	if err := api.MatchFileToScene(scene.SceneID, f.ID); err != nil {
+		return nil, nil, fmt.Errorf("matching failed: %v", err)
+	}
+
+	return mcpTextResult(fmt.Sprintf("Matched %s to scene %s (%q)", f.GetPath(), scene.SceneID, scene.Title)), nil, nil
 }

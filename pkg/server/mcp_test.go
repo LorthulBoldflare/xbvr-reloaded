@@ -4,11 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/xbapps/xbvr/pkg/common"
+	"github.com/xbapps/xbvr/pkg/models"
 )
 
 func runMCPAuth(t *testing.T, authHeader string) *httptest.ResponseRecorder {
@@ -108,7 +112,7 @@ func TestMCPServerHandshake(t *testing.T) {
 	for _, tool := range result.Tools {
 		got[tool.Name] = true
 	}
-	for _, want := range []string{"rescan_storage", "scrape_scene", "generate_previews"} {
+	for _, want := range []string{"rescan_storage", "scrape_scene", "generate_previews", "match_file"} {
 		if !got[want] {
 			t.Fatalf("expected tool %q to be registered, got %v", want, got)
 		}
@@ -163,3 +167,134 @@ func TestMCPEndpointAuth(t *testing.T) {
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// TestMCPMatchFile exercises the match_file tool handler against the
+// throwaway sqlite DB that the models package init points at a temporary
+// app dir when running under `go test`.
+func TestMCPMatchFile(t *testing.T) {
+	db, err := models.GetDB()
+	if err != nil {
+		t.Fatalf("get db: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Scene{}, &models.Tag{}, &models.Actor{}, &models.File{},
+		&models.Volume{}, &models.Action{}, &models.History{}, &models.SceneCuepoint{}).Error; err != nil {
+		t.Fatalf("automigrate: %v", err)
+	}
+
+	dir := t.TempDir()
+
+	vol := models.Volume{Type: "local", Path: dir, IsEnabled: true}
+	if err := db.Create(&vol).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	scene := models.Scene{SceneID: "mcptest-scene-1", Title: "MCP Test Scene", FilenamesArr: "[]"}
+	if err := db.Create(&scene).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	otherScene := models.Scene{SceneID: "mcptest-scene-2", Title: "Other Scene", FilenamesArr: "[]"}
+	if err := db.Create(&otherScene).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	newFile := func(name string) models.File {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		f := models.File{Filename: name, Path: dir, VolumeID: vol.ID, Type: "video"}
+		if err := db.Create(&f).Error; err != nil {
+			t.Fatal(err)
+		}
+		return f
+	}
+
+	call := func(filename, sceneID string) (*mcp.CallToolResult, error) {
+		t.Helper()
+		res, _, err := mcpMatchFile(context.Background(), nil, mcpMatchFileArgs{Filename: filename, SceneID: sceneID})
+		return res, err
+	}
+
+	t.Run("matches file to scene", func(t *testing.T) {
+		f := newFile("mcptest-match.mp4")
+		res, err := call(f.Filename, scene.SceneID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		text := res.Content[0].(*mcp.TextContent).Text
+		if !strings.Contains(text, "Matched") || !strings.Contains(text, scene.SceneID) {
+			t.Fatalf("unexpected result text: %q", text)
+		}
+
+		var updated models.File
+		db.First(&updated, f.ID)
+		if updated.SceneID != scene.ID {
+			t.Fatalf("file not assigned to scene: scene_id = %d, want %d", updated.SceneID, scene.ID)
+		}
+
+		var updatedScene models.Scene
+		db.First(&updatedScene, scene.ID)
+		if !strings.Contains(updatedScene.FilenamesArr, f.Filename) {
+			t.Fatalf("filename not added to scene filenames_arr: %q", updatedScene.FilenamesArr)
+		}
+
+		var actions []models.Action
+		db.Where("scene_id = ? AND action_type = ?", scene.SceneID, "match").Find(&actions)
+		if len(actions) == 0 {
+			t.Fatal("expected a match action to be recorded")
+		}
+
+		t.Run("repeat call is idempotent", func(t *testing.T) {
+			res, err := call(f.Filename, scene.SceneID)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "already matched") {
+				t.Fatalf("unexpected result text: %q", res.Content[0].(*mcp.TextContent).Text)
+			}
+		})
+	})
+
+	t.Run("unknown scene id errors", func(t *testing.T) {
+		_, err := call("mcptest-match.mp4", "mcptest-no-such-scene")
+		if err == nil {
+			t.Fatal("expected error for unknown scene_id")
+		}
+	})
+
+	t.Run("unknown filename errors", func(t *testing.T) {
+		_, err := call("mcptest-not-on-disk.mp4", scene.SceneID)
+		if err == nil {
+			t.Fatal("expected error for unknown filename")
+		}
+	})
+
+	t.Run("conflicting match errors", func(t *testing.T) {
+		f := newFile("mcptest-taken.mp4")
+		f.SceneID = otherScene.ID
+		if err := db.Save(&f).Error; err != nil {
+			t.Fatal(err)
+		}
+		_, err := call(f.Filename, scene.SceneID)
+		if err == nil {
+			t.Fatal("expected error for file matched to a different scene")
+		}
+	})
+
+	t.Run("duplicate scene id errors", func(t *testing.T) {
+		dup := models.Scene{SceneID: "mcptest-dup", Title: "Dup A", FilenamesArr: "[]"}
+		if err := db.Create(&dup).Error; err != nil {
+			t.Fatal(err)
+		}
+		dup2 := models.Scene{SceneID: "mcptest-dup", Title: "Dup B", FilenamesArr: "[]"}
+		if err := db.Create(&dup2).Error; err != nil {
+			t.Fatal(err)
+		}
+		f := newFile("mcptest-dupscene.mp4")
+		_, err := call(f.Filename, "mcptest-dup")
+		if err == nil {
+			t.Fatal("expected error for ambiguous scene_id")
+		}
+	})
+}
