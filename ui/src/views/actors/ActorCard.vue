@@ -57,6 +57,7 @@ import ActorWatchlistButton from '../../components/ActorWatchlistButton'
 import ActorEditButton from '../../components/ActorEditButton'
 import LinkStashdbButton from '../../components/LinkStashdbButton'
 import VueLoadImage from 'vue-load-image'
+import { getImageURL as getImageURLUtil } from '../../util/image'
 import { tr } from 'date-fns/locale'
 
 export default {
@@ -96,14 +97,7 @@ export default {
   },
   methods: {
     getImageURL (u) {
-      if (u=='' || u == undefined) {
-        return "/ui/images/blank_female_profile.png"
-      }
-      if (u.startsWith('http')) {
-        return '/img/700x/' + u.replace('://', ':/')
-      } else {
-        return u
-      }
+      return getImageURLUtil(u, '700x', '/ui/images/blank_female_profile.png')
     },
     showDetails (actor) {
       this.$store.commit('overlay/showActorDetails', { actor: actor })

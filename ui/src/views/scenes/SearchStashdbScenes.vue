@@ -66,6 +66,7 @@
 <script>
 import GlobalEvents from 'vue-global-events'
 import api from '../../api'
+import { getImageURL as getImageURLUtil } from '../../util/image'
 import VueLoadImage from 'vue-load-image'
 import { format, parseISO } from 'date-fns'
 
@@ -132,12 +133,8 @@ export default {
           this.close()
         })
     },    
-    getImageURL (u) {        
-      if (u != undefined && u.startsWith('http')) {
-        return '/img/120x/' + u.replace('://', ':/')
-      } else {
-        return u
-      }
+    getImageURL (u) {
+      return getImageURLUtil(u, '120x')
     },
     openDialog(scene) {
         this.isModalActive = true

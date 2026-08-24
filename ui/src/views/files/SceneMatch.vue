@@ -110,6 +110,8 @@
 
 <script>
 import api from '../../api'
+import { getImageURL as getImageURLUtil } from '../../util/image'
+import { safeHref } from '../../util/url'
 import { format, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
 import VueLoadImage from 'vue-load-image'
@@ -178,11 +180,7 @@ export default {
       }
     },
     getImageURL (u) {
-      if (u.startsWith('http')) {
-        return '/img/120x/' + u.replace('://', ':/')
-      } else {
-        return u
-      }
+      return getImageURLUtil(u, '120x')
     },
     assign: async function assign (scene_id) {
       await api.post('/files/match', {

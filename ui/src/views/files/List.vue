@@ -83,6 +83,7 @@
 import prettyBytes from 'pretty-bytes'
 import { format, parseISO } from 'date-fns'
 import api from '../../api'
+import { humanizeSeconds } from '../../util/image'
 
 export default {
   name: 'List',
@@ -133,9 +134,7 @@ export default {
     createScene (file) {
       this.$store.commit('overlay/createCustomScene', { file: file })
     },
-    humanizeSeconds (seconds) {
-      return new Date(seconds * 1000).toISOString().substr(11, 8)
-    },
+    humanizeSeconds,
     removeFile (file) {
       this.$buefy.dialog.confirm({
         title: 'Remove file',

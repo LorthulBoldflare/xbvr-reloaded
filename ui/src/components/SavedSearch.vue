@@ -47,7 +47,8 @@
               v-model="playlistName"
               required>
             </b-input>
-          </b-field>          
+          </b-field>
+          <b-checkbox v-if="!isActorMode" v-model="playlistDeoEnabled">Use as DeoVR list</b-checkbox>
         </section>
         <footer class="modal-card-foot">
           <button class="button is-primary" :disabled="playlistName===''" @click="savePlaylist(modalAction)">Save
@@ -59,12 +60,21 @@
 </template>
 
 <script>
-import api from '../../api'
+import api from '../api'
 
+// Shared saved-search picker for the scenes and actors filter panels.
+// `mode` selects the store module, target route and playlist flavor.
 export default {
   name: 'SavedSearch',
+  props: {
+    mode: {
+      type: String,
+      default: 'scenes',
+      validator: v => ['scenes', 'actors'].includes(v)
+    }
+  },
   mounted () {
-    this.$store.dispatch('actorList/filters')
+    this.$store.dispatch(this.storeModule + '/filters')
   },
   data () {
     return {
@@ -73,14 +83,16 @@ export default {
       isPlaylistModalActive: false,
       modalTitle: '',
       modalAction: 'create',
-      playlistName: ''      
+      playlistName: '',
+      playlistDeoEnabled: false
     }
   },
   methods: {
     showNewDialog () {
       this.modalTitle = 'Create new saved search'
       this.modalAction = 'create'
-      this.playlistName = ''      
+      this.playlistName = ''
+      this.playlistDeoEnabled = false
 
       this.isPlaylistModalActive = true
     },
@@ -88,7 +100,8 @@ export default {
       if (this.currentPlaylistObj !== null) {
         this.modalTitle = 'Edit saved search'
         this.modalAction = 'update'
-        this.playlistName = this.currentPlaylistObj.name        
+        this.playlistName = this.currentPlaylistObj.name
+        this.playlistDeoEnabled = this.currentPlaylistObj.is_deo_enabled
 
         this.isPlaylistModalActive = true
       }
@@ -97,21 +110,23 @@ export default {
       const obj = this.playlists.find(item => item.id === val)
 
       this.$router.push({
-        name: 'actors',
+        name: this.routeName,
         query: {
-          q: this.$store.getters['actorList/getQueryParamsFromObject'](obj.search_params)
+          q: this.$store.getters[this.storeModule + '/getQueryParamsFromObject'](obj.search_params)
         }
       })
 
-      this.$store.dispatch('actorList/load', { offset: 0 })
+      this.$store.dispatch(this.storeModule + '/load', { offset: 0 })
     },
     async savePlaylist (action) {
       const payload = {
         name: this.playlistName,
-        is_deo_enabled: false,
+        is_deo_enabled: this.isActorMode ? false : this.playlistDeoEnabled,
         is_smart: true,
-        playlist_type: "actor",
-        search_params: JSON.stringify(this.$store.state.actorList.filters)
+        search_params: JSON.stringify(this.$store.state[this.storeModule].filters)
+      }
+      if (this.isActorMode) {
+        payload.playlist_type = 'actor'
       }
 
       let p
@@ -121,7 +136,7 @@ export default {
         p = await api.put(`/playlist/${this.currentPlaylistObj.id}`, { json: payload }).json()
       }
 
-      await this.$store.dispatch('actorList/filters')
+      await this.$store.dispatch(this.storeModule + '/filters')
       this.currentPlaylist = p.id
       this.isPlaylistModalActive = false
     },
@@ -134,7 +149,7 @@ export default {
         confirmText: 'Delete',
         onConfirm: () => {
           api.delete(`/playlist/${this.currentPlaylistObj.id}`).then(() => {
-            this.$store.dispatch('actorList/filters')
+            this.$store.dispatch(this.storeModule + '/filters')
             this.currentPlaylist = null
           })
         }
@@ -143,16 +158,25 @@ export default {
 
   },
   computed: {
+    isActorMode () {
+      return this.mode === 'actors'
+    },
+    storeModule () {
+      return this.isActorMode ? 'actorList' : 'sceneList'
+    },
+    routeName () {
+      return this.isActorMode ? 'actors' : 'scenes'
+    },
     playlists () {
-      return this.$store.state.actorList.playlists
+      return this.$store.state[this.storeModule].playlists
     },
     playlistsWeb () {
-      return this.$store.state.actorList.playlists.filter((obj) => {
+      return this.playlists.filter((obj) => {
         return obj.is_deo_enabled === false
       })
     },
     playlistsDeo () {
-      return this.$store.state.actorList.playlists.filter((obj) => {
+      return this.playlists.filter((obj) => {
         return obj.is_deo_enabled === true
       })
     },

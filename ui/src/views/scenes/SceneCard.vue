@@ -97,6 +97,7 @@ import TrailerlistButton from '../../components/TrailerlistButton'
 import HiddenButton from '../../components/HiddenButton'
 import api from '../../api'
 import VueLoadImage from 'vue-load-image'
+import { getImageURL } from '../../util/image'
 
 export default {
   name: 'SceneCard',
@@ -179,6 +180,7 @@ export default {
     this.loadAlternateSources()
   },
   methods: {
+    getImageURL,
     // Fetched once when the card is created. Previously this was an async
     // computed used as v-if — an always-truthy Promise that refetched on
     // every render of every card.
@@ -212,16 +214,6 @@ export default {
       } catch (error) {
         // leave the card without alternate sources on error
       }
-    },
-    getImageURL (u) {
-        if (u.startsWith('http') == false) {
-        return u
-        }
-          if (u.search("%") == -1) {
-            return '/img/700x/' + encodeURI(u)
-          } else {
-            return '/img/700x/' + encodeURI(decodeURI(u))
-          } 
     },
     showDetails (scene) {
       // reRead is required when the SceneCard is clicked from the ActorDetails

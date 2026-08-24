@@ -72,6 +72,7 @@
 
 <script>
 import api from './api'
+import { getImageURL as getImageURLUtil } from './util/image'
 import VueLoadImage from 'vue-load-image'
 import GlobalEvents from 'vue-global-events'
 import { format, parseISO } from 'date-fns'
@@ -129,6 +130,9 @@ export default {
     }
   },
   methods: {
+    getImageURL (u) {
+      return getImageURLUtil(u, '120x')
+    },
     format,
     parseISO,
     getAsyncData: async function (query) {
@@ -161,13 +165,6 @@ export default {
         } else {
           this.data = []
         }
-      }
-    },
-    getImageURL (u) {
-      if (u.startsWith('http')) {
-        return '/img/120x/' + u.replace('://', ':/')
-      } else {
-        return u
       }
     },
     showSceneDetails (scene) {

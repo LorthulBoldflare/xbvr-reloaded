@@ -162,6 +162,7 @@
 
 <script>
 import api from '../../../api'
+import { getImageURL as getImageURLUtil } from '../../../util/image'
 import VueLoadImage from 'vue-load-image'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
@@ -190,11 +191,7 @@ export default {
   },
   methods: {
     getImageURL (u) {
-      if (u.startsWith('http')) {
-        return '/img/128x/' + u.replace('://', ':/')
-      } else {
-        return u
-      }
+      return getImageURLUtil(u, '128x')
     },
     taskScrape (scraper) {
       api.get(`/task/scrape?site=${scraper}`)

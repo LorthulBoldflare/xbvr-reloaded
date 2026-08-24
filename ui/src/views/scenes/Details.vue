@@ -406,6 +406,7 @@
 <script>
 import api from '../../api'
 import { encodeJsonBase64 } from '../../util/base64'
+import { getImageURL as getImageURLUtil, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
 import videojs from 'video.js'
 import 'videojs-vr/dist/videojs-vr.min.js'
 import { format, formatDistance, parseISO } from 'date-fns'
@@ -894,22 +895,7 @@ watch:{
       })
     },
     getImageURL (u, size) {
-      if (u==undefined) {
-        return u
-      }
-      try {
-        if (u.startsWith('http')) {
-          if (u.search("%") == -1) {
-            return '/img/' + size + '/' + encodeURI(u)
-          } else {
-            return '/img/' + size + '/' + encodeURI(decodeURI(u))
-          } 
-          return u
-        }
-      } catch {
-        return u
-      }
-      return u
+      return getImageURLUtil(u, size)
     },
     getIndicatorURL (idx) {
       if (this.images[idx] !== undefined) {
@@ -984,12 +970,8 @@ watch:{
       if (!this.displayingAlternateSource) this.player.dispose()
       this.$store.commit('overlay/hideDetails')
     },
-    humanizeSeconds (seconds) {
-      return new Date(seconds * 1000).toISOString().substr(11, 8)
-    },
-    humanizeSeconds1DP (seconds) {
-      return new Date(seconds * 1000).toISOString().substr(11, 10)
-    },
+    humanizeSeconds,
+    humanizeSeconds1DP,
     setRating (val) {
       api.post(`/scene/rate/${this.item.id}`, { json: { rating: val } })
 

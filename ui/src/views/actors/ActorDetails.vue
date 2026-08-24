@@ -259,6 +259,8 @@
 
 <script>
 import api from '../../api'
+import { getImageURL as getImageURLUtil } from '../../util/image'
+import { confirmAndDeleteAkaGroup } from '../../util/akaGroups'
 import { encodeJsonBase64 } from '../../util/base64'
 import videojs from 'video.js'
 import 'videojs-vr/dist/videojs-vr.min.js'
@@ -546,14 +548,10 @@ export default {
       })
     },
     deleteAkaGroup () {
-      this.$store.state.actorList.isLoading = true
-      api.post('/aka/delete', {json: {name: this.actor.name}}).json().then(data => {
-        this.$store.state.actorList.isLoading = false
-      }).then(data => {
+      confirmAndDeleteAkaGroup(this, this.actor.name, 'actorList', () => {
         this.$store.dispatch('actorList/load', { offset: this.$store.state.actorList.offset - this.$store.state.actorList.limit })
         this.close()
-      }
-      )
+      })
     },
     addToAkaGroup (newMember) {
       this.$store.state.actorList.isLoading = true

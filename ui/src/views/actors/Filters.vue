@@ -2,7 +2,7 @@
   <div>
     <div class="is-divider" data-content="Saved searches" style="margin-top:0.8em;"></div>
 
-     <SavedSearch/> 
+     <SavedSearch mode="actors"/>
 
     <div class="is-divider" data-content="Properties"></div>
 
@@ -166,8 +166,9 @@
 </template>
 
 <script>
-import SavedSearch from './SavedSearch'
+import SavedSearch from '../../components/SavedSearch'
 import api from '../../api'
+import { confirmAndDeleteAkaGroup } from '../../util/akaGroups'
 
 export default {
   name: 'Filters',
@@ -231,13 +232,10 @@ export default {
       })
     },
     deleteAkaGroup () {
-      this.$store.state.actorList.isLoading = true
-      api.post('/aka/delete', {json: {name: this.cast[0]}}).json().then(data => {
+      confirmAndDeleteAkaGroup(this, this.cast[0], 'actorList', () => {
         this.cast = []
-        this.$store.dispatch('actorList/filters')
         this.reloadList()
-        this.$store.state.actorList.isLoading = false
-      })       
+      })
     },
     addToAkaGroup () {
       this.$store.state.actorList.isLoading = true

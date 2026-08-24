@@ -64,6 +64,7 @@
 
 <script>
 import draggable from 'vuedraggable'
+import { getImageURL as getImageURLUtil } from '../util/image'
 
 export default {
   name: 'GalleryEditor',
@@ -148,26 +149,13 @@ export default {
       this.$emit('setCover', url)
     },
     getImageURL (url) {
-      if (!url) return url
-      try {
-        if (url.startsWith('http')) {
-          if (url.indexOf('%') === -1) {
-            return '/img/200x/' + encodeURI(url)
-          } else {
-            return '/img/200x/' + encodeURI(decodeURI(url))
-          }
-        }
-      } catch {
-        // fall through
+      // proxy remote images via the shared util; keep the local-path
+      // backslash normalization for Windows-style paths
+      const out = getImageURLUtil(url, '200x')
+      if (typeof out === 'string' && out.includes('\\')) {
+        return out.replace(/\\/g, '/')
       }
-      
-      // Convert backslashes to forward slashes
-      if (url.includes('\\')) {
-        url = url.replace(/\\/g, '/')
-      }
-      
-      // Return path or url
-      return url
+      return out
     },
     handleFileDrop(event) {
       event.preventDefault();
