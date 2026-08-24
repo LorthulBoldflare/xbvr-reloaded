@@ -1,5 +1,5 @@
 <template>
-  <div class="modal is-active">
+  <div class="modal is-active" role="dialog" aria-modal="true">
     <GlobalEvents
       :filter="e => !['INPUT', 'TEXTAREA'].includes(e.target.tagName)"
       @keyup.esc="close"
@@ -1262,6 +1262,12 @@ watch:{
 
 .modal-card {
   width: 85%;
+}
+
+@media (max-width: 768px) {
+  .modal-card {
+    width: 98%;
+  }
 }
 
 .missing {

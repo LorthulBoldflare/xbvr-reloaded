@@ -6,10 +6,10 @@
         <Filters/>
 
         <div id="scrollButtons">
-          <a id="toTop">
+          <a id="toTop" aria-label="Back to top" role="button">
             <b-icon pack="mdi" icon="navigation" />
           </a>
-          <a id="toggleInfiniteScroll" @click="toggleInfiniteScroll" :title="infiniteScrollEnabled ? 'Disable Auto Load More' : 'Enable Auto Load More'">
+          <a id="toggleInfiniteScroll" role="button" :aria-label="infiniteScrollEnabled ? 'Disable Auto Load More' : 'Enable Auto Load More'" @click="toggleInfiniteScroll" :title="infiniteScrollEnabled ? 'Disable Auto Load More' : 'Enable Auto Load More'">
             <b-icon pack="mdi" :icon="infiniteScrollEnabled ? 'reload' : 'pause'" />
           </a>
         </div>

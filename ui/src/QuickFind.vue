@@ -24,7 +24,7 @@
         </b-tooltip>
       </b-taglist>
     </b-field>
-    <b-field style="width:600px">
+    <b-field style="width:min(600px, 90vw)">
       <b-autocomplete
         ref="autocompleteInput"
         :data="data"

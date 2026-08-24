@@ -24,16 +24,16 @@
     </template>
     <template slot="end">
       <b-navbar-item>
-        <table style="font-size:0.9em">
-          <tr v-if="Object.keys(lastRescanMessage).length !== 0">
-            <th><span :class="[lockRescan ? 'pulsate' : '']">{{$t('Files')}} →</span></th>
-            <td>{{lastRescanMessage.message}}</td>
-          </tr>
-          <tr v-if="Object.keys(lastScrapeMessage).length !== 0">
-            <th><span :class="[lockScrape ? 'pulsate' : '']">{{$t('Data')}} →</span></th>
-            <td>{{lastScrapeMessage.message}}</td>
-          </tr>
-        </table>
+        <div style="font-size:0.9em">
+          <div v-if="Object.keys(lastRescanMessage).length !== 0">
+            <strong><span :class="[lockRescan ? 'pulsate' : '']">{{$t('Files')}} →</span></strong>
+            {{lastRescanMessage.message}}
+          </div>
+          <div v-if="Object.keys(lastScrapeMessage).length !== 0">
+            <strong><span :class="[lockScrape ? 'pulsate' : '']">{{$t('Data')}} →</span></strong>
+            {{lastScrapeMessage.message}}
+          </div>
+        </div>
       </b-navbar-item>
     </template>
   </b-navbar>

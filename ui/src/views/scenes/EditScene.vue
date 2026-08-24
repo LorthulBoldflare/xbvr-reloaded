@@ -305,6 +305,12 @@ export default {
   width: 65%;
 }
 
+@media (max-width: 768px) {
+  .modal-card {
+    width: 98%;
+  }
+}
+
 .tab-item {
   height: 40vh;
 }
