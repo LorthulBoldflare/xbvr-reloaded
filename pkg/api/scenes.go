@@ -883,88 +883,102 @@ func (i SceneResource) editScene(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
+	scene, err := ApplySceneEdit(uint(sceneId), r)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	resp.WriteHeaderAndEntity(http.StatusOK, scene)
+}
+
+// ApplySceneEdit applies scene detail edits (as sent by the EditScene modal)
+// to an existing scene, records edit actions for changed fields, saves and
+// re-indexes the scene. Returns the updated scene.
+func ApplySceneEdit(sceneID uint, r RequestEditSceneDetails) (models.Scene, error) {
 	var scene models.Scene
 	db, _ := models.GetDB()
-	err = scene.GetIfExistByPK(uint(sceneId))
-	if err == nil {
-		if scene.Title != r.Title {
-			scene.Title = r.Title
-			models.AddAction(scene.SceneID, "edit", "title", r.Title)
-		}
-		if scene.Synopsis != r.Synopsis {
-			scene.Synopsis = r.Synopsis
-			models.AddAction(scene.SceneID, "edit", "synopsis", r.Synopsis)
-		}
-		if scene.Studio != r.Studio {
-			scene.Studio = r.Studio
-			models.AddAction(scene.SceneID, "edit", "studio", r.Studio)
-		}
-		if scene.Site != r.Site {
-			scene.Site = r.Site
-			models.AddAction(scene.SceneID, "edit", "site", r.Site)
-		}
-		if scene.SceneURL != r.SceneURL {
-			scene.SceneURL = r.SceneURL
-			models.AddAction(scene.SceneID, "edit", "scene_url", r.SceneURL)
-		}
-		if scene.ReleaseDateText != r.ReleaseDate {
-			scene.ReleaseDateText = r.ReleaseDate
-			scene.ReleaseDate, _ = time.Parse("2006-01-02", r.ReleaseDate)
-			models.AddAction(scene.SceneID, "edit", "release_date_text", r.ReleaseDate)
-		}
-		if scene.FilenamesArr != r.FilenamesArr {
-			scene.FilenamesArr = r.FilenamesArr
-			models.AddAction(scene.SceneID, "edit", "filenames_arr", r.FilenamesArr)
-		}
-		if scene.Images != r.Images {
-			scene.Images = r.Images
-			models.AddAction(scene.SceneID, "edit", "images", r.Images)
-		}
-		if scene.CoverURL != r.CoverURL {
-			scene.CoverURL = r.CoverURL
-			models.AddAction(scene.SceneID, "edit", "cover_url", r.CoverURL)
-		}
-		if scene.IsMultipart != r.IsMultipart {
-			scene.IsMultipart = r.IsMultipart
-			models.AddAction(scene.SceneID, "edit", "is_multipart", strconv.FormatBool(r.IsMultipart))
-		}
-		if strconv.Itoa(scene.Duration) != r.Duration {
-			scene.Duration, _ = strconv.Atoi(r.Duration)
-			models.AddAction(scene.SceneID, "edit", "duration", r.Duration)
-		}
-		ProcessTagChanges(&scene, &r.Tags, db)
-
-		newCast := make([]models.Actor, 0)
-		for _, v := range r.Cast {
-			nc := models.Actor{}
-			db.Where(&models.Actor{Name: v}).FirstOrCreate(&nc)
-			newCast = append(newCast, nc)
-		}
-
-		diffs := deep.Equal(scene.Cast, newCast)
-		if len(diffs) > 0 {
-			exactDifferences := getCastDifferences(scene.Cast, newCast)
-			for _, v := range exactDifferences {
-				models.AddAction(scene.SceneID, "edit", "cast", v)
-			}
-
-			for _, v := range scene.Cast {
-				db.Model(&scene).Association("Cast").Delete(&v)
-			}
-
-			for _, v := range newCast {
-				db.Model(&scene).Association("Cast").Append(&v)
-			}
-		}
-
-		scene.Save()
-
-		// Update search index with new data
-		scenes := []models.Scene{scene}
-		tasks.IndexScenes(&scenes)
-
-		resp.WriteHeaderAndEntity(http.StatusOK, scene)
+	err := scene.GetIfExistByPK(sceneID)
+	if err != nil {
+		return scene, err
 	}
+	if scene.Title != r.Title {
+		scene.Title = r.Title
+		models.AddAction(scene.SceneID, "edit", "title", r.Title)
+	}
+	if scene.Synopsis != r.Synopsis {
+		scene.Synopsis = r.Synopsis
+		models.AddAction(scene.SceneID, "edit", "synopsis", r.Synopsis)
+	}
+	if scene.Studio != r.Studio {
+		scene.Studio = r.Studio
+		models.AddAction(scene.SceneID, "edit", "studio", r.Studio)
+	}
+	if scene.Site != r.Site {
+		scene.Site = r.Site
+		models.AddAction(scene.SceneID, "edit", "site", r.Site)
+	}
+	if scene.SceneURL != r.SceneURL {
+		scene.SceneURL = r.SceneURL
+		models.AddAction(scene.SceneID, "edit", "scene_url", r.SceneURL)
+	}
+	if scene.ReleaseDateText != r.ReleaseDate {
+		scene.ReleaseDateText = r.ReleaseDate
+		scene.ReleaseDate, _ = time.Parse("2006-01-02", r.ReleaseDate)
+		models.AddAction(scene.SceneID, "edit", "release_date_text", r.ReleaseDate)
+	}
+	if scene.FilenamesArr != r.FilenamesArr {
+		scene.FilenamesArr = r.FilenamesArr
+		models.AddAction(scene.SceneID, "edit", "filenames_arr", r.FilenamesArr)
+	}
+	if scene.Images != r.Images {
+		scene.Images = r.Images
+		models.AddAction(scene.SceneID, "edit", "images", r.Images)
+	}
+	if scene.CoverURL != r.CoverURL {
+		scene.CoverURL = r.CoverURL
+		models.AddAction(scene.SceneID, "edit", "cover_url", r.CoverURL)
+	}
+	if scene.IsMultipart != r.IsMultipart {
+		scene.IsMultipart = r.IsMultipart
+		models.AddAction(scene.SceneID, "edit", "is_multipart", strconv.FormatBool(r.IsMultipart))
+	}
+	if strconv.Itoa(scene.Duration) != r.Duration {
+		scene.Duration, _ = strconv.Atoi(r.Duration)
+		models.AddAction(scene.SceneID, "edit", "duration", r.Duration)
+	}
+	ProcessTagChanges(&scene, &r.Tags, db)
+
+	newCast := make([]models.Actor, 0)
+	for _, v := range r.Cast {
+		nc := models.Actor{}
+		db.Where(&models.Actor{Name: v}).FirstOrCreate(&nc)
+		newCast = append(newCast, nc)
+	}
+
+	diffs := deep.Equal(scene.Cast, newCast)
+	if len(diffs) > 0 {
+		exactDifferences := getCastDifferences(scene.Cast, newCast)
+		for _, v := range exactDifferences {
+			models.AddAction(scene.SceneID, "edit", "cast", v)
+		}
+
+		for _, v := range scene.Cast {
+			db.Model(&scene).Association("Cast").Delete(&v)
+		}
+
+		for _, v := range newCast {
+			db.Model(&scene).Association("Cast").Append(&v)
+		}
+	}
+
+	scene.Save()
+
+	// Update search index with new data
+	scenes := []models.Scene{scene}
+	tasks.IndexScenes(&scenes)
+
+	return scene, nil
 }
 
 func getTagDifferences(arr1, arr2 []models.Tag) []string {

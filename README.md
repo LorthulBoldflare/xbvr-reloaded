@@ -154,3 +154,30 @@ esc - closes details pane
 |	`--concurrent_scrapers` | CONCURRENT_SCRAPERS | Int | set the number of scrapers that run concurrently default 9999|
 | | UI_USERNAME | String | set the username for UI authentication
 | | UI_PASSWORD | String | set the password for UI authentications
+
+#### MCP (Model Context Protocol) endpoint
+
+XBVR exposes an MCP endpoint (Streamable HTTP transport) at `/mcp` on the web port, so LLM clients can trigger common maintenance tasks. Available tools:
+
+| Tool | Description |
+|------|-------------|
+| `rescan_storage` | Rescan all storage folders (same as Options → Storage → "Rescan all folders") |
+| `scrape_scene` | Scrape a single scene from its URL and store it (same as Options → Create/Import scene → "Scrape a scene", including confirming the scene detail popup). Arguments: `url` (required), `scene_id` (only for wetvr.com scenes). Returns the scene-id determined by the scraper, or `null` if the scene could not be scraped; if the scene is already present, its scene-id is returned. Note: scraping a new scene can take tens of seconds. |
+| `generate_previews` | Start generating video preview clips (same as Options → Previews) |
+
+**Authentication:** when UI authentication is enabled (`UI_USERNAME`/`UI_PASSWORD` set), requests must send an `Authorization: Bearer <token>` header where the token is the concatenation of the UI username and UI password. For example, with username `UserA` and password `Password123`, the token is `UserAPassword123`. When UI auth is disabled, the endpoint is open.
+
+Example client configuration:
+
+```json
+{
+  "mcpServers": {
+    "xbvr": {
+      "url": "http://localhost:9999/mcp",
+      "headers": {
+        "Authorization": "Bearer UserAPassword123"
+      }
+    }
+  }
+}
+```

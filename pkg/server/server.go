@@ -18,6 +18,7 @@ import (
 	wwwlog "github.com/gowww/log"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/koding/websocketproxy"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/peterbourgon/diskv"
 	"github.com/rs/cors"
 	"willnorris.com/go/imageproxy"
@@ -227,6 +228,12 @@ func StartServer(version, commit, branch, date string) {
 		handler.ServeHTTP(w, req)
 	})
 
+	// MCP endpoint (Streamable HTTP). Bearer-token auth applies when UI auth
+	// is enabled; see mcpAuthMiddleware.
+	mcpServer := newMCPServer(version)
+	http.Handle("/mcp", mcpAuthMiddleware(mcp.NewStreamableHTTPHandler(
+		func(r *http.Request) *mcp.Server { return mcpServer }, nil)))
+
 	// Attach logrus hook
 	wampHook := common.NewWampHook()
 	log.AddHook(wampHook)
@@ -260,6 +267,7 @@ func StartServer(version, commit, branch, date string) {
 	config.SaveState()
 
 	log.Infof("Web UI available at %s", strings.Join(ips, ", "))
+	log.Infof("MCP endpoint available at /mcp (Streamable HTTP)")
 	log.Infof("Web UI Authentication enabled: %v", common.IsUIAuthEnabled())
 	log.Infof("Using database: %s", common.DATABASE_URL)
 
