@@ -637,7 +637,6 @@ watch:{
           message: `Do you wish to link this scene to <strong>${this.$store.state.overlay.quickFind.selectedScene.title}</strong>`,
           type: 'is-info is-wide',
           hasIcon: true,
-          id: 'heh',
           onConfirm: () => {
             this.handleRelinkExtRef()
           }
@@ -852,7 +851,6 @@ watch:{
         message: `You're about to unmatch the file <strong>${file.filename}</strong> from this scene. Afterwards, it can be matched again to this or any other scene.`,
         type: 'is-info is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {
           api.post(`/files/unmatch`, {json:{file_id: file.id}}).json().then(data => {
             this.$store.commit('overlay/showDetails', { scene: data })
@@ -1166,7 +1164,6 @@ watch:{
         message: `Do you wish to create a seperate XBVR scene from this linked scene <strong>${this.$store.state.overlay.details.altsrc.url}</strong>`,
         type: 'is-info is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {
           const url = this.$store.state.overlay.details.altsrc.url
           this.$store.state.overlay.details.altsrc = null
@@ -1185,7 +1182,6 @@ watch:{
         message: `This will remove the scene, rescrape the site to relink it to an XBVR scene`,
         type: 'is-info is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {          
           this.handleRefreshExtRef()
         }
@@ -1210,7 +1206,6 @@ watch:{
         message: `This will unlink the scene and prevent it from relinking to any scene. This cannot be undone`,
         type: 'is-danger is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {          
           this.handleFlagExtRefDeleted()
         },

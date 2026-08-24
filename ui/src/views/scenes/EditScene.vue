@@ -258,7 +258,6 @@ export default {
         message: `Do you really want to delete the scene <strong>${this.scene.title}</strong> from <strong>${this.scene.studio}</strong>? If this is an existing scene, it will be re-added during the next scrape.`,
         type: 'is-info is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {
           api.post(`/scene/delete`, {json:{scene_id: this.scene.id}}).json().then(data => {
             this.$store.dispatch('sceneList/load', { offset: 0 })

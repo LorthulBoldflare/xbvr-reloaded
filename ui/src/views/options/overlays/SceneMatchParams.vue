@@ -249,7 +249,6 @@ export default {
           message: `Do you also wish to clear links from <strong>${formattedDate}</strong>`,
           type: 'is-info is-wide',
           hasIcon: true,
-          id: 'heh',
           onConfirm: () => {
             api.delete(`/extref/delete_extref_source_links/keep_manual`, { json: {external_source: 'alternate scene ' + this.site.id, delete_date: this.ignoreReleasedBefore} });
           }

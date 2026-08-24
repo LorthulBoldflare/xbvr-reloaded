@@ -299,7 +299,6 @@ export default {
         message: `Do you really want to delete <strong>${this.actor.name}</strong>`,
         type: 'is-info is-wide',
         hasIcon: true,
-        id: 'heh',
         onConfirm: () => {
           api.delete(`/actor/delete/${this.actor.id}`).json().then(data => {
             this.$store.dispatch('actorList/load', { offset: this.$store.state.actorList.offset - this.$store.state.actorList.limit })

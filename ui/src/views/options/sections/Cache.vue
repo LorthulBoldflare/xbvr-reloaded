@@ -99,11 +99,20 @@ export default {
           this.isLoading = false
         })
     },
-    async resetCache (kind) {
-      this.isLoading = true
-      await api.delete(`/options/cache/reset/${kind}`, { timeout: 30000 })
-      await this.loadState()
-      await this.loadSearchState()
+    resetCache (kind) {
+      this.$buefy.dialog.confirm({
+        title: 'Reset cache',
+        message: `Do you want to reset the <strong>${kind}</strong> cache?`,
+        type: 'is-danger',
+        hasIcon: true,
+        confirmText: 'Reset',
+        onConfirm: async () => {
+          this.isLoading = true
+          await api.delete(`/options/cache/reset/${kind}`, { timeout: 30000 })
+          await this.loadState()
+          await this.loadSearchState()
+        }
+      })
     },
     taskRefresh: function () {
       api.get('/task/scene-refresh')
