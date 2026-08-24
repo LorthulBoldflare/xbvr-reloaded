@@ -31,10 +31,7 @@ func DeoRemote() {
 			"connected": false,
 		})
 
-		err := deoLoop()
-		if err != nil {
-			common.Log.Error(err)
-		}
+		deoLoop()
 
 		time.Sleep(1 * time.Second)
 	}
