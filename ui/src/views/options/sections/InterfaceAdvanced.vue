@@ -185,10 +185,6 @@
         <div class="column">
           <section>            
             <b-field>
-              <p>
-                <b><a href="https://github.com/xbapps/xbvr/wiki/Setting-Request-Headers,-Cookies-and-Body" target="_blank" rel="noreferrer">Domain Config</a></b>
-                <a href="https://github.com/xbapps/xbvr/wiki/Setting-Request-Headers,-Cookies-and-Body" target="_blank" rel="noreferrer" style="margin-left: 1em;">Wiki</a>
-              </p>
               <b-field>
                 <b-tooltip label="Select a file to import config for a scraper or trailers"
                   type="is-primary is-light" :delay="1000" style="margin-left: 1em;" >
