@@ -1,5 +1,7 @@
 package models
 
+import "github.com/jinzhu/gorm"
+
 type DMSData struct {
 	Sites        []string `json:"sites"`
 	Actors       []string `json:"actors"`
@@ -10,64 +12,47 @@ type DMSData struct {
 
 func GetDMSData() DMSData {
 	db, _ := GetDB()
-	defer db.Close()
 
-	// Get all accessible scenes
-	var scenes []Scene
-	tx := db.
-		Model(&scenes).
-		Preload("Cast").
-		Preload("Tags").
-		Preload("Files")
-
-	tx = tx.Where("is_accessible = ?", 1).Where("is_available = ?", 1)
+	// DISTINCT/aggregate queries instead of re-Find'ing full scene rows with
+	// useless preloads for each facet
+	base := func() *gorm.DB {
+		// Table("scenes") bypasses gorm's soft-delete scope, so exclude
+		// deleted scenes explicitly
+		return db.Table("scenes").
+			Where("scenes.deleted_at IS NULL").
+			Where("scenes.is_accessible = ?", 1).
+			Where("scenes.is_available = ?", 1)
+	}
 
 	// Available sites
-	tx.Group("site").Find(&scenes)
-	var outSites []string
-	for i := range scenes {
-		if scenes[i].Site != "" {
-			outSites = append(outSites, scenes[i].Site)
-		}
-	}
+	outSites := []string{}
+	base().Where("scenes.site <> ''").Pluck("DISTINCT scenes.site", &outSites)
 
 	// Available release dates (YYYY-MM)
-	switch db.Dialect().GetName() {
-	case "mysql":
-		tx.Select("DATE_FORMAT(release_date, '%Y-%m') as release_date_text").
-			Group("DATE_FORMAT(release_date, '%Y-%m')").Find(&scenes)
-	case "sqlite3":
-		tx.Select("strftime('%Y-%m', release_date) as release_date_text").
-			Group("strftime('%Y-%m', release_date)").Find(&scenes)
+	monthExpr := "strftime('%Y-%m', scenes.release_date)"
+	if db.Dialect().GetName() == "mysql" {
+		monthExpr = "DATE_FORMAT(scenes.release_date, '%Y-%m')"
 	}
-	var outRelease []string
-	for i := range scenes {
-		outRelease = append(outRelease, scenes[i].ReleaseDateText)
-	}
+	outRelease := []string{}
+	base().Pluck("DISTINCT "+monthExpr, &outRelease)
 
 	// Available tags
-	tx.Joins("left join scene_tags on scene_tags.scene_id=scenes.id").
-		Joins("left join tags on tags.id=scene_tags.tag_id").
-		Group("tags.name").Order("tags.name asc").Select("tags.name as release_date_text").Find(&scenes)
-
-	var outTags []string
-	for i := range scenes {
-		if scenes[i].ReleaseDateText != "" {
-			outTags = append(outTags, scenes[i].ReleaseDateText)
-		}
-	}
+	outTags := []string{}
+	base().
+		Joins("join scene_tags on scene_tags.scene_id = scenes.id").
+		Joins("join tags on tags.id = scene_tags.tag_id").
+		Where("tags.name <> ''").
+		Order("tags.name asc").
+		Pluck("DISTINCT tags.name", &outTags)
 
 	// Available actors
-	tx.Joins("left join scene_cast on scene_cast.scene_id=scenes.id").
-		Joins("left join actors on actors.id=scene_cast.actor_id").
-		Group("actors.name").Order("actors.name asc").Select("actors.name as release_date_text").Find(&scenes)
-
-	var outCast []string
-	for i := range scenes {
-		if scenes[i].ReleaseDateText != "" {
-			outCast = append(outCast, scenes[i].ReleaseDateText)
-		}
-	}
+	outCast := []string{}
+	base().
+		Joins("join scene_cast on scene_cast.scene_id = scenes.id").
+		Joins("join actors on actors.id = scene_cast.actor_id").
+		Where("actors.name <> ''").
+		Order("actors.name asc").
+		Pluck("DISTINCT actors.name", &outCast)
 
 	// Available volumes
 	var vol []Volume

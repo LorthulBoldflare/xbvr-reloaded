@@ -406,7 +406,6 @@ func VRSpy(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out chan<
 	// Auto-enable limit scraping after successful full scrape if config option is enabled
 	if scrapeSuccessful && !limitScraping && config.Config.Advanced.AutoLimitScraping {
 		db, _ := models.GetDB()
-		defer db.Close()
 
 		var site models.Site
 		err := db.Where(&models.Site{ID: scraperID}).First(&site).Error

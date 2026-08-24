@@ -258,12 +258,11 @@ func MatchAlternateSources() {
 	tlog.Info("Completed Matching scenes from alternate sources")
 }
 func AltSourceSearch(searchRequest *bleve.SearchRequest) (*bleve.SearchResult, error) {
-	// open and close the search for each search, this stops the search function from locking users out of searching
-	idx, err := NewIndex("scenes")
+	// shared cached handle; bleve indexes are safe for concurrent use
+	idx, err := GetSharedIndex("scenes")
 	if err != nil {
 		return nil, err
 	}
-	defer idx.Bleve.Close()
 	return idx.Bleve.Search(searchRequest)
 }
 func UpdateLinks(db *gorm.DB, externalreference_id uint, newLink models.ExternalReferenceLink) {

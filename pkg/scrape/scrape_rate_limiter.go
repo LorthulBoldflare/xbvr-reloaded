@@ -101,7 +101,6 @@ func GetRateLimiter(id string) *ScraperRateLimiter {
 	for _, limiter := range Limiters {
 		if limiter.id == id {
 			return limiter
-			break
 		}
 	}
 	return nil

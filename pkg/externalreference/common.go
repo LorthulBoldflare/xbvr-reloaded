@@ -18,7 +18,6 @@ func CheckAndSetStringActorField(actor_field *string, fieldName string, newValue
 
 	// check if the field was modified by the user, if so don't change it
 	db, _ := models.GetDB()
-	defer db.Close()
 	var action models.ActionActor
 	db.Where("source = 'edit_actor' and actor_id = ? and changed_column = ?", actor_id, fieldName).Order("ID desc").First(&action)
 	if action.NewValue != "" && action.NewValue != "0" {
@@ -41,7 +40,6 @@ func CheckAndSetIntActorField(actor_field *int, fieldName string, newValue int, 
 
 	// check if the field was modified by the user, if so don't change it
 	db, _ := models.GetDB()
-	defer db.Close()
 	var action models.ActionActor
 	db.Where("source = 'edit_actor' and actor_id = ? and changed_column = ?", actor_id, fieldName).Order("ID desc").First(&action)
 	if action.NewValue != "" && action.NewValue != "0" {
@@ -68,7 +66,6 @@ func CheckAndSetDateActorField(actor_field *time.Time, fieldName string, newValu
 
 	// check if the field was modified by the user, if so don't change it
 	db, _ := models.GetDB()
-	defer db.Close()
 	var action models.ActionActor
 	db.Where("source = 'edit_actor' and actor_id = ? and changed_column = ?", actor_id, fieldName).Order("ID desc").First(&action)
 	if action.NewValue != "" && action.NewValue != "0001-01-01T00:00:00Z" {

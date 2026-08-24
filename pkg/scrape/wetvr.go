@@ -44,7 +44,6 @@ type wetVRReleaseList struct {
 }
 
 func fetchJSON(url string, target interface{}) error {
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -55,7 +54,7 @@ func fetchJSON(url string, target interface{}) error {
 	SetupHtmlRequest(httpConfig, req)
 
 	req.Header.Set("x-site", "wetvr.com")
-	resp, err := client.Do(req)
+	resp, err := ScraperHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}

@@ -63,7 +63,6 @@ func RescanVolumes(id int) {
 		models.CheckVolumes()
 
 		db, _ := models.GetDB()
-		defer db.Close()
 
 		var vol []models.Volume
 		if id > 0 {
@@ -100,8 +99,6 @@ func RescanVolumes(id int) {
 
 		// Match Scene to File
 		var files []models.File
-		var scenes []models.Scene
-		var extrefs []models.ExternalReference
 
 		tlog.Infof("Matching Scenes to known filenames")
 		db.Model(&models.File{}).Where("files.scene_id = 0").Find(&files)
@@ -112,63 +109,127 @@ func RescanVolumes(id int) {
 			return buffer.String()
 		}
 
-		for i := range files {
-			unescapedFilename := path.Base(files[i].Filename)
-			filename := escape(unescapedFilename)
-			filename2 := strings.Replace(filename, ".funscript", ".mp4", -1)
-			filename3 := strings.Replace(filename, ".hsp", ".mp4", -1)
-			filename4 := strings.Replace(filename, ".srt", ".mp4", -1)
-			filename5 := strings.Replace(filename, ".cmscript", ".mp4", -1)
-			err := db.Where("filenames_arr LIKE ? OR filenames_arr LIKE ? OR filenames_arr LIKE ? OR filenames_arr LIKE ? OR filenames_arr LIKE ?", `%"`+filename+`"%`, `%"`+filename2+`"%`, `%"`+filename3+`"%`, `%"`+filename4+`"%`, `%"`+filename5+`"%`).Find(&scenes).Error
-			if err != nil {
-				log.Error(err, " when matching "+unescapedFilename)
+		// filename variants tried for each unmatched file
+		filenameVariants := func(filename string) []string {
+			return []string{
+				filename,
+				strings.Replace(filename, ".funscript", ".mp4", -1),
+				strings.Replace(filename, ".hsp", ".mp4", -1),
+				strings.Replace(filename, ".srt", ".mp4", -1),
+				strings.Replace(filename, ".cmscript", ".mp4", -1),
 			}
-			if len(scenes) == 0 && config.Config.Advanced.UseAltSrcInFileMatching {
-				// check if the filename matches in external_reference record
+		}
 
-				db.Preload("XbvrLinks").Where("external_source like 'alternate scene %' and external_data LIKE ? OR external_data LIKE ? OR external_data LIKE ? OR external_data LIKE ? OR external_data LIKE ?", `%"`+filename+`%`, `%"`+filename2+`%`, `%"`+filename3+`%`, `%"`+filename4+`%`, `%"`+filename5+`%`).Find(&extrefs)
-				if len(extrefs) == 1 {
-					if len(extrefs[0].XbvrLinks) == 1 {
+		// Load all scene filename lists once and match in memory — the
+		// previous per-file LIKE '%..%' queries were O(unmatched × scenes)
+		// full table scans.
+		var sceneRows []struct {
+			ID           uint
+			FilenamesArr string
+		}
+		// deleted_at filter: scanning into an anonymous struct bypasses
+		// gorm's soft-delete scope, so exclude deleted scenes explicitly —
+		// otherwise files bind to deleted scenes (and UpdateStatus on the
+		// failed lookup would insert a blank scene row)
+		db.Table("scenes").Select("id, filenames_arr").Where("scenes.deleted_at IS NULL").Scan(&sceneRows)
+		sceneByFilename := map[string][]uint{}
+		for _, row := range sceneRows {
+			var names []string
+			if err := json.Unmarshal([]byte(row.FilenamesArr), &names); err != nil {
+				continue
+			}
+			for _, name := range names {
+				// lowercase keys: the previous LIKE-based matching was
+				// case-insensitive for ASCII on sqlite and default MySQL
+				// collations
+				key := strings.ToLower(escape(name))
+				sceneByFilename[key] = append(sceneByFilename[key], row.ID)
+			}
+		}
+
+		// Same for alternate-source external references when enabled
+		var extrefs []models.ExternalReference
+		var extrefDataLower []string
+		if config.Config.Advanced.UseAltSrcInFileMatching {
+			db.Preload("XbvrLinks").Where("external_source like 'alternate scene %'").Find(&extrefs)
+			// lowercase once: the previous LIKE-based matching was
+			// case-insensitive for ASCII
+			extrefDataLower = make([]string, len(extrefs))
+			for i, extref := range extrefs {
+				extrefDataLower[i] = strings.ToLower(extref.ExternalData)
+			}
+		}
+
+		for i := range files {
+			filename := strings.ToLower(escape(path.Base(files[i].Filename)))
+			variants := filenameVariants(filename)
+
+			matchedSceneIDs := map[uint]bool{}
+			for _, variant := range variants {
+				for _, id := range sceneByFilename[variant] {
+					matchedSceneIDs[id] = true
+				}
+			}
+
+			if len(matchedSceneIDs) == 1 {
+				for id := range matchedSceneIDs {
+					files[i].SceneID = id
+				}
+				files[i].Save()
+				var scene models.Scene
+				if err := scene.GetIfExistByPK(files[i].SceneID); err == nil {
+					scene.UpdateStatus()
+				}
+			} else {
+				if len(matchedSceneIDs) == 0 && config.Config.Advanced.UseAltSrcInFileMatching {
+					// check if the filename matches in an external_reference record
+					var matchedExtRefs []models.ExternalReference
+					for i, extref := range extrefs {
+						for _, variant := range variants {
+							if strings.Contains(extrefDataLower[i], `"`+variant) {
+								matchedExtRefs = append(matchedExtRefs, extref)
+								break
+							}
+						}
+					}
+					if len(matchedExtRefs) == 1 && len(matchedExtRefs[0].XbvrLinks) == 1 {
 						// the scene id will be the Internal DB Id from the associated link
 						var scene models.Scene
-						scene.GetIfExistByPK(extrefs[0].XbvrLinks[0].InternalDbId)
+						if err := scene.GetIfExistByPK(matchedExtRefs[0].XbvrLinks[0].InternalDbId); err != nil {
+							// dangling link (e.g. soft-deleted scene) — skip instead
+							// of saving a zero-value scene, which inserts a blank row
+							continue
+						}
 						// Add File to the list of Scene filenames
 						var pfTxt []string
-						err = json.Unmarshal([]byte(scene.FilenamesArr), &pfTxt)
-						if err != nil {
+						if err := json.Unmarshal([]byte(scene.FilenamesArr), &pfTxt); err != nil {
 							continue
 						}
 						pfTxt = append(pfTxt, files[i].Filename)
-						tmp, err := json.Marshal(pfTxt)
-						if err == nil {
+						if tmp, err := json.Marshal(pfTxt); err == nil {
 							scene.FilenamesArr = string(tmp)
 						}
 						scene.Save()
-						scenes = append(scenes, scene)
+
+						files[i].SceneID = scene.ID
+						files[i].Save()
+						scene.UpdateStatus()
 					}
 				}
-			}
-			if len(scenes) == 1 {
-				files[i].SceneID = scenes[0].ID
-				files[i].Save()
-				scenes[0].UpdateStatus()
-			} else {
-				if config.Config.Storage.MatchOhash && config.Config.Advanced.StashApiKey != "" {
+				if files[i].SceneID == 0 && config.Config.Storage.MatchOhash && config.Config.Advanced.StashApiKey != "" {
 					hash := files[i].OsHash
 					if len(hash) < 16 {
 						// the has in xbvr is sometiomes < 16 pad with zeros
 						paddingLength := 16 - len(hash)
 						hash = strings.Repeat("0", paddingLength) + hash
 					}
-					queryVariable := `
-				{"input":{
-					"fingerprints": {					
-						"value": "` + hash + `",
-						"modifier": "INCLUDES"
-					},				
-					"page": 1
-				}
-				}`
+					queryVariable := scrape.StashVariablesJSON(map[string]interface{}{
+						"fingerprints": map[string]interface{}{
+							"value":    hash,
+							"modifier": "INCLUDES",
+						},
+						"page": 1,
+					})
 					// call Stashdb graphql searching for os_hash
 					stashMatches := scrape.GetScenePage(queryVariable)
 					for _, match := range stashMatches.Data.QueryScenes.Scenes {
@@ -176,10 +237,15 @@ func RescanVolumes(id int) {
 							var externalRefLink models.ExternalReferenceLink
 							db.Where(&models.ExternalReferenceLink{ExternalSource: "stashdb scene", ExternalId: match.ID}).First(&externalRefLink)
 							if externalRefLink.ID != 0 {
+								var scene models.Scene
+								if err := scene.GetIfExistByPK(externalRefLink.InternalDbId); err != nil {
+									// dangling link (e.g. soft-deleted scene) — skip
+									// instead of binding the file to it and saving a
+									// zero-value scene, which inserts a blank row
+									continue
+								}
 								files[i].SceneID = externalRefLink.InternalDbId
 								files[i].Save()
-								var scene models.Scene
-								scene.GetIfExistByPK(externalRefLink.InternalDbId)
 
 								// add filename tyo the array
 								var pfTxt []string
@@ -214,21 +280,14 @@ func RescanVolumes(id int) {
 
 		// Grab metrics
 		var localFilesCount int64
+		var localFilesSize int64
+		// single pass: count and sum sizes in SQL instead of scanning all rows
 		db.Model(models.File{}).
 			Joins("left join volumes on files.volume_id = volumes.id").
 			Where("volumes.type = ?", "local").
-			Count(&localFilesCount)
+			Select("count(*) as cnt, coalesce(sum(files.size), 0) as size").
+			Row().Scan(&localFilesCount, &localFilesSize)
 		common.AddMetricPoint("local_files_count", float64(localFilesCount))
-
-		var localFiles []models.File
-		var localFilesSize int64 = 0
-		db.Model(models.File{}).
-			Joins("left join volumes on files.volume_id = volumes.id").
-			Where("volumes.type = ?", "local").
-			Scan(&localFiles)
-		for _, v := range localFiles {
-			localFilesSize = localFilesSize + v.Size
-		}
 		common.AddMetricPoint("local_files_size", float64(localFilesSize))
 
 		r := models.RequestSceneList{}
@@ -513,15 +572,19 @@ func RefreshSceneStatuses() {
 	tlog := log.WithFields(logrus.Fields{"task": "rescan"})
 	tlog.Infof("Update status of Scenes")
 	db, _ := models.GetDB()
-	defer db.Close()
 
-	var scenes []models.Scene
-	db.Model(&models.Scene{}).Find(&scenes)
+	// iterate IDs and load each scene individually instead of materializing
+	// the entire scenes table at once
+	var ids []uint
+	db.Model(&models.Scene{}).Pluck("id", &ids)
 
-	for i := range scenes {
-		scenes[i].UpdateStatus()
+	for i, id := range ids {
+		var scene models.Scene
+		if err := db.First(&scene, id).Error; err == nil {
+			scene.UpdateStatus()
+		}
 		if (i % 70) == 0 {
-			tlog.Infof("Update status of Scenes (%v/%v)", i+1, len(scenes))
+			tlog.Infof("Update status of Scenes (%v/%v)", i+1, len(ids))
 		}
 	}
 
@@ -529,7 +592,6 @@ func RefreshSceneStatuses() {
 }
 func ScanLocalHspFile(path string, volID uint, sceneId uint) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var fl models.File
 	db.Where(&models.File{
@@ -562,7 +624,6 @@ func ScanLocalHspFile(path string, volID uint, sceneId uint) {
 
 func ScanLocalSubtitlesFile(path string, volID uint, sceneId uint) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var fl models.File
 	db.Where(&models.File{

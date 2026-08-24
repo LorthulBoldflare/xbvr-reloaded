@@ -5,9 +5,11 @@ package rrcache
 
 import (
 	"math/rand"
+	"sync"
 )
 
 type RRCache struct {
+	mu       sync.Mutex
 	capacity int64
 	size     int64
 
@@ -29,10 +31,14 @@ func New(capacity int64) *RRCache {
 
 // Returns the sum size of all items currently in the cache.
 func (c *RRCache) Size() int64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.size
 }
 
 func (c *RRCache) Set(key interface{}, value interface{}, size int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if size > c.capacity {
 		return
 	}
@@ -57,6 +63,8 @@ func (c *RRCache) Set(key interface{}, value interface{}, size int64) {
 }
 
 func (c *RRCache) Get(key interface{}) (value interface{}, ok bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	entry, ok := c.table[key]
 	if !ok {
 		return
@@ -72,6 +80,8 @@ type Item struct {
 // Return all items currently in the cache. This is made available for
 // serialization purposes.
 func (c *RRCache) Items() (itens []Item) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for k, e := range c.table {
 		itens = append(itens, Item{k, e.value})
 	}

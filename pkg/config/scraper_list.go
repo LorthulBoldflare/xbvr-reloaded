@@ -109,7 +109,6 @@ func RemoveCustomListNowOffical(customSiteList []ScraperConfig, officalSiteList 
 			newList = append(newList, customSite)
 		} else {
 			db, _ := models.GetDB()
-			defer db.Close()
 			db.Model(&models.Scene{}).Where("scraper_id = ?", customSite.ID).Update("needs_update", true)
 			db.Delete(&models.Site{ID: customSite.ID})
 			common.Log.Infof("Studio %s is now an offical Studio and has been shifted from your custom list.  Enable the offical scraper and run it to update existing scenes", customSite.Name)
@@ -174,7 +173,6 @@ func SetSiteId(configList *[]ScraperConfig, customId string) {
 func MigrateFromOfficalToCustom(id string, url string, name string, company string, avatarUrl string, customId string, suffix string) error {
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scenes []models.Scene
 	db.Where("scraper_id = ?", id).Find(&scenes)

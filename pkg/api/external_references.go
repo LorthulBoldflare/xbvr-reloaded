@@ -172,7 +172,6 @@ func (i ExternalReference) deleteExtRefSourceLinksKeepManualMatches(req *restful
 		return
 	}
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if r.DeleteDate.IsZero() {
 		db.Where("external_source like ? and match_type not in (99999, -1)", r.ExternalSource).Delete(models.ExternalReferenceLink{})

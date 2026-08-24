@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	DATABASE_URL   = ""
+	DATABASE_URL = ""
 	// WsAddr is loopback-only: the WAMP bus is reached from the UI through
 	// the same-origin /ws/ proxy and from in-process publishers, so it must
 	// not listen on all interfaces.

@@ -19,7 +19,6 @@ type TagGroup struct {
 
 func (i *TagGroup) Save() error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	err := retry.Do(
 		func() error {
@@ -40,7 +39,6 @@ func (i *TagGroup) Save() error {
 
 func (o *TagGroup) GetIfExistByPK(id uint) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.
 		Preload("Tags").
@@ -49,7 +47,6 @@ func (o *TagGroup) GetIfExistByPK(id uint) error {
 
 func (o *TagGroup) GetIfExistByName(name string) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.
 		Preload("Tags").
@@ -58,7 +55,6 @@ func (o *TagGroup) GetIfExistByName(name string) error {
 
 func (o *TagGroup) UpdateSceneTagRecords() {
 	db, _ := GetDB()
-	defer db.Close()
 
 	// Queries to update the scene_tags table for the tag group are complex but fast.
 	//  Significating faster than iterating through the results of multiple simpler queries.

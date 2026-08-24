@@ -23,7 +23,6 @@ func ExportFunscripts(w http.ResponseWriter, updatedOnly bool) {
 	defer zipWriter.Close()
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scenes []models.Scene
 	db.Model(&models.Scene{}).Where("is_scripted = ?", true).Order("scene_id").Find(&scenes)

@@ -57,7 +57,6 @@ var State ObjectState
 
 func LoadState() {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var obj models.KV
 	err := db.Where(&models.KV{Key: "state"}).First(&obj).Error

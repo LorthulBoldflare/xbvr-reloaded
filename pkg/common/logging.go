@@ -1,12 +1,9 @@
 package common
 
 import (
-	"context"
 	"io"
 	"os"
-	"sync"
 
-	"github.com/gammazero/nexus/v3/client"
 	"github.com/shiena/ansicolor"
 	"github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
@@ -14,33 +11,10 @@ import (
 
 var Log = *logrus.New()
 
-type WampHook struct {
-	mu        sync.Mutex
-	publisher *client.Client
-}
+type WampHook struct{}
 
 func NewWampHook() *WampHook {
 	return &WampHook{}
-}
-
-// getPublisher lazily connects to the WAMP router and reconnects after the
-// connection drops, so logging never panics when the router is unavailable.
-func (hook *WampHook) getPublisher() (*client.Client, error) {
-	hook.mu.Lock()
-	defer hook.mu.Unlock()
-
-	if hook.publisher != nil {
-		return hook.publisher, nil
-	}
-
-	publisher, err := client.ConnectNet(context.Background(), "ws://"+WsAddr+"/ws", client.Config{
-		Realm: "default",
-	})
-	if err != nil {
-		return nil, err
-	}
-	hook.publisher = publisher
-	return publisher, nil
 }
 
 func (hook *WampHook) Levels() []logrus.Level {
@@ -48,7 +22,7 @@ func (hook *WampHook) Levels() []logrus.Level {
 }
 
 func (hook *WampHook) Fire(entry *logrus.Entry) error {
-	publisher, err := hook.getPublisher()
+	publisher, err := GetWampClient()
 	if err != nil {
 		return err
 	}
@@ -59,10 +33,8 @@ func (hook *WampHook) Fire(entry *logrus.Entry) error {
 		"timestamp": entry.Time.String(),
 	})
 	if err != nil {
-		// drop the connection so the next log line reconnects
-		hook.mu.Lock()
-		hook.publisher = nil
-		hook.mu.Unlock()
+		// drop the shared connection so the next log line reconnects
+		ResetWampClient()
 		return err
 	}
 	return nil

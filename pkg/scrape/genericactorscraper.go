@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"math"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -604,10 +603,10 @@ func getCountryCode(countryName string) string {
 
 func lookupCountryCode(countryName string) (string, error) {
 	// Construct the API URL with the country name as a query parameter
-	url := fmt.Sprintf("https://restcountries.com/v2/name/%s", countryName)
+	apiURL := fmt.Sprintf("https://restcountries.com/v2/name/%s", url.PathEscape(countryName))
 
 	// Send a GET request to the API and decode the JSON response
-	resp, err := http.Get(url)
+	resp, err := ScraperHTTPClient.Get(apiURL)
 	if err != nil {
 		return "", err
 	}

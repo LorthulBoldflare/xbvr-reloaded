@@ -137,12 +137,10 @@ func (i *Actor) CountActorTags() {
 		Scan(&results)
 
 	for i := range results {
-		var actor Actor
 		if results[i].Cnt != results[i].Existingcnt || results[i].IsAvailable != results[i].Existingavail {
-			commonDb.First(&actor, results[i].ID)
-			actor.Count = results[i].Cnt
-			actor.AvailCount = results[i].IsAvailable
-			actor.Save()
+			// update directly instead of First+Save per actor
+			commonDb.Model(&Actor{}).Where("id = ?", results[i].ID).
+				Updates(map[string]interface{}{"count": results[i].Cnt, "avail_count": results[i].IsAvailable})
 		}
 	}
 }
@@ -543,6 +541,26 @@ func (o *Actor) GetIfExistByPKWithSceneAvg(id uint) error {
 			return db.Order("release_date DESC").Where("is_hidden = 0")
 		}).
 		Where(&Actor{ID: id}).First(o).Error
+}
+
+// GetActorsWithSceneAvgByPKs batch-loads actors with their scene rating
+// average and visible scenes, replacing per-actor GetIfExistByPKWithSceneAvg
+// calls in loops (N+1 with full scene preloads per actor).
+func GetActorsWithSceneAvgByPKs(ids []uint) ([]Actor, error) {
+	var actors []Actor
+	if len(ids) == 0 {
+		return actors, nil
+	}
+	commonDb, _ := GetCommonDB()
+
+	err := commonDb.Model(&Actor{}).
+		Select(`actors.*,
+	(select AVG(s.star_rating) scene_avg from scene_cast sc join scenes s on s.id=sc.scene_id where sc.actor_id =actors.id and s.star_rating > 0 and is_hidden=0) as scene_rating_average`).
+		Preload("Scenes", func(db *gorm.DB) *gorm.DB {
+			return db.Order("release_date DESC").Where("is_hidden = 0")
+		}).
+		Where("actors.id in (?)", ids).Find(&actors).Error
+	return actors, err
 }
 
 func (i *Actor) AddToImageArray(newValue string) bool {

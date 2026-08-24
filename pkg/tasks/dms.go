@@ -72,7 +72,7 @@ func initDMS() error {
 			ifs = tmp
 			return
 		}(dmsConfig.IfName),
-		HTTPConn:        httpConn,
+		HTTPConn:       httpConn,
 		FriendlyName:   dmsConfig.FriendlyName,
 		RootObjectPath: filepath.Clean(dmsConfig.Path),
 		LogHeaders:     dmsConfig.LogHeaders,

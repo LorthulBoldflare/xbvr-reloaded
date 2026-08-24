@@ -19,14 +19,12 @@ type History struct {
 
 func (o *History) GetIfExist(id uint) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.Where(&History{ID: id}).First(o).Error
 }
 
 func (o *History) Save() {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var err error = retry.Do(
 		func() error {
@@ -46,5 +44,4 @@ func (o *History) Save() {
 func (o *History) Delete() {
 	db, _ := GetDB()
 	db.Delete(&o)
-	db.Close()
 }

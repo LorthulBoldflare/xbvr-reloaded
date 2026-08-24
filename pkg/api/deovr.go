@@ -277,7 +277,6 @@ func (i DeoVRResource) getDeoFile(req *restful.Request, resp *restful.Response) 
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	fileId, err := strconv.Atoi(req.PathParameter("file-id"))
 	if err != nil {
@@ -336,7 +335,6 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scene models.Scene
 	err := db.Preload("Cast").
@@ -620,7 +618,6 @@ func (i DeoVRResource) getDeoLibrary(req *restful.Request, resp *restful.Respons
 	setDeoPlayerHost(req)
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var sceneLists []DeoListScenes
 

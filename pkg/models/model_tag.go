@@ -17,7 +17,6 @@ type Tag struct {
 
 func (t *Tag) Save() error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var err error = retry.Do(
 		func() error {
@@ -314,10 +313,6 @@ func ConvertTag(t string) string {
 
 func (i *Tag) CountTags() {
 	db, _ := GetDB()
-	defer db.Close()
-
-	var tags []Tag
-	db.Model(&Tag{}).Find(&tags)
 
 	type CountResults struct {
 		ID          int
@@ -334,11 +329,9 @@ func (i *Tag) CountTags() {
 		Scan(&results)
 
 	for i := range results {
-		var tag Tag
 		if results[i].Cnt != results[i].Existingcnt {
-			db.First(&tag, results[i].ID)
-			tag.Count = results[i].Cnt
-			tag.Save()
+			// update directly instead of First+Save per tag
+			db.Model(&Tag{}).Where("id = ?", results[i].ID).Update("count", results[i].Cnt)
 		}
 	}
 

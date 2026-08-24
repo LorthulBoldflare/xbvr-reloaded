@@ -70,7 +70,6 @@ func (i DMSResource) getFile(req *restful.Request, resp *restful.Response) {
 
 	// Check if scene exist
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	f := models.File{}
 	err = db.Preload("Volume").First(&f, id).Error

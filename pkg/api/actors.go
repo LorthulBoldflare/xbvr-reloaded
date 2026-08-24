@@ -89,7 +89,6 @@ func (i ActorResource) WebService() *restful.WebService {
 
 func (i ActorResource) getFilters(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var actors []models.Actor
 	db.Model(&actors).Order("name").Find(&actors)
@@ -214,8 +213,6 @@ func (i ActorResource) getFilters(req *restful.Request, resp *restful.Response) 
 
 func (i ActorResource) getActor(req *restful.Request, resp *restful.Response) {
 	var actor models.Actor
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	if strings.Contains(req.PathParameter("actor-id"), "-") {
 		actor.GetIfExist(req.PathParameter("actor-id"))
@@ -264,7 +261,6 @@ func (i ActorResource) rateActor(req *restful.Request, resp *restful.Response) {
 		actor.StarRating = r.Rating
 		actor.Save()
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, actor)
 }
@@ -331,9 +327,6 @@ func (i ActorResource) toggleList(req *restful.Request, resp *restful.Response) 
 		return
 	}
 
-	db, _ := models.GetDB()
-	defer db.Close()
-
 	var actor models.Actor
 	err = actor.GetIfExistByPK(r.ActorID)
 	if err != nil {
@@ -369,8 +362,6 @@ func (i ActorResource) editActor(req *restful.Request, resp *restful.Response) {
 	}
 
 	var actor models.Actor
-	db, _ := models.GetDB()
-	defer db.Close()
 	err = actor.GetIfExistByPK(uint(name))
 	if err != nil {
 		resp.WriteHeaderAndEntity(http.StatusOK, nil)
@@ -437,7 +428,6 @@ func (i ActorResource) deleteActor(req *restful.Request, resp *restful.Response)
 
 	var actor models.Actor
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	db.Exec(`delete from actor_akas where actor_id=?`, id)
 	db.Where("actor_id = ?", uint(id)).Delete(&models.ActionActor{})
@@ -511,9 +501,6 @@ func (i ActorResource) setActorImage(req *restful.Request, resp *restful.Respons
 		return
 	}
 
-	db, _ := models.GetDB()
-	defer db.Close()
-
 	var actor models.Actor
 	err = actor.GetIfExistByPKWithSceneAvg(r.ActorID)
 	if err != nil {
@@ -540,9 +527,6 @@ func (i ActorResource) deleteActorImage(req *restful.Request, resp *restful.Resp
 	if r.ActorID == 0 || r.Url == "" {
 		return
 	}
-
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	var actor models.Actor
 	err = actor.GetIfExistByPKWithSceneAvg(r.ActorID)
@@ -596,21 +580,20 @@ type AkaResponse struct {
 func (i ActorResource) getActorAkas(req *restful.Request, resp *restful.Response) {
 	var actor models.Actor
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var akaresp AkaResponse
 	actor_id, _ := strconv.ParseUint(req.PathParameter("actor-id"), 10, 32)
 	db.Preload("AkaGroups").Where("id = ?", actor_id).Find(&actor)
+
+	// collect actor IDs first, then batch-load with full preloads instead of
+	// re-reading each actor one query at a time
+	var groupIDs, actorIDs []uint
 	if strings.HasPrefix(actor.Name, "aka:") {
 		var akagrp models.Aka
 		db.Preload("Akas").Preload("AkaActor").Where("aka_actor_id = ? ", actor.ID).Find(&akagrp)
-		// reread actor to get full Preloads
-		akagrp.AkaActor.GetIfExistByPKWithSceneAvg(akagrp.AkaActor.ID)
 		for _, actor := range akagrp.Akas {
 			if actor.ID != uint(actor_id) {
-				// reread actor to get full Preloads
-				actor.GetIfExistByPKWithSceneAvg(actor.ID)
-				akaresp.Actors = append(akaresp.Actors, actor)
+				actorIDs = append(actorIDs, actor.ID)
 			}
 		}
 
@@ -618,14 +601,10 @@ func (i ActorResource) getActorAkas(req *restful.Request, resp *restful.Response
 		for _, grp := range actor.AkaGroups {
 			var akagrp models.Aka
 			db.Preload("Akas").Preload("AkaActor").Where("id = ?", grp.ID).Find(&akagrp)
-			// reread actor to get full Preloads
-			akagrp.AkaActor.GetIfExistByPKWithSceneAvg(akagrp.AkaActor.ID)
-			akaresp.AkaGroups = append(akaresp.AkaGroups, akagrp.AkaActor)
+			groupIDs = append(groupIDs, akagrp.AkaActor.ID)
 			for _, actor := range akagrp.Akas {
 				if actor.ID != uint(actor_id) {
-					// reread actor to get full Preloads
-					actor.GetIfExistByPKWithSceneAvg(actor.ID)
-					akaresp.Actors = append(akaresp.Actors, actor)
+					actorIDs = append(actorIDs, actor.ID)
 				}
 			}
 		}
@@ -640,25 +619,43 @@ func (i ActorResource) getActorAkas(req *restful.Request, resp *restful.Response
 		Select("distinct actors.*").
 		Find(&possibleAkas)
 
-		// check each possible aka isn't already listed in the aka actors list or another aka group
+	// check each possible aka isn't already listed in the aka actors list or another aka group
+	knownIDs := map[uint]bool{}
+	for _, id := range append(append([]uint{}, groupIDs...), actorIDs...) {
+		knownIDs[id] = true
+	}
+	var possibleIDs []uint
 	for _, possible := range possibleAkas {
-		found := false
-		if strings.HasPrefix(possible.Name, "aka:") {
-			found = true
+		if strings.HasPrefix(possible.Name, "aka:") || knownIDs[possible.ID] {
+			continue
 		}
-		for _, existing := range akaresp.Actors {
-			if existing.ID == possible.ID {
-				found = true
-			}
+		possibleIDs = append(possibleIDs, possible.ID)
+	}
+
+	// batch-load everything with scene averages and scene preloads
+	allIDs := append(append(append([]uint{}, groupIDs...), actorIDs...), possibleIDs...)
+	loaded, err := models.GetActorsWithSceneAvgByPKs(allIDs)
+	if err != nil {
+		log.Error(err)
+	}
+	byID := make(map[uint]models.Actor, len(loaded))
+	for _, a := range loaded {
+		byID[a.ID] = a
+	}
+
+	for _, id := range groupIDs {
+		if a, ok := byID[id]; ok {
+			akaresp.AkaGroups = append(akaresp.AkaGroups, a)
 		}
-		for _, aka := range akaresp.AkaGroups {
-			if aka.ID == possible.ID {
-				found = true
-			}
+	}
+	for _, id := range actorIDs {
+		if a, ok := byID[id]; ok {
+			akaresp.Actors = append(akaresp.Actors, a)
 		}
-		if !found {
-			possible.GetIfExistByPKWithSceneAvg(possible.ID)
-			akaresp.PossibleAkas = append(akaresp.PossibleAkas, possible)
+	}
+	for _, id := range possibleIDs {
+		if a, ok := byID[id]; ok {
+			akaresp.PossibleAkas = append(akaresp.PossibleAkas, a)
 		}
 	}
 	resp.WriteHeaderAndEntity(http.StatusOK, akaresp)
@@ -666,7 +663,6 @@ func (i ActorResource) getActorAkas(req *restful.Request, resp *restful.Response
 func (i ActorResource) getActorColleagues(req *restful.Request, resp *restful.Response) {
 	var colleagues []models.Actor
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	actor_id, _ := strconv.ParseUint(req.PathParameter("actor-id"), 10, 32)
 
@@ -681,9 +677,25 @@ func (i ActorResource) getActorColleagues(req *restful.Request, resp *restful.Re
 		Select("distinct a2.*").
 		Find(&colleagues)
 
+	// batch-load instead of one GetIfExistByPKWithSceneAvg per colleague
+	colleagueIDs := make([]uint, 0, len(colleagues))
+	for _, actor := range colleagues {
+		colleagueIDs = append(colleagueIDs, actor.ID)
+	}
+	loaded, err := models.GetActorsWithSceneAvgByPKs(colleagueIDs)
+	if err != nil {
+		log.Error(err)
+		resp.WriteHeaderAndEntity(http.StatusOK, colleagues)
+		return
+	}
+	byID := make(map[uint]models.Actor, len(loaded))
+	for _, a := range loaded {
+		byID[a.ID] = a
+	}
 	for idx, actor := range colleagues {
-		actor.GetIfExistByPKWithSceneAvg(actor.ID)
-		colleagues[idx] = actor
+		if full, ok := byID[actor.ID]; ok {
+			colleagues[idx] = full
+		}
 	}
 	resp.WriteHeaderAndEntity(http.StatusOK, colleagues)
 }
@@ -696,7 +708,6 @@ func (i ActorResource) getActorExtRefs(req *restful.Request, resp *restful.Respo
 func readExtRefs(actor_id uint) []models.ExternalReferenceLink {
 	var extrefs []models.ExternalReferenceLink
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	db.Preload("ExternalReference").Where("internal_table = 'actors' and internal_db_id = ?", actor_id).Find(&extrefs)
 	return extrefs

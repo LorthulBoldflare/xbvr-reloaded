@@ -55,7 +55,6 @@ func (i PlaylistResource) WebService() *restful.WebService {
 
 func (i PlaylistResource) listPlaylists(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 	playlistType := req.PathParameter("playlist_type")
 	if playlistType == "" {
 		playlistType = "scene"
@@ -74,9 +73,6 @@ func (i PlaylistResource) createPlaylist(req *restful.Request, resp *restful.Res
 		APIError(req, resp, http.StatusInternalServerError, err)
 		return
 	}
-
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	if r.PlaylistType == "" {
 		r.PlaylistType = "scene"
@@ -102,7 +98,6 @@ func (i PlaylistResource) updatePlaylist(req *restful.Request, resp *restful.Res
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	playlist := models.Playlist{}
 	err = db.First(&playlist, id).Error
@@ -128,7 +123,6 @@ func (i PlaylistResource) removePlaylist(req *restful.Request, resp *restful.Res
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	playlist := models.Playlist{}
 	err = db.First(&playlist, id).Error

@@ -78,7 +78,6 @@ func TrackSessionFromRemote(packet DeoPacket) {
 		f := models.File{}
 		db, _ := models.GetDB()
 		_ = db.First(&f, currentFileID).Error
-		defer db.Close()
 
 		// Create new session
 		if lastSessionSceneID != f.SceneID {

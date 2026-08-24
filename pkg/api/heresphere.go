@@ -227,7 +227,6 @@ func (i HeresphereResource) getHeresphereFile(req *restful.Request, resp *restfu
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	fileId, err := strconv.Atoi(req.PathParameter("file-id"))
 	if err != nil {
@@ -298,7 +297,6 @@ func (i HeresphereResource) getHeresphereScene(req *restful.Request, resp *restf
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scene models.Scene
 	err := db.Preload("Cast").
@@ -802,7 +800,6 @@ var lockHeresphereUpdates sync.Mutex
 
 func ProcessHeresphereUpdates(scene *models.Scene, requestData HereSphereAuthRequest, videoFile models.File) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if requestData.IsFavorite != nil && *requestData.IsFavorite != scene.Favourite && config.Config.Interfaces.Heresphere.AllowFavoriteUpdates {
 		scene.Favourite = *requestData.IsFavorite
@@ -1004,7 +1001,6 @@ func (i HeresphereResource) getHeresphereLibrary(req *restful.Request, resp *res
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var sceneLists []HeresphereListScenes
 

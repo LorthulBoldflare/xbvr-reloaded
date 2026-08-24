@@ -205,13 +205,23 @@ func (me *contentDirectoryService) xbaseFileToContainer(file models.File, parent
 }
 
 func (me *contentDirectoryService) sceneToContainer(scene models.Scene, parent string, host string) interface{} {
+	videoFiles, err := scene.GetVideoFiles()
+	if err != nil {
+		return nil
+	}
+	return me.sceneToContainerWithFiles(scene, parent, host, videoFiles)
+}
+
+// sceneToContainerWithFiles builds the container using preloaded video files,
+// so browse loops can batch-load files for all scenes at once instead of one
+// query per scene.
+func (me *contentDirectoryService) sceneToContainerWithFiles(scene models.Scene, parent string, host string, videoFiles []models.File) interface{} {
 	c := make([]string, 0)
 	for i := range scene.Cast {
 		c = append(c, scene.Cast[i].Name)
 	}
 
-	videoFiles, err := scene.GetVideoFiles()
-	if err != nil || len(videoFiles) == 0 {
+	if len(videoFiles) == 0 {
 		return nil
 	}
 
@@ -409,8 +419,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				r.IsAccessible = optional.NewBool(true)
 				data := models.QueryScenesFull(r)
 
+				sceneIDs := make([]uint, 0, len(data.Scenes))
 				for i := range data.Scenes {
-					objs = append(objs, me.sceneToContainer(data.Scenes[i], "all", host))
+					sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+				}
+				filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+				for i := range data.Scenes {
+					objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "all", host, filesByScene[data.Scenes[i].ID]))
 				}
 			}
 
@@ -419,7 +434,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				var savedPlaylists []models.Playlist
 				db, _ := models.GetDB()
 				db.Where("is_deo_enabled = ?", true).Order("ordering asc").Find(&savedPlaylists)
-				db.Close()
 
 				for _, playlist := range savedPlaylists {
 					objs = append(objs, upnpav.Container{Object: upnpav.Object{
@@ -438,7 +452,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				var savedPlaylist models.Playlist
 				db, _ := models.GetDB()
 				db.Where("id = ?", id[1]).First(&savedPlaylist)
-				db.Close()
 
 				var r models.RequestSceneList
 				if err := json.Unmarshal([]byte(savedPlaylist.SearchParams), &r); err == nil {
@@ -446,8 +459,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 					r.IsAvailable = optional.NewBool(true)
 					data := models.QueryScenesFull(r)
 
+					sceneIDs := make([]uint, 0, len(data.Scenes))
 					for i := range data.Scenes {
-						objs = append(objs, me.sceneToContainer(data.Scenes[i], "sites/"+id[1], host))
+						sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+					}
+					filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+					for i := range data.Scenes {
+						objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "sites/"+id[1], host, filesByScene[data.Scenes[i].ID]))
 					}
 				}
 			}
@@ -475,8 +493,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				r.Sites = []optional.String{optional.NewString(id[1])}
 				data := models.QueryScenesFull(r)
 
+				sceneIDs := make([]uint, 0, len(data.Scenes))
 				for i := range data.Scenes {
-					objs = append(objs, me.sceneToContainer(data.Scenes[i], "sites/"+id[1], host))
+					sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+				}
+				filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+				for i := range data.Scenes {
+					objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "sites/"+id[1], host, filesByScene[data.Scenes[i].ID]))
 				}
 			}
 
@@ -503,8 +526,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				r.Tags = []optional.String{optional.NewString(id[1])}
 				data := models.QueryScenesFull(r)
 
+				sceneIDs := make([]uint, 0, len(data.Scenes))
 				for i := range data.Scenes {
-					objs = append(objs, me.sceneToContainer(data.Scenes[i], "tags/"+id[1], host))
+					sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+				}
+				filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+				for i := range data.Scenes {
+					objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "tags/"+id[1], host, filesByScene[data.Scenes[i].ID]))
 				}
 			}
 
@@ -531,8 +559,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				r.Cast = []optional.String{optional.NewString(id[1])}
 				data := models.QueryScenesFull(r)
 
+				sceneIDs := make([]uint, 0, len(data.Scenes))
 				for i := range data.Scenes {
-					objs = append(objs, me.sceneToContainer(data.Scenes[i], "actors/"+id[1], host))
+					sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+				}
+				filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+				for i := range data.Scenes {
+					objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "actors/"+id[1], host, filesByScene[data.Scenes[i].ID]))
 				}
 			}
 
@@ -559,8 +592,13 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				r.Released = optional.NewString(id[1])
 				data := models.QueryScenesFull(r)
 
+				sceneIDs := make([]uint, 0, len(data.Scenes))
 				for i := range data.Scenes {
-					objs = append(objs, me.sceneToContainer(data.Scenes[i], "released/"+id[1], host))
+					sceneIDs = append(sceneIDs, data.Scenes[i].ID)
+				}
+				filesByScene, _ := models.GetVideoFilesForScenes(sceneIDs)
+				for i := range data.Scenes {
+					objs = append(objs, me.sceneToContainerWithFiles(data.Scenes[i], "released/"+id[1], host, filesByScene[data.Scenes[i].ID]))
 				}
 			}
 
@@ -569,7 +607,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				var files []models.File
 				db, _ := models.GetDB()
 				db.Model(&files).Where("files.scene_id = 0").Find(&files)
-				db.Close()
 
 				for i := range files {
 					if _, err := os.Stat(filepath.Join(files[i].Path, files[i].Filename)); err == nil {
@@ -578,13 +615,26 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				}
 			}
 
+			// Honor the requested paging window; DLNA clients page through
+			// large libraries with StartingIndex/RequestedCount.
+			totalMatches := len(objs)
+			start := browse.StartingIndex
+			if start > totalMatches {
+				start = totalMatches
+			}
+			end := totalMatches
+			if browse.RequestedCount > 0 && start+browse.RequestedCount < end {
+				end = start + browse.RequestedCount
+			}
+			objs = objs[start:end]
+
 			result, err := xml.Marshal(objs)
 			if err != nil {
 				return nil, err
 			}
 
 			return map[string]string{
-				"TotalMatches":   fmt.Sprint(len(objs)),
+				"TotalMatches":   fmt.Sprint(totalMatches),
 				"NumberReturned": fmt.Sprint(len(objs)),
 				"Result":         didl_lite(string(result)),
 				"UpdateID":       me.updateIDString(),

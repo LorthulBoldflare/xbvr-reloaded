@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/emicklei/go-restful/v3"
 	"golang.org/x/crypto/bcrypt"
@@ -35,12 +36,29 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	chain.ProcessFilter(req, resp)
 }
 
+// checkUIPassword compares against a cached bcrypt hash of the configured
+// password — hashing on every request (previous behavior) costs ~60-250ms of
+// CPU per API call. The cache is keyed on the configured password so config
+// changes (and tests) take effect immediately.
+var cachedUIAuth struct {
+	sync.Mutex
+	password string
+	hash     []byte
+}
+
 func checkUIPassword(password string) bool {
-	// Same scheme as the UI auth handler: the configured plaintext password is
-	// hashed and then compared with the supplied one.
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(common.EnvConfig.UIPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return false
+	cachedUIAuth.Lock()
+	if cachedUIAuth.password != common.EnvConfig.UIPassword {
+		hash, err := bcrypt.GenerateFromPassword([]byte(common.EnvConfig.UIPassword), bcrypt.DefaultCost)
+		if err != nil {
+			cachedUIAuth.Unlock()
+			return false
+		}
+		cachedUIAuth.password = common.EnvConfig.UIPassword
+		cachedUIAuth.hash = hash
 	}
-	return bcrypt.CompareHashAndPassword(hashedPassword, []byte(password)) == nil
+	hash := cachedUIAuth.hash
+	cachedUIAuth.Unlock()
+
+	return bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil
 }

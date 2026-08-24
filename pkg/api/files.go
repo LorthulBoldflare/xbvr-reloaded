@@ -84,7 +84,6 @@ func (i FilesResource) getFile(req *restful.Request, resp *restful.Response) {
 
 func (i FilesResource) listFiles(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestFileList
 	err := req.ReadEntity(&r)
@@ -219,7 +218,6 @@ func (i FilesResource) listFiles(req *restful.Request, resp *restful.Response) {
 
 func (i FilesResource) matchFile(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestMatchFile
 	err := req.ReadEntity(&r)
@@ -267,7 +265,6 @@ func (i FilesResource) matchFile(req *restful.Request, resp *restful.Response) {
 
 func (i FilesResource) unmatchFile(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestUnmatchFile
 	err := req.ReadEntity(&r)
@@ -339,7 +336,6 @@ func removeFileByFileId(fileId uint) models.Scene {
 	var scene models.Scene
 	var file models.File
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	err := db.Preload("Volume").Where(&models.File{ID: fileId}).First(&file).Error
 	if err == nil {

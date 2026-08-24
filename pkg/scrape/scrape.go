@@ -3,6 +3,7 @@ package scrape
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -16,6 +17,7 @@ import (
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
 	"golang.org/x/net/html"
+	"golang.org/x/net/publicsuffix"
 )
 
 var log = &common.Log
@@ -209,13 +211,22 @@ func CreateCollector(domains ...string) *colly.Collector {
 
 func GetCoreDomain(domain string) string {
 	if strings.HasPrefix(domain, "http") {
-		parsedURL, _ := url.Parse(domain)
-		domain = parsedURL.Hostname()
+		if parsedURL, err := url.Parse(domain); err == nil {
+			domain = parsedURL.Hostname()
+		}
 	}
+	domain = strings.TrimPrefix(domain, "www.")
+	// use the public suffix list so multi-part TLDs work
+	// (previously "example.co.uk" became "example.co")
+	if eTLDPlusOne, err := publicsuffix.EffectiveTLDPlusOne(domain); err == nil {
+		if suffix, _ := publicsuffix.PublicSuffix(eTLDPlusOne); suffix != "" {
+			return strings.TrimSuffix(eTLDPlusOne, "."+suffix)
+		}
+	}
+	// fallback for unlisted/invalid domains: previous heuristic
 	parts := strings.Split(domain, ".")
-	if len(parts) > 2 && parts[0] == "www" {
-		parts = parts[1:]
+	if len(parts) > 1 {
+		return strings.Join(parts[:len(parts)-1], ".")
 	}
-
-	return strings.Join(parts[:len(parts)-1], ".")
+	return domain
 }

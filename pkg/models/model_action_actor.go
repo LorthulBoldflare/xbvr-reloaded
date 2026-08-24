@@ -19,14 +19,12 @@ type ActionActor struct {
 
 func (a *ActionActor) GetIfExist(id uint) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.Where(&ActionActor{ID: id}).First(a).Error
 }
 
 func (a *ActionActor) Save() {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var err error = retry.Do(
 		func() error {
@@ -57,7 +55,6 @@ func AddActionActor(actorId uint, source string, actionType string, changedColum
 
 func Find(actorName string, actionType string, source string, changed_column string, newValue string) []ActionActor {
 	db, _ := GetDB()
-	defer db.Close()
 
 	tx := db.Model(&ActionActor{})
 	if actorName != "" {

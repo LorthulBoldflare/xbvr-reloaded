@@ -239,7 +239,6 @@ func UpdateVirtualPornIds() {
 
 	apiCollector.OnResponse(func(r *colly.Response) {
 		db, _ := models.GetDB()
-		defer db.Close()
 
 		sceneListJson := gjson.ParseBytes(r.Body)
 		sceneCnt = int(sceneListJson.Get("meta.total").Int())

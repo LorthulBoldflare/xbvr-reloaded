@@ -1,9 +1,11 @@
 package tasks
 
 import (
+	"os"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
@@ -74,7 +76,56 @@ func (i *Index) Exist(id string) bool {
 	return true
 }
 
-func (i *Index) PutScene(scene models.Scene) error {
+var (
+	sharedIndexesMu sync.Mutex
+	sharedIndexes   = map[string]*Index{}
+)
+
+// GetSharedIndex opens (once) and caches the bleve index for name. Bleve
+// indexes are safe for concurrent use — callers must not close the handle.
+// Use CloseSharedIndexes before deleting the index directory.
+func GetSharedIndex(name string) (*Index, error) {
+	sharedIndexesMu.Lock()
+	defer sharedIndexesMu.Unlock()
+	if idx, ok := sharedIndexes[name]; ok {
+		return idx, nil
+	}
+	idx, err := NewIndex(name)
+	if err != nil {
+		return nil, err
+	}
+	sharedIndexes[name] = idx
+	return idx, nil
+}
+
+// CloseSharedIndexes closes and forgets all cached index handles.
+func CloseSharedIndexes() {
+	sharedIndexesMu.Lock()
+	defer sharedIndexesMu.Unlock()
+	for name, idx := range sharedIndexes {
+		idx.Bleve.Close()
+		delete(sharedIndexes, name)
+	}
+}
+
+// ResetSharedIndexes atomically closes all cached handles and deletes the
+// index directory while holding the lock, so no concurrent search can cache
+// a handle whose files are being removed.
+func ResetSharedIndexes() error {
+	sharedIndexesMu.Lock()
+	defer sharedIndexesMu.Unlock()
+	for name, idx := range sharedIndexes {
+		idx.Bleve.Close()
+		delete(sharedIndexes, name)
+	}
+	if err := os.RemoveAll(common.IndexDirV2); err != nil {
+		return err
+	}
+	return os.MkdirAll(common.IndexDirV2, os.ModePerm)
+}
+
+// sceneIndexDoc builds the indexed document for a scene.
+func sceneIndexDoc(scene models.Scene) SceneIndexed {
 	cast := ""
 	castConcat := ""
 	for _, c := range scene.Cast {
@@ -83,7 +134,7 @@ func (i *Index) PutScene(scene models.Scene) error {
 	}
 
 	rd := time.Date(scene.ReleaseDate.Year(), scene.ReleaseDate.Month(), scene.ReleaseDate.Day(), 0, 0, 0, 0, &time.Location{})
-	si := SceneIndexed{
+	return SceneIndexed{
 		Title:       fmt.Sprintf("%v", scene.Title),
 		Description: fmt.Sprintf("%v", scene.Synopsis),
 		Cast:        fmt.Sprintf("%v %v", cast, castConcat),
@@ -93,12 +144,10 @@ func (i *Index) PutScene(scene models.Scene) error {
 		Added:       scene.CreatedAt.Truncate(24 * time.Hour), // only index the date, not the time
 		Duration:    scene.Duration,
 	}
+}
 
-	if err := i.Bleve.Index(scene.SceneID, si); err != nil {
-		return err
-	}
-
-	return nil
+func (i *Index) PutScene(scene models.Scene) error {
+	return i.Bleve.Index(scene.SceneID, sceneIndexDoc(scene))
 }
 
 func SearchIndex() {
@@ -108,7 +157,9 @@ func SearchIndex() {
 
 		tlog := log.WithFields(logrus.Fields{"task": "scrape"})
 
-		idx, err := NewIndex("scenes")
+		// use the shared handle: a second open of the same scorch path blocks
+		// forever on the bbolt file lock while the shared handle is held
+		idx, err := GetSharedIndex("scenes")
 		if err != nil {
 			log.Error(err)
 			models.RemoveLock("index")
@@ -116,7 +167,6 @@ func SearchIndex() {
 		}
 
 		db, _ := models.GetDB()
-		defer db.Close()
 
 		total := 0
 		offset := 0
@@ -133,14 +183,15 @@ func SearchIndex() {
 				break
 			}
 
+			// batch-index the page (bleve.Batch is far cheaper than
+			// per-document Index calls; indexing an existing ID overwrites)
+			batch := idx.Bleve.NewBatch()
 			for i := range scenes {
-				if !idx.Exist(scenes[i].SceneID) {
-					err := idx.PutScene(scenes[i])
-					if err != nil {
-						log.Error(err)
-					}
-				}
+				batch.Index(scenes[i].SceneID, sceneIndexDoc(scenes[i]))
 				current = current + 1
+			}
+			if err := idx.Bleve.Batch(batch); err != nil {
+				log.Error(err)
 			}
 			tlog.Infof("Indexed %v/%v scenes", current, total)
 
@@ -153,7 +204,6 @@ func SearchIndex() {
 			offset = offset + 100
 		}
 
-		idx.Bleve.Close()
 
 		tlog.Infof("Search index built!")
 	}
@@ -169,7 +219,9 @@ func IndexScenes(scenes *[]models.Scene) {
 
 		tlog := log.WithFields(logrus.Fields{"task": "scrape"})
 
-		idx, err := NewIndex("scenes")
+		// use the shared handle: a second open of the same scorch path blocks
+		// forever on the bbolt file lock while the shared handle is held
+		idx, err := GetSharedIndex("scenes")
 		if err != nil {
 			log.Error(err)
 			models.RemoveLock("index")
@@ -180,27 +232,21 @@ func IndexScenes(scenes *[]models.Scene) {
 
 		total := 0
 		lastMessage := time.Now()
+		batch := idx.Bleve.NewBatch()
 		for i := range *scenes {
 			if time.Since(lastMessage) > time.Duration(config.Config.Advanced.ProgressTimeInterval)*time.Second {
 				tlog.Infof("Indexed %v of %v scenes", total, len(*scenes))
 				lastMessage = time.Now()
 			}
 			scene := (*scenes)[i]
-			if idx.Exist(scene.SceneID) {
-				// Remove old index, as data may have been updated
-				idx.Bleve.Delete(scene.SceneID)
-			}
-
-			err := idx.PutScene(scene)
-			if err != nil {
-				log.Error(err)
-			} else {
-				// log.Debugln("Indexed " + scene.SceneID)
-				total += 1
-			}
+			// indexing an existing ID overwrites the old document
+			batch.Index(scene.SceneID, sceneIndexDoc(scene))
+			total += 1
+		}
+		if err := idx.Bleve.Batch(batch); err != nil {
+			log.Error(err)
 		}
 
-		idx.Bleve.Close()
 
 		tlog.Infof("Indexed %v scenes", total)
 	}
@@ -213,7 +259,9 @@ func DeleteIndexScenes(scenes *[]models.Scene) {
 
 		tlog := log.WithFields(logrus.Fields{"task": "scrape"})
 
-		idx, err := NewIndex("scenes")
+		// use the shared handle: a second open of the same scorch path blocks
+		// forever on the bbolt file lock while the shared handle is held
+		idx, err := GetSharedIndex("scenes")
 		if err != nil {
 			log.Error(err)
 			models.RemoveLock("index")
@@ -224,21 +272,22 @@ func DeleteIndexScenes(scenes *[]models.Scene) {
 
 		total := 0
 		lastMessage := time.Now()
+		batch := idx.Bleve.NewBatch()
 		for i := range *scenes {
 			if time.Since(lastMessage) > time.Duration(config.Config.Advanced.ProgressTimeInterval)*time.Second {
 				tlog.Infof("Deleting scene index %v of %v scenes", total, len(*scenes))
 				lastMessage = time.Now()
 			}
 			scene := (*scenes)[i]
-			if idx.Exist(scene.SceneID) {
-				// Remove old index, as data may have been updated
-				idx.Bleve.Delete(scene.SceneID)
-			}
+			batch.Delete(scene.SceneID)
+			total += 1
+		}
+		if err := idx.Bleve.Batch(batch); err != nil {
+			log.Error(err)
 		}
 
-		idx.Bleve.Close()
 
-		tlog.Infof("Indexed %v scenes", total)
+		tlog.Infof("Deleted %v scenes from index", total)
 	}
 }
 

@@ -38,7 +38,6 @@ type countryJson struct {
 
 func GetCountryList() []CountryDetails {
 	db, _ := GetDB()
-	defer db.Close()
 
 	out := []CountryDetails{}
 	var kvs KV

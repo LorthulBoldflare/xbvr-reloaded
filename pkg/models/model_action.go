@@ -13,14 +13,12 @@ type Action struct {
 
 func (a *Action) GetIfExist(id uint) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.Where(&Action{ID: id}).First(a).Error
 }
 
 func (a *Action) Save() {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var err error = retry.Do(
 		func() error {

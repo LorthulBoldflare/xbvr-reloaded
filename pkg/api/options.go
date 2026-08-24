@@ -258,6 +258,9 @@ func (i ConfigResource) WebService() *restful.WebService {
 	ws.Route(ws.PUT("/sites/limit_scraping/{site}").To(i.toggleLimitScraping).
 		Metadata(restfulspec.KeyOpenAPITags, tags))
 
+	ws.Route(ws.PUT("/sites/toggle_field").To(i.bulkToggleSiteField).
+		Metadata(restfulspec.KeyOpenAPITags, tags))
+
 	ws.Route(ws.PUT("/sites/scrape_stash/{site}").To(i.toggleScrapeStash).
 		Metadata(restfulspec.KeyOpenAPITags, tags))
 
@@ -367,7 +370,6 @@ func (i ConfigResource) versionCheck(req *restful.Request, resp *restful.Respons
 
 func (i ConfigResource) listSites(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 	i.listSitesWithDB(req, resp, db)
 }
 
@@ -386,9 +388,47 @@ func (i ConfigResource) toggleLimitScraping(req *restful.Request, resp *restful.
 func (i ConfigResource) toggleScrapeStash(req *restful.Request, resp *restful.Response) {
 	i.toggleSiteField(req, resp, "ScrapeStash")
 }
+// RequestBulkToggleSiteField toggles a boolean field on many sites in one
+// call, replacing O(n) sequential single-site PUTs from the scrapers UI.
+type RequestBulkToggleSiteField struct {
+	Field string   `json:"field"`
+	IDs   []string `json:"ids"`
+}
+
+func (i ConfigResource) bulkToggleSiteField(req *restful.Request, resp *restful.Response) {
+	var r RequestBulkToggleSiteField
+	if err := req.ReadEntity(&r); err != nil {
+		log.Error(err)
+		return
+	}
+
+	db, _ := models.GetDB()
+
+	for _, id := range r.IDs {
+		var site models.Site
+		if err := site.GetIfExist(id); err != nil {
+			log.Error(err)
+			continue
+		}
+		switch r.Field {
+		case "Subscribed":
+			site.Subscribed = !site.Subscribed
+			db.Model(&models.Scene{}).Where("scraper_id = ?", site.ID).Update("is_subscribed", site.Subscribed)
+		case "LimitScraping":
+			site.LimitScraping = !site.LimitScraping
+			db.Model(&models.Scene{}).Where("scraper_id = ?", site.ID).Update("limit_scraping", site.LimitScraping)
+		default:
+			resp.WriteErrorString(http.StatusBadRequest, "unsupported field")
+			return
+		}
+		site.Save()
+	}
+
+	i.listSitesWithDB(req, resp, db)
+}
+
 func (i ConfigResource) toggleSiteField(req *restful.Request, resp *restful.Response, field string) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	id := req.PathParameter("site")
 	if id == "" {
@@ -458,8 +498,6 @@ func (i ConfigResource) listSitesWithDB(req *restful.Request, resp *restful.Resp
 }
 
 func (i ConfigResource) siteMatchParams(req *restful.Request, resp *restful.Response) {
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	id := req.PathParameter("site")
 	if id == "" {
@@ -478,8 +516,6 @@ func (i ConfigResource) siteMatchParams(req *restful.Request, resp *restful.Resp
 	resp.WriteHeaderAndEntity(http.StatusOK, matchParams)
 }
 func (i ConfigResource) saveSiteMatchParams(req *restful.Request, resp *restful.Response) {
-	db, _ := models.GetDB()
-	defer db.Close()
 	var r RequestSaveSiteMatchParams
 	if err := req.ReadEntity(&r); err != nil {
 		APIError(req, resp, http.StatusInternalServerError, err)
@@ -610,7 +646,6 @@ func (i ConfigResource) saveOptionsDeoVR(req *restful.Request, resp *restful.Res
 
 func (i ConfigResource) listStorage(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var vol []models.Volume
 	db.Raw(`select id, path, last_scan,is_available, is_enabled, type,
@@ -645,7 +680,6 @@ func (i ConfigResource) addStorage(req *restful.Request, resp *restful.Response)
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	switch r.Type {
 	case "local":
@@ -712,7 +746,6 @@ func (i ConfigResource) removeStorage(req *restful.Request, resp *restful.Respon
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	vol := models.Volume{}
 	err = db.First(&vol, id).Error
@@ -747,7 +780,6 @@ func (i ConfigResource) forceSiteUpdate(req *restful.Request, resp *restful.Resp
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	db.Model(&models.Scene{}).Where("scraper_id = ?", r.ScraperId).Update("needs_update", true)
 
@@ -772,7 +804,6 @@ func (i ConfigResource) deleteScenes(req *restful.Request, resp *restful.Respons
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scenes []models.Scene
 	db.Where("scraper_id = ?", r.ScraperId).Find(&scenes)
@@ -816,9 +847,8 @@ func (i ConfigResource) getSearchState(req *restful.Request, resp *restful.Respo
 	out.InProgress = models.CheckLock("index")
 	out.DocumentCount = 0
 	if !out.InProgress { // don't open if in progress, bleve open will hang
-		idx, err := tasks.NewIndex("scenes")
+		idx, err := tasks.GetSharedIndex("scenes")
 		if err == nil {
-			defer idx.Bleve.Close()
 			out.DocumentCount, _ = idx.Bleve.DocCount()
 		}
 	}
@@ -836,15 +866,17 @@ func (i ConfigResource) resetCache(req *restful.Request, resp *restful.Response)
 	}
 
 	if cache == "searchIndex" {
-		os.RemoveAll(common.IndexDirV2)
-		os.MkdirAll(common.IndexDirV2, os.ModePerm)
+		// close cached handles and delete the index atomically (no concurrent
+		// search can cache a handle whose files are being removed)
+		if err := tasks.ResetSharedIndexes(); err != nil {
+			log.Error(err)
+		}
 		config.State.CacheSize.SearchIndex = 0
 	}
 
 	if cache == "previews" {
 		db, _ := models.GetDB()
 		db.Model(&models.Scene{}).Where("has_video_preview = ?", true).Update("has_video_preview", false)
-		db.Close()
 
 		os.RemoveAll(common.VideoPreviewDir)
 		os.MkdirAll(common.VideoPreviewDir, os.ModePerm)
@@ -912,7 +944,6 @@ func (i ConfigResource) generateTestPreview(req *restful.Request, resp *restful.
 	var scene models.Scene
 	db, _ := models.GetDB()
 	db.Model(&models.Scene{}).Where("is_available = ?", true).Order("release_date desc").First(&scene)
-	db.Close()
 
 	files, err := scene.GetFiles()
 	if err != nil {
@@ -964,19 +995,29 @@ func (i ConfigResource) generateTestPreview(req *restful.Request, resp *restful.
 
 func (i ConfigResource) getFunscriptsCount(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r GetFunscriptCountResponse
 
-	var scenes []models.Scene
-	db.Model(&models.Scene{}).Preload("Files", func(db *gorm.DB) *gorm.DB {
-		return db.Where("type = ?", "script").Order("is_selected_script DESC, created_time DESC")
-	}).Where("is_scripted = ?", true).Find(&scenes)
+	// two flat queries instead of preloading every scripted scene with files
+	db.Model(&models.Scene{}).Where("is_scripted = ?", true).Count(&r.Total)
 
-	for _, scene := range scenes {
-		r.Total++
-		if len(scene.Files) > 0 && !scene.Files[0].IsExported {
-			r.Updated++
+	var sceneIDs []uint
+	db.Model(&models.Scene{}).Where("is_scripted = ?", true).Pluck("id", &sceneIDs)
+	if len(sceneIDs) > 0 {
+		var files []models.File
+		// ordered so the first file per scene is the preferred script
+		db.Where("scene_id in (?) and type = ?", sceneIDs, "script").
+			Order("scene_id, is_selected_script DESC, created_time DESC").Find(&files)
+
+		seen := map[uint]bool{}
+		for _, f := range files {
+			if seen[f.SceneID] {
+				continue
+			}
+			seen[f.SceneID] = true
+			if !f.IsExported {
+				r.Updated++
+			}
 		}
 	}
 
@@ -1056,7 +1097,6 @@ func (i ConfigResource) saveOptionsTaskSchedule(req *restful.Request, resp *rest
 
 func (i ConfigResource) getDefaultCuepoints(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var kv models.KV
 	kv.Key = "cuepoints"
@@ -1068,8 +1108,6 @@ func (i ConfigResource) getDefaultCuepoints(req *restful.Request, resp *restful.
 }
 
 func (i ConfigResource) createCustomSite(req *restful.Request, resp *restful.Response) {
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestSCustomSiteCreate
 	err := req.ReadEntity(&r)

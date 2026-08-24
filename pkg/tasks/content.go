@@ -207,7 +207,6 @@ func ReapplyEdits() {
 
 	var actions []models.Action
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var count int64
 	db.Model(&models.Scene{}).Where("edits_applied = ?", true).Count(&count)
@@ -415,7 +414,6 @@ func ScrapeJAVR(queryString string, scraper string) {
 			for i := range collectedScenes {
 				models.SceneCreateUpdateFromExternal(db, collectedScenes[i])
 			}
-			db.Close()
 
 			tlog.Infof("Updating tag counts")
 			CountTags()
@@ -443,7 +441,6 @@ func ScrapeTPDB(apiToken string, sceneUrl string) {
 		var scenes []models.Scene
 		db, _ := models.GetDB()
 		db.Find(&scenes)
-		db.Close()
 
 		var knownScenes []string
 		for i := range scenes {
@@ -470,7 +467,6 @@ func ScrapeTPDB(apiToken string, sceneUrl string) {
 			for i := range collectedScenes {
 				models.SceneCreateUpdateFromExternal(db, collectedScenes[i])
 			}
-			db.Close()
 
 			tlog.Infof("Updating tag counts")
 			CountTags()
@@ -562,7 +558,6 @@ func ImportBundle(uploadData string) {
 func ImportBundleV1(bundleData ContentBundle) {
 	tlog := log.WithField("task", "scrape")
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	for i := range bundleData.Scenes {
 		tlog.Infof("Importing %v of %v scenes", i+1, len(bundleData.Scenes))
@@ -592,7 +587,6 @@ func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bo
 		}
 
 		db, _ := models.GetDB()
-		defer db.Close()
 
 		var scenes []models.Scene
 		backupSceneList := []models.Scene{}
@@ -870,7 +864,6 @@ func RestoreBundle(request RequestRestore) {
 				return
 			}
 			db, _ := models.GetDB()
-			defer db.Close()
 
 			var selectedSites []models.Site
 			if !request.InclAllSites || request.OfficalSitesOnly {
@@ -1367,7 +1360,6 @@ func CheckTagGroup(tagGroup *models.TagGroup, tag_group_tag_id uint, db *gorm.DB
 
 func RenameTags() {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var scenes []models.Scene
 	db.Find(&scenes)
@@ -1752,13 +1744,19 @@ func UpdateSceneStatus(db *gorm.DB) {
 	// Update scene statuses
 	tlog := log.WithField("task", "scrape")
 	tlog.Infof("Update status of Scenes")
-	scenes := []models.Scene{}
-	db.Model(&models.Scene{}).Find(&scenes)
 
-	for i := range scenes {
-		scenes[i].UpdateStatus()
+	// iterate IDs and load each scene individually instead of materializing
+	// the entire scenes table at once
+	var ids []uint
+	db.Model(&models.Scene{}).Pluck("id", &ids)
+
+	for i, id := range ids {
+		var scene models.Scene
+		if err := db.First(&scene, id).Error; err == nil {
+			scene.UpdateStatus()
+		}
 		if (i % 70) == 0 {
-			tlog.Infof("Update status of Scenes (%v/%v)", i+1, len(scenes))
+			tlog.Infof("Update status of Scenes (%v/%v)", i+1, len(ids))
 		}
 	}
 }

@@ -342,21 +342,18 @@ export default {
     async toggleAllSubscriptions(){
       const table = this.$refs.scraperTable;
       this.isLoading=true
-      for (let i=0; i<table.newData.length; i++) {
-        await ky.put(`/api/options/sites/subscribed/${table.newData[i].id}`, { json: {} }).json()
-        this.$store.dispatch('optionsSites/load')
-      }
+      // one bulk call instead of a PUT per site plus a reload each
+      await api.put('/options/sites/toggle_field', { json: { field: 'Subscribed', ids: table.newData.map(s => s.id) } }).json()
+      this.$store.dispatch('optionsSites/load')
       this.isLoading=false
     },
     async toggleAllLimitScraping(){
       const table = this.$refs.scraperTable;
       this.isLoading=true
-      for (let i=0; i<table.newData.length; i++) {
-        await ky.put(`/api/options/sites/limit_scraping/${table.newData[i].id}`, { json: {} }).json()
-        this.$store.dispatch('optionsSites/load')
-      }
+      await api.put('/options/sites/toggle_field', { json: { field: 'LimitScraping', ids: table.newData.map(s => s.id) } }).json()
+      this.$store.dispatch('optionsSites/load')
       this.isLoading=false
-    },    
+    },
     editMatchParams(site){
       this.$store.commit('overlay/showSceneMatchParams', { site: site })
     },

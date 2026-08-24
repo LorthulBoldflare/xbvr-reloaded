@@ -76,7 +76,6 @@ func (i TagGroupResource) WebService() *restful.WebService {
 
 func (i TagGroupResource) createTagGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditTagGroupMembers
@@ -142,7 +141,6 @@ func (i TagGroupResource) createTagGroup(req *restful.Request, resp *restful.Res
 
 func (i TagGroupResource) deleteTagGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestDeleteTagGroup
 	err := req.ReadEntity(&r)
@@ -186,7 +184,6 @@ func (i TagGroupResource) getTagGroups(req *restful.Request, resp *restful.Respo
 
 	var tagGroups []models.TagGroup
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	db.Preload("Tags").Find(&tagGroups)
 	resp.WriteHeaderAndEntity(http.StatusOK, tagGroups)
@@ -203,9 +200,7 @@ func (i TagGroupResource) getTagGroup(req *restful.Request, resp *restful.Respon
 		return
 	}
 
-	db, _ := models.GetDB()
 	err := tagGroup.GetIfExistByName(tagGroupName)
-	db.Close()
 
 	if err != nil || tagGroup.ID == 0 {
 		resp.WriteHeaderAndEntity(http.StatusOK, &ResponseTagGroup{
@@ -222,7 +217,6 @@ func (i TagGroupResource) getTagGroup(req *restful.Request, resp *restful.Respon
 
 func (i TagGroupResource) removeFromTagGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditTagGroupMembers
@@ -303,7 +297,6 @@ func (i TagGroupResource) removeFromTagGroup(req *restful.Request, resp *restful
 
 func (i TagGroupResource) addToTagGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditTagGroupMembers
@@ -374,7 +367,6 @@ func (i TagGroupResource) addToTagGroup(req *restful.Request, resp *restful.Resp
 }
 func (i TagGroupResource) renameTagGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditTagGroupMembers
@@ -420,7 +412,6 @@ func (i TagGroupResource) renameTagGroup(req *restful.Request, resp *restful.Res
 
 func RefreshTagGroup(tagGroup *models.TagGroup) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	tagGroup.UpdateSceneTagRecords()
 	db.Preload("TagGroupTag").Preload("Tags").Find(&tagGroup)

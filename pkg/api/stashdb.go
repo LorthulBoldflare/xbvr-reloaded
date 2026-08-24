@@ -45,7 +45,6 @@ func (i ExternalReference) linkScene2Stashdb(req *restful.Request, resp *restful
 	var scene models.Scene
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if strings.Contains(sceneId, "-") {
 		scene.GetIfExist(sceneId)
@@ -143,7 +142,6 @@ func (i ExternalReference) searchForStashdbScene(req *restful.Request, resp *res
 	var scene models.Scene
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if strings.Contains(sceneId, "-") {
 		scene.GetIfExist(sceneId)
@@ -421,9 +419,6 @@ func (i ExternalReference) linkActor2Stashdb(req *restful.Request, resp *restful
 	stashPerformerId = strings.TrimPrefix(stashPerformerId, "https://stashdb.org/performers/")
 	var actor models.Actor
 
-	db, _ := models.GetDB()
-	defer db.Close()
-
 	id, _ := strconv.Atoi(actorId)
 	if id == 0 {
 		actor.GetIfExist(actorId)
@@ -500,9 +495,6 @@ func (i ExternalReference) searchForStashdbActor(req *restful.Request, resp *res
 
 	actorId := req.PathParameter("actor-id")
 	var actor models.Actor
-
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	id, _ := strconv.Atoi(req.PathParameter("actor-id"))
 	if id == 0 {

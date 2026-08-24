@@ -50,7 +50,6 @@ func VRPHub(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out chan
 				sc.Site = sc.Studio
 				// see if we can find the site record, there may not be
 				db, _ := models.GetDB()
-				defer db.Close()
 				var site models.Site
 				db.Where("name like ?", sc.Studio+"%VRPHub) or id = ?", sc.Studio, studioId).First(&site)
 				if site.ID != "" {

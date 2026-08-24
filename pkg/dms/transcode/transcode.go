@@ -15,19 +15,35 @@ import (
 	"github.com/anacrolix/ffprobe"
 )
 
+// killOnCloseReadCloser kills the transcode process when the reader is
+// closed, so a client disconnect does not leave ffmpeg blocked on a full pipe
+// forever.
+type killOnCloseReadCloser struct {
+	io.ReadCloser
+	cmd *exec.Cmd
+}
+
+func (k killOnCloseReadCloser) Close() error {
+	err := k.ReadCloser.Close()
+	if k.cmd.Process != nil && (k.cmd.ProcessState == nil || !k.cmd.ProcessState.Exited()) {
+		k.cmd.Process.Kill()
+	}
+	return err
+}
+
 // Invokes an external command and returns a reader from its stdout. The
 // command is waited on asynchronously.
 func transcodePipe(args []string, stderr io.Writer) (r io.ReadCloser, err error) {
 	log.Println("transcode command:", args)
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = stderr
-	r, err = cmd.StdoutPipe()
+	pipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return
+		return nil, err
 	}
 	err = cmd.Start()
 	if err != nil {
-		return
+		return nil, err
 	}
 	go func() {
 		err := cmd.Wait()
@@ -35,7 +51,7 @@ func transcodePipe(args []string, stderr io.Writer) (r io.ReadCloser, err error)
 			log.Printf("command %s failed: %s", args, err)
 		}
 	}()
-	return
+	return killOnCloseReadCloser{ReadCloser: pipe, cmd: cmd}, nil
 }
 
 // Return a series of ffmpeg arguments that pick specific codecs for specific

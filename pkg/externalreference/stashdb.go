@@ -14,7 +14,6 @@ func UpdateAllPerformerData() {
 	tlog := log.WithField("task", "scrape")
 	tlog.Infof("Starting Updating Actor Details ")
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var performers []models.ExternalReference
 
@@ -72,7 +71,6 @@ func ApplySceneRules() {
 func matchOnSceneUrl() {
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var stashScenes []models.ExternalReference
 	var unmatchedXbvrScenes []models.Scene
@@ -158,7 +156,6 @@ func simplifyUrl(url string) string {
 func matchSceneOnRules(sitename string, config models.StashSiteConfig) {
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if config.StashId == "" {
 		var ext models.ExternalReference
@@ -303,7 +300,6 @@ func simplystring(str string) string {
 // checks if scenes that have a match, can match the scenes performers
 func checkMatchedScenes() {
 	db, _ := models.GetDB()
-	defer db.Close()
 	var stashScenes []models.ExternalReference
 	db.Joins("JOIN external_reference_links erl on erl.external_reference_id = external_references.id").
 		Preload("XbvrLinks").
@@ -363,7 +359,6 @@ func checkMatchedScenes() {
 // updates an xbvr actor with data from a match stashdb actor
 func UpdateXbvrActor(performer models.StashPerformer, xbvrActorID uint) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	changed := false
 	actor := models.Actor{ID: xbvrActorID}
@@ -444,7 +439,6 @@ func convertBodyModToString(bodyMod models.StashBodyModification) string {
 
 func matchPerformerName(scene models.StashScene, xbvrScene models.Scene, matchLevl int) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	for _, performer := range scene.Performers {
 		var ref models.ExternalReference
@@ -490,7 +484,6 @@ func MatchAkaPerformers() {
 	tlog := log.WithField("task", "scrape")
 	tlog.Info("Starting Match on Actor Aka/Aliases")
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	type AkaList struct {
 		ActorId           string
@@ -579,7 +572,6 @@ func ReverseMatch() {
 	tlog := log.WithField("task", "scrape")
 	tlog.Infof("Starting actor match from XBVR to Stashdb ")
 	db, _ := models.GetDB()
-	defer db.Close()
 	var unmatchedActors []models.Actor
 	var externalScenes []models.ExternalReference
 
@@ -648,7 +640,6 @@ func ReverseMatch() {
 func LinkOnXbvrAkaGroups() {
 	log.Infof("LinkActors based on XBR Aka Groups")
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	// Link Aka group actors
 	var unlinkedAkaActors []models.Actor

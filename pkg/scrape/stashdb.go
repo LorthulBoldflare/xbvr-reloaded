@@ -161,7 +161,6 @@ func StashDb() {
 
 	var sites []models.Site
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	Config = models.BuildActorScraperRules()
 	db.Where(&models.Site{ScrapeStash: true}).Order("id").Find(&sites)
@@ -315,7 +314,6 @@ func getPerformersPage(studioId string, page int) QueryPerformerResult {
 func getScenes(studioId string, parentId string, tagId string) QueryScenesResult {
 	// find the most recent scene from the database
 	db, _ := models.GetDB()
-	defer db.Close()
 	var lastUpdate models.ExternalReference
 	db.Where("external_source = ? and external_data like ?", "stashdb scene", "%"+studioId+"%").Order("external_date DESC").First(&lastUpdate)
 	const count = 25
@@ -536,7 +534,6 @@ func saveScenesToExternalReferences(scenes QueryScenesResult, studioId string) {
 	nextProgressTime := startTime.Add(1 * time.Minute)
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	// loop in reverse, we only get scenes since the last update, so we must process from the oldest to the newest
 	// in case the user shuts down while processing
@@ -861,8 +858,7 @@ func CallStashDb(query string, rawVariables string) []byte {
 	req.Header.Set("ApiKey", config.Config.Advanced.StashApiKey)
 
 	callClient := func() []byte {
-		client := &http.Client{}
-		resp, err := client.Do(req)
+		resp, err := ScraperHTTPClient.Do(req)
 		if err != nil {
 			log.Infof("error client.do in callStashDb %s", err)
 			return nil

@@ -179,6 +179,26 @@ func (o *Scene) GetIfExist(id string) error {
 		Where(&Scene{SceneID: id}).First(o).Error
 }
 
+// GetIfExistBySceneIDs batch-loads scenes by their string scene IDs with full
+// preloads, replacing per-hit GetIfExist calls in search-result loops.
+// Missing IDs are skipped.
+func GetIfExistBySceneIDs(ids []string) ([]Scene, error) {
+	var scenes []Scene
+	if len(ids) == 0 {
+		return scenes, nil
+	}
+	commonDb, _ := GetCommonDB()
+
+	err := commonDb.
+		Preload("Tags").
+		Preload("Cast").
+		Preload("Files").
+		Preload("History").
+		Preload("Cuepoints").
+		Where("scene_id in (?)", ids).Find(&scenes).Error
+	return scenes, err
+}
+
 func (o *Scene) GetIfExistByPK(id uint) error {
 	commonDb, _ := GetCommonDB()
 
@@ -242,6 +262,23 @@ func (o *Scene) GetTotalWatchTime() int {
 func (o *Scene) GetVideoFiles() ([]File, error) {
 	files, err := o.GetVideoFilesSorted("")
 	return files, err
+}
+
+// GetVideoFilesForScenes batch-loads video files (with Volume) for many
+// scenes at once, replacing per-scene GetVideoFiles calls (N+1).
+func GetVideoFilesForScenes(sceneIDs []uint) (map[uint][]File, error) {
+	filesByScene := map[uint][]File{}
+	if len(sceneIDs) == 0 {
+		return filesByScene, nil
+	}
+	commonDb, _ := GetCommonDB()
+
+	var files []File
+	err := commonDb.Preload("Volume").Where("scene_id in (?) AND type = ?", sceneIDs, "video").Find(&files).Error
+	for _, f := range files {
+		filesByScene[f.SceneID] = append(filesByScene[f.SceneID], f)
+	}
+	return filesByScene, err
 }
 
 func (o *Scene) GetVideoFilesSorted(sort string) ([]File, error) {
@@ -720,7 +757,6 @@ func QueryScenes(r RequestSceneList, enablePreload bool) ResponseSceneList {
 	r.Limit = optional.NewInt(r.Limit.OrElse(100))
 
 	db, _ := GetDB()
-	defer db.Close()
 
 	preCountTx, finalTx := queryScenes(db, r)
 
@@ -751,7 +787,6 @@ func QueryScenes(r RequestSceneList, enablePreload bool) ResponseSceneList {
 
 func QuerySceneIDs(r RequestSceneList) []string {
 	db, _ := GetDB()
-	defer db.Close()
 
 	_, finalTx := queryScenes(db, r)
 
@@ -771,7 +806,6 @@ type SceneSummary struct {
 
 func QuerySceneSummaries(r RequestSceneList) []SceneSummary {
 	db, _ := GetDB()
-	defer db.Close()
 
 	_, finalTx := queryScenes(db, r)
 

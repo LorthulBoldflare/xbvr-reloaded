@@ -51,7 +51,6 @@ func (f *File) GetPath() string {
 
 func (f *File) Save() error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var err error = retry.Do(
 		func() error {
@@ -72,7 +71,6 @@ func (f *File) Save() error {
 
 func (f *File) GetIfExistByPK(id uint) error {
 	db, _ := GetDB()
-	defer db.Close()
 
 	return db.Where(&File{ID: id}).First(f).Error
 }

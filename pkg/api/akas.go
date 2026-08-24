@@ -72,7 +72,6 @@ func (i AkaResource) WebService() *restful.WebService {
 
 func (i AkaResource) createAkaGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditAkaMembers
@@ -148,7 +147,6 @@ func (i AkaResource) createAkaGroup(req *restful.Request, resp *restful.Response
 
 func (i AkaResource) deleteAka(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestDeleteAka
 	err := req.ReadEntity(&r)
@@ -192,7 +190,6 @@ func (i AkaResource) getAkas(req *restful.Request, resp *restful.Response) {
 
 	var akas []models.Aka
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	db.Preload("Actors").Find(&akas)
 	resp.WriteHeaderAndEntity(http.StatusOK, akas)
@@ -206,16 +203,13 @@ func (i AkaResource) getAka(req *restful.Request, resp *restful.Response) {
 	}
 
 	var aka models.Aka
-	db, _ := models.GetDB()
 	_ = aka.GetIfExistByPK(uint(sceneId))
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, aka)
 }
 
 func (i AkaResource) removeFromAkaGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditAkaMembers
@@ -298,7 +292,6 @@ func (i AkaResource) removeFromAkaGroup(req *restful.Request, resp *restful.Resp
 
 func (i AkaResource) addToAkaGroup(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	//Get request data
 	var r RequestEditAkaMembers
@@ -381,7 +374,6 @@ func (i AkaResource) addToAkaGroup(req *restful.Request, resp *restful.Response)
 }
 func RefreshAka(aka *models.Aka) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	aka.UpdateAkaSceneCastRecords()
 	db.Preload("AkaActor").Preload("Akas").Find(&aka)

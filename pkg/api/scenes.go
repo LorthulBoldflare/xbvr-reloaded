@@ -173,7 +173,6 @@ func (i SceneResource) WebService() *restful.WebService {
 
 func (i SceneResource) createCustomScene(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	// Get request data
 	var r RequestCustomScene
@@ -227,7 +226,6 @@ func (i SceneResource) createCustomScene(req *restful.Request, resp *restful.Res
 
 func (i SceneResource) deleteScene(req *restful.Request, resp *restful.Response) {
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	var r RequestDeleteScene
 	err := req.ReadEntity(&r)
@@ -252,78 +250,75 @@ func (i SceneResource) deleteScene(req *restful.Request, resp *restful.Response)
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
 
-func (i SceneResource) getFilters(req *restful.Request, resp *restful.Response) {
-	db, _ := models.GetDB()
-	defer db.Close()
-
-	// Get all accessible scenes
-	var scenes []models.Scene
-	tx := db.
-		Model(&scenes).
-		Preload("Cast").
-		Preload("Tags").
-		Preload("Files")
-
-	if req.QueryParameter("is_available") != "" {
-		q_is_available, err := strconv.ParseBool(req.QueryParameter("is_available"))
-		if err == nil {
-			tx = tx.Where("is_available = ?", q_is_available)
+// queryFilters returns the distinct sites, tags, cast members and release
+// months (YYYY-MM) across scenes matching the optional availability filters.
+// It uses DISTINCT/aggregate queries instead of preloading full scene rows
+// with all associations.
+func queryFilters(db *gorm.DB, isAvailable, isAccessible *bool) (outSites, outTags, outCast, outRelease []string) {
+	availabilityFilter := func(q *gorm.DB) *gorm.DB {
+		// Table("scenes") bypasses gorm's soft-delete scope, so exclude
+		// deleted scenes explicitly — otherwise filter lists include
+		// sites/tags/cast that only exist on soft-deleted scenes
+		q = q.Where("scenes.deleted_at IS NULL")
+		if isAvailable != nil {
+			q = q.Where("scenes.is_available = ?", *isAvailable)
 		}
-	}
-
-	if req.QueryParameter("is_accessible") != "" {
-		q_is_accessible, err := strconv.ParseBool(req.QueryParameter("is_accessible"))
-		if err == nil {
-			tx = tx.Where("is_accessible = ?", q_is_accessible)
+		if isAccessible != nil {
+			q = q.Where("scenes.is_accessible = ?", *isAccessible)
 		}
+		return q
 	}
 
 	// Available sites
-	tx.Group("site").Find(&scenes)
-	var outSites []string
-	for i := range scenes {
-		if scenes[i].Site != "" {
-			outSites = append(outSites, scenes[i].Site)
-		}
-	}
+	outSites = []string{}
+	availabilityFilter(db.Table("scenes")).
+		Where("scenes.site <> ''").
+		Pluck("DISTINCT scenes.site", &outSites)
 
 	// Available tags
-	tx.Joins("left join scene_tags on scene_tags.scene_id=scenes.id").
-		Joins("left join tags on tags.id=scene_tags.tag_id").
-		Group("tags.name").Select("tags.name as release_date_text").Find(&scenes)
-
-	var outTags []string
-	for i := range scenes {
-		if scenes[i].ReleaseDateText != "" {
-			outTags = append(outTags, scenes[i].ReleaseDateText)
-		}
-	}
+	outTags = []string{}
+	availabilityFilter(db.Table("scenes")).
+		Joins("join scene_tags on scene_tags.scene_id = scenes.id").
+		Joins("join tags on tags.id = scene_tags.tag_id").
+		Where("tags.name <> ''").
+		Pluck("DISTINCT tags.name", &outTags)
 
 	// Available actors
-	tx.Joins("left join scene_cast on scene_cast.scene_id=scenes.id").
-		Joins("left join actors on actors.id=scene_cast.actor_id").
-		Group("actors.name").Select("actors.name as release_date_text").Find(&scenes)
+	outCast = []string{}
+	availabilityFilter(db.Table("scenes")).
+		Joins("join scene_cast on scene_cast.scene_id = scenes.id").
+		Joins("join actors on actors.id = scene_cast.actor_id").
+		Where("actors.name <> ''").
+		Pluck("DISTINCT actors.name", &outCast)
 
-	var outCast []string
-	for i := range scenes {
-		if scenes[i].ReleaseDateText != "" {
-			outCast = append(outCast, scenes[i].ReleaseDateText)
+	// Available release dates (YYYY-MM)
+	outRelease = []string{}
+	monthExpr := "strftime('%Y-%m', scenes.release_date)"
+	if db.Dialect().GetName() == "mysql" {
+		monthExpr = "DATE_FORMAT(scenes.release_date, '%Y-%m')"
+	}
+	availabilityFilter(db.Table("scenes")).
+		Pluck("DISTINCT "+monthExpr, &outRelease)
+
+	return outSites, outTags, outCast, outRelease
+}
+
+func (i SceneResource) getFilters(req *restful.Request, resp *restful.Response) {
+	db, _ := models.GetDB()
+
+	var isAvailable, isAccessible *bool
+	if v := req.QueryParameter("is_available"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			isAvailable = &b
+		}
+	}
+	if v := req.QueryParameter("is_accessible"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			isAccessible = &b
 		}
 	}
 
-	// Available release dates (YYYY-MM)
-	switch db.Dialect().GetName() {
-	case "mysql":
-		tx.Select("DATE_FORMAT(release_date, '%Y-%m') as release_date_text").
-			Group("DATE_FORMAT(release_date, '%Y-%m')").Find(&scenes)
-	case "sqlite3":
-		tx.Select("strftime('%Y-%m', release_date) as release_date_text").
-			Group("strftime('%Y-%m', release_date)").Find(&scenes)
-	}
-	var outRelease []string
-	for i := range scenes {
-		outRelease = append(outRelease, scenes[i].ReleaseDateText)
-	}
+	outSites, outTags, outCast, outRelease := queryFilters(db, isAvailable, isAccessible)
 
 	// Volumes
 	var outVolumes []models.Volume
@@ -470,8 +465,6 @@ func (i SceneResource) getFilters(req *restful.Request, resp *restful.Response) 
 
 func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 	var scene models.Scene
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	if strings.Contains(req.PathParameter("scene-id"), "-") {
 		scene.GetIfExist(req.PathParameter("scene-id"))
@@ -490,7 +483,6 @@ func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 func (i SceneResource) deleteScenePreview(req *restful.Request, resp *restful.Response) {
 	var scene models.Scene
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	id, err := strconv.Atoi(req.PathParameter("scene-id"))
 	if err != nil {
@@ -542,9 +534,6 @@ func (i SceneResource) toggleList(req *restful.Request, resp *restful.Response) 
 		return
 	}
 
-	db, _ := models.GetDB()
-	defer db.Close()
-
 	var scene models.Scene
 	err = scene.GetIfExist(r.SceneID)
 	if err != nil {
@@ -588,7 +577,6 @@ func (i SceneResource) getSearchFields(req *restful.Request, resp *restful.Respo
 	var results []ResponseSceneSearchValue
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	if models.CheckLock("index") {
 		results = append(results, ResponseSceneSearchValue{"Error", "Search indexes locked - reindex in progress"})
@@ -596,13 +584,12 @@ func (i SceneResource) getSearchFields(req *restful.Request, resp *restful.Respo
 		return
 	}
 
-	idx, err := tasks.NewIndex("scenes")
+	idx, err := tasks.GetSharedIndex("scenes")
 	if err != nil {
 		results = append(results, ResponseSceneSearchValue{"Error opening indexs", err.Error()})
 		resp.WriteHeaderAndEntity(http.StatusOK, results)
 		return
 	}
-	defer idx.Bleve.Close()
 
 	var scene models.Scene
 	db.Where("id = ?", q).First(&scene)
@@ -642,7 +629,6 @@ func (i SceneResource) searchSceneIndex(req *restful.Request, resp *restful.Resp
 	q := req.QueryParameter("q")
 
 	db, _ := models.GetDB()
-	defer db.Close()
 	var scenes []models.Scene
 
 	if strings.HasPrefix(q, "http") {
@@ -683,7 +669,7 @@ func (i SceneResource) searchSceneIndex(req *restful.Request, resp *restful.Resp
 	}
 
 	// search bleve search indexes
-	idx, err := tasks.NewIndex("scenes")
+	idx, err := tasks.GetSharedIndex("scenes")
 	if err != nil {
 		log.Error(err)
 		return
@@ -710,7 +696,6 @@ func (i SceneResource) searchSceneIndex(req *restful.Request, resp *restful.Resp
 		}
 	}
 
-	defer idx.Bleve.Close()
 	// The index analyzer splits on apostrophes ("Sister's" -> "sister", "s"), so a query
 	// keeping the apostrophe ("Sister's") or dropping it ("Sisters") never lines up with
 	// the indexed terms. Normalising apostrophes to spaces ("Sister s") matches how titles
@@ -731,10 +716,24 @@ func (i SceneResource) searchSceneIndex(req *restful.Request, resp *restful.Resp
 		return
 	}
 
+	// batch-load hit scenes instead of one query (with preloads) per hit
+	hitIDs := make([]string, 0, len(searchResults.Hits))
 	for _, v := range searchResults.Hits {
-		var scene models.Scene
-		err := scene.GetIfExist(v.ID)
-		if err != nil {
+		hitIDs = append(hitIDs, v.ID)
+	}
+	hitScenes, err := models.GetIfExistBySceneIDs(hitIDs)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	bySceneID := make(map[string]models.Scene, len(hitScenes))
+	for _, s := range hitScenes {
+		bySceneID[s.SceneID] = s
+	}
+
+	for _, v := range searchResults.Hits {
+		scene, ok := bySceneID[v.ID]
+		if !ok {
 			continue
 		}
 
@@ -760,7 +759,6 @@ func (i SceneResource) addSceneCuepoint(req *restful.Request, resp *restful.Resp
 	}
 
 	var scene models.Scene
-	db, _ := models.GetDB()
 	err = scene.GetIfExistByPK(uint(sceneId))
 	if err == nil {
 		t := models.SceneCuepoint{
@@ -775,7 +773,6 @@ func (i SceneResource) addSceneCuepoint(req *restful.Request, resp *restful.Resp
 
 		scene.GetIfExistByPK(uint(sceneId))
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
@@ -794,7 +791,6 @@ func (i SceneResource) deleteSceneCuepoint(req *restful.Request, resp *restful.R
 	}
 
 	db, _ := models.GetDB()
-	defer db.Close()
 
 	cuepoint := models.SceneCuepoint{}
 	err = db.First(&cuepoint, cuepointId).Error
@@ -828,13 +824,11 @@ func (i SceneResource) rateScene(req *restful.Request, resp *restful.Response) {
 	}
 
 	var scene models.Scene
-	db, _ := models.GetDB()
 	err = scene.GetIfExistByPK(uint(sceneId))
 	if err == nil {
 		scene.StarRating = r.Rating
 		scene.Save()
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
@@ -855,7 +849,6 @@ func (i SceneResource) selectScript(req *restful.Request, resp *restful.Response
 
 	var scene models.Scene
 	var files []models.File
-	db, _ := models.GetDB()
 	err = scene.GetIfExistByPK(uint(sceneId))
 	if err == nil {
 		files, err = scene.GetScriptFiles()
@@ -872,7 +865,6 @@ func (i SceneResource) selectScript(req *restful.Request, resp *restful.Response
 		}
 		_ = scene.GetIfExistByPK(uint(sceneId))
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
@@ -893,7 +885,6 @@ func (i SceneResource) editScene(req *restful.Request, resp *restful.Response) {
 
 	var scene models.Scene
 	db, _ := models.GetDB()
-	defer db.Close()
 	err = scene.GetIfExistByPK(uint(sceneId))
 	if err == nil {
 		if scene.Title != r.Title {
@@ -1059,8 +1050,6 @@ func (i SceneResource) getSceneAlternateSources(req *restful.Request, resp *rest
 	var extref models.ExternalReferenceLink
 	var refs []models.ExternalReferenceLink
 	var ressults []ResponseGetAlternateSources
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	if strings.Contains(req.PathParameter("scene-id"), "-") {
 		refs = extref.FindByInternalName("scenes", req.PathParameter("scene-id"))

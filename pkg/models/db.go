@@ -2,6 +2,7 @@ package models
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -17,7 +18,11 @@ import (
 var log = &common.Log
 var dbConn *dburl.URL
 var supportedDB = []string{"mysql", "sqlite3"}
-var commonConnection *gorm.DB
+
+var (
+	commonConnection *gorm.DB
+	commonConnMu     sync.Mutex
+)
 
 func parseDBConnString() {
 	var err error
@@ -54,30 +59,13 @@ func SaveWithRetry(db *gorm.DB, i interface{}) error {
 	return nil
 }
 
+// GetDB returns the shared, pooled database handle. The connection is opened
+// lazily exactly once and reused for the lifetime of the process; callers
+// must NOT close it. (Previously every call opened a fresh connection and
+// handlers closed it per request, which serialised player-polling workloads
+// on connection setup.)
 func GetDB() (*gorm.DB, error) {
-	if common.EnvConfig.DebugSQL {
-		log.Debug("Getting DB handle from ", common.GetCallerFunctionName())
-	}
-
-	var db *gorm.DB
-	var err error
-
-	err = retry.Do(
-		func() error {
-			db, err = gorm.Open(dbConn.Driver, dbConn.DSN)
-			db.LogMode(common.EnvConfig.DebugSQL)
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-	)
-
-	if err != nil {
-		log.Fatal("Failed to connect to database ", err)
-	}
-
-	return db, nil
+	return GetCommonDB()
 }
 
 func GetCommonDB() (*gorm.DB, error) {
@@ -85,30 +73,34 @@ func GetCommonDB() (*gorm.DB, error) {
 		log.Debug("Getting Common DB handle from ", common.GetCallerFunctionName())
 	}
 
-	var err error
+	// Mutex-guarded lazy open that only caches on success — a transient
+	// startup failure (e.g. MySQL not ready yet) is retried on the next call
+	// instead of being cached forever.
+	commonConnMu.Lock()
+	defer commonConnMu.Unlock()
 
 	if commonConnection != nil {
 		return commonConnection, nil
 	}
-	err = retry.Do(
+
+	err := retry.Do(
 		func() error {
-			commonConnection, err = gorm.Open(dbConn.Driver, dbConn.DSN)
-			commonConnection.LogMode(common.EnvConfig.DebugSQL)
-			commonConnection.DB().SetConnMaxIdleTime(4 * time.Minute)
-			if common.DBConnectionPoolSize > 0 {
-				commonConnection.DB().SetMaxOpenConns(common.DBConnectionPoolSize)
-			}
+			conn, err := gorm.Open(dbConn.Driver, dbConn.DSN)
 			if err != nil {
 				return err
 			}
+			conn.LogMode(common.EnvConfig.DebugSQL)
+			conn.DB().SetConnMaxIdleTime(4 * time.Minute)
+			if common.DBConnectionPoolSize > 0 {
+				conn.DB().SetMaxOpenConns(common.DBConnectionPoolSize)
+			}
+			commonConnection = conn
 			return nil
 		},
 	)
-
 	if err != nil {
-		log.Fatal("Failed to connect to database ", err)
+		return nil, err
 	}
-
 	return commonConnection, nil
 }
 
@@ -123,7 +115,6 @@ func CreateLock(lock string) {
 
 func CheckLock(lock string) bool {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var obj KV
 	err := db.Where(&KV{Key: "lock-" + lock}).First(&obj).Error
@@ -133,7 +124,6 @@ func CheckLock(lock string) bool {
 
 func RemoveLock(lock string) {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var obj KV
 	db.Where(&KV{Key: "lock-" + lock}).Delete(&obj)
@@ -143,7 +133,6 @@ func RemoveLock(lock string) {
 
 func RemoveAllLocks() {
 	db, _ := GetDB()
-	defer db.Close()
 
 	var locks []KV
 	err := db.Where("`key` like 'lock-%'").Find(&locks).Error
