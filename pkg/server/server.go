@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	auth "github.com/abbot/go-http-auth"
@@ -74,6 +73,7 @@ func StartServer(version, commit, branch, date string) {
 	models.InitSites()
 
 	restful.DefaultContainer.EnableContentEncoding(true)
+	restful.DefaultContainer.Filter(apiAuthFilter)
 
 	// API endpoints
 	ws := new(restful.WebService)
@@ -143,11 +143,14 @@ func StartServer(version, commit, branch, date string) {
 	r := mux.NewRouter()
 	p := imageproxy.NewProxy(NewForceCacheTransport(), diskCache(filepath.Join(common.AppDir, "imageproxy")))
 	p.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+	// SSRF protection: never fetch loopback, link-local or private-range
+	// targets. Relative remote URLs are rejected too (no DefaultBaseURL) —
+	// all legitimate uses proxy absolute http(s) image URLs. Non-http(s)
+	// schemes fail in the HTTP transport before any fetch happens.
+	p.DenyHosts = deniedProxyHosts
 	// If the client request has a cache-control header (such as 'no-cache'), pass them
 	// onto the imageproxy so that this can be respected.
 	p.PassRequestHeaders = append(p.PassRequestHeaders, "Cache-Control")
-	u, _ := url.Parse("http://127.0.0.1:" + strconv.Itoa(config.Config.Server.Port))
-	p.DefaultBaseURL = u
 	r.PathPrefix("/img/").Handler(ForceShortCacheHandler(http.StripPrefix("/img", p)))
 	hmp := NewHeatmapThumbnailProxy(p, diskCache(filepath.Join(common.AppDir, "heatmapthumbnailproxy")))
 	r.PathPrefix("/imghm/").Handler(http.StripPrefix("/imghm", hmp))
@@ -180,9 +183,9 @@ func StartServer(version, commit, branch, date string) {
 	}
 	defer wampRouter.Close()
 
-	// Run websocket server.
+	// Run websocket server. Bound to loopback (see common.WsAddr); the
+	// default origin check applies (Origin host must match the Host header).
 	wss := router.NewWebsocketServer(wampRouter)
-	wss.AllowOrigins([]string{"*"})
 	wsCloser, err := wss.ListenAndServe(wsAddr)
 	if err != nil {
 		log.Fatal(err)
@@ -196,7 +199,18 @@ func StartServer(version, commit, branch, date string) {
 	}
 
 	http.HandleFunc("/ws/", func(w http.ResponseWriter, req *http.Request) {
-		req.Header["Origin"] = nil
+		// CSWSH protection: a websocket initiated by a web page (Origin header
+		// present) must originate from the XBVR UI itself, i.e. the Origin host
+		// must equal the Host the request was made to. Non-browser clients
+		// without an Origin header are unaffected.
+		if !wsOriginAllowed(req) {
+			http.Error(w, "origin not allowed", http.StatusForbidden)
+			return
+		}
+		// The origin has been validated above; remove it so the WAMP server's
+		// own same-host check (which sees the loopback backend address, not
+		// the UI host) does not reject the forwarded request.
+		req.Header.Del("Origin")
 		handler := websocketproxy.ProxyHandler(wsURL)
 		handler.ServeHTTP(w, req)
 	})

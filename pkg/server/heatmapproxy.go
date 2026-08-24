@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"image"
 	"image/draw"
@@ -19,6 +20,7 @@ import (
 	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
+	"golang.org/x/sync/singleflight"
 	"willnorris.com/go/imageproxy"
 )
 
@@ -49,6 +51,7 @@ func (w *BufferResponseWriter) WriteHeader(statusCode int) {
 type HeatmapThumbnailProxy struct {
 	ImageProxy *imageproxy.Proxy
 	Cache      imageproxy.Cache
+	sfGroup    singleflight.Group
 }
 
 func NewHeatmapThumbnailProxy(imageproxy *imageproxy.Proxy, cache imageproxy.Cache) *HeatmapThumbnailProxy {
@@ -162,7 +165,9 @@ func (p *HeatmapThumbnailProxy) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	cacheKey := fmt.Sprintf("%d:%s", files[0].ID, imageURL)
+	// Hash the image URL so cache keys have a bounded, filesystem-safe length
+	// regardless of the (unbounded) length of the original URL.
+	cacheKey := fmt.Sprintf("%d:%x", files[0].ID, sha256.Sum256([]byte(imageURL)))
 
 	if loadFromCache {
 		cachedContent, ok := p.Cache.Get(cacheKey)
@@ -173,6 +178,40 @@ func (p *HeatmapThumbnailProxy) ServeHTTP(w http.ResponseWriter, r *http.Request
 				log.Printf("Failed to send out response: %v", err)
 			}
 			return
+		}
+	}
+
+	// Coalesce concurrent cache misses for the same key so only one request
+	// renders the thumbnail (and hits the upstream image) at a time.
+	v, err, _ := p.sfGroup.Do(cacheKey, func() (interface{}, error) {
+		return p.renderHeatmapThumbnail(r, cacheKey, files, imageURL, loadFromCache)
+	})
+	if err == errNoHeatmaps {
+		p.serveImageproxyResponse(w, r, imageURL)
+		return
+	}
+	if err != nil {
+		log.Printf("%v", err)
+		p.serveImageproxyResponse(w, r, imageURL)
+		return
+	}
+
+	content := v.([]byte)
+	w.Header().Add("Content-Type", "image/jpeg")
+	w.Header().Add("Content-Length", fmt.Sprint(len(content)))
+	if _, err := io.Copy(w, bytes.NewReader(content)); err != nil {
+		log.Printf("Failed to send out response: %v", err)
+	}
+}
+
+var errNoHeatmaps = fmt.Errorf("no heatmaps available")
+
+func (p *HeatmapThumbnailProxy) renderHeatmapThumbnail(r *http.Request, cacheKey string, files []models.File, imageURL string, loadFromCache bool) ([]byte, error) {
+	// Re-check the cache: another flight may have rendered this key while we
+	// were waiting for the singleflight slot.
+	if loadFromCache {
+		if cachedContent, ok := p.Cache.Get(cacheKey); ok {
+			return cachedContent, nil
 		}
 	}
 
@@ -189,8 +228,7 @@ func (p *HeatmapThumbnailProxy) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	if len(heatmapImages) == 0 {
-		p.serveImageproxyResponse(w, r, imageURL)
-		return
+		return nil, errNoHeatmaps
 	}
 
 	for i := range files {
@@ -213,24 +251,16 @@ func (p *HeatmapThumbnailProxy) ServeHTTP(w http.ResponseWriter, r *http.Request
 	p.ImageProxy.ServeHTTP(imageproxyResponseWriter, r2)
 
 	respbody, err := io.ReadAll(imageproxyResponseWriter.buf)
-	if err == nil {
-		var output bytes.Buffer
-		err = createHeatmapThumbnail(&output, bytes.NewReader(respbody), heatmapImages)
-		if err == nil {
-			p.Cache.Set(cacheKey, output.Bytes())
-			w.Header().Add("Content-Type", "image/jpeg")
-			w.Header().Add("Content-Length", fmt.Sprint(len(output.Bytes())))
-			if _, err := io.Copy(w, bytes.NewReader(output.Bytes())); err != nil {
-				log.Printf("Failed to send out response: %v", err)
-			}
-			return
-		}
-	}
 	if err != nil {
-		log.Printf("%v", err)
-		// serve original response
-		if _, err := io.Copy(w, bytes.NewReader(respbody)); err != nil {
-			log.Printf("Failed to send out response: %v", err)
-		}
+		return respbody, nil
 	}
+
+	var output bytes.Buffer
+	if err := createHeatmapThumbnail(&output, bytes.NewReader(respbody), heatmapImages); err != nil {
+		// thumbnail composition failed; serve the original proxied image
+		return respbody, nil
+	}
+
+	p.Cache.Set(cacheKey, output.Bytes())
+	return output.Bytes(), nil
 }

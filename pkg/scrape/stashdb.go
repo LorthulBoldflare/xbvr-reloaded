@@ -841,7 +841,7 @@ func CallStashDb(query string, rawVariables string) []byte {
 	jsonVariables, _ := json.Marshal(variables)
 
 	// Create an HTTP POST request to send the GraphQL query to the endpoint
-	req, err := http.NewRequest("POST", "http://stashdb.org/graphql", bytes.NewBuffer([]byte(fmt.Sprintf(`{"query":%q,"variables":%s}`, query, jsonVariables))))
+	req, err := http.NewRequest("POST", "https://stashdb.org/graphql", bytes.NewBuffer([]byte(fmt.Sprintf(`{"query":%q,"variables":%s}`, query, jsonVariables))))
 	if err != nil {
 		log.Infof("error geting new request in callStashDb %s", err)
 	}

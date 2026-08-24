@@ -7,7 +7,10 @@ import (
 
 var (
 	DATABASE_URL   = ""
-	WsAddr         = "0.0.0.0:9998"
+	// WsAddr is loopback-only: the WAMP bus is reached from the UI through
+	// the same-origin /ws/ proxy and from in-process publishers, so it must
+	// not listen on all interfaces.
+	WsAddr         = "127.0.0.1:9998"
 	CurrentVersion = ""
 )
 
@@ -18,6 +21,7 @@ type EnvConfigSpec struct {
 	DebugWS              bool   `envconfig:"DEBUG_WS" default:"false"`
 	UIUsername           string `envconfig:"UI_USERNAME" required:"false"`
 	UIPassword           string `envconfig:"UI_PASSWORD" required:"false"`
+	NoAPIAuth            bool   `envconfig:"XBVR_NO_API_AUTH" default:"false"`
 	DatabaseURL          string `envconfig:"DATABASE_URL" required:"false" default:""`
 	WsAddr               string `envconfig:"XBVR_WS_ADDR" required:"false" default:""`
 	WebPort              int    `envconfig:"XBVR_WEB_PORT" required:"false" default:"0"`

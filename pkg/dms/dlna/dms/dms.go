@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/user"
@@ -118,9 +117,35 @@ func (me *Server) httpPort() int {
 	return me.HTTPConn.Addr().(*net.TCPAddr).Port
 }
 
+// clientIPAllowed reports whether the remote address is permitted to use the
+// DLNA server. When Interfaces.DLNA.AllowedIP is empty all clients are
+// allowed (previous behavior); otherwise the client IP must be listed.
+func clientIPAllowed(remoteAddr string) bool {
+	if len(config.Config.Interfaces.DLNA.AllowedIP) == 0 {
+		return true
+	}
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return funk.ContainsString(config.Config.Interfaces.DLNA.AllowedIP, ip.String())
+}
+
 func (me *Server) serveHTTP() error {
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Enforce the DLNA IP allowlist on every endpoint (/res media,
+			// /icon, /rootDesc.xml, /scpd/*, /ctl, eventing) — previously only
+			// /ctl (SOAP control) was checked.
+			if !clientIPAllowed(r.RemoteAddr) {
+				log.Printf("not allowed client %s, %+v", r.RemoteAddr, config.Config.Interfaces.DLNA.AllowedIP)
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
 			if me.LogHeaders {
 				fmt.Fprintf(os.Stderr, "%s %s\r\n", r.Method, r.RequestURI)
 				r.Header.Write(os.Stderr)
@@ -521,16 +546,8 @@ func (me *Server) serviceControlHandler(w http.ResponseWriter, r *http.Request) 
 		config.RecentIPAddresses = append(config.RecentIPAddresses, net.ParseIP(clientIp).String())
 	}
 
-	// Check if IP is allowed
-	found := true
-	if len(config.Config.Interfaces.DLNA.AllowedIP) > 0 {
-		found = funk.ContainsString(config.Config.Interfaces.DLNA.AllowedIP, net.ParseIP(clientIp).String())
-		if !found {
-			log.Printf("not allowed client %s, %+v", clientIp, config.Config.Interfaces.DLNA.AllowedIP)
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-	}
+	// Note: the AllowedIP allowlist is enforced centrally in serveHTTP for all
+	// DMS endpoints.
 
 	soapActionString := r.Header.Get("SOAPACTION")
 	soapAction, err := upnp.ParseActionHTTPHeader(soapActionString)
@@ -581,7 +598,8 @@ func (me *Server) serveIcon(w http.ResponseWriter, r *http.Request) {
 	scene.GetIfExist(sceneId)
 
 	baseURL := "http://127.0.0.1:" + strconv.Itoa(config.Config.Server.Port) + "/img/700x/" + strings.Replace(scene.CoverURL, "://", ":/", -1)
-	resp, err := http.Get(baseURL)
+	iconHTTPClient := &http.Client{Timeout: 10 * time.Second}
+	resp, err := iconHTTPClient.Get(baseURL)
 	if err != nil {
 		return
 	}
@@ -641,7 +659,7 @@ func (server *Server) contentDirectoryInitialEvent(urls []*url.URL, sid string) 
 		// req.ContentLength = int64(bodyReader.Len())
 		eventingLogger.Print(req.Header)
 		eventingLogger.Print("starting notify")
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := eventNotifyHTTPClient.Do(req)
 		eventingLogger.Print("finished notify")
 		if err != nil {
 			log.Printf("Could not notify %s: %s", _url.String(), err)
@@ -653,6 +671,10 @@ func (server *Server) contentDirectoryInitialEvent(urls []*url.URL, sid string) 
 		resp.Body.Close()
 	}
 }
+
+// eventNotifyHTTPClient bounds event-callback NOTIFY requests so a hung
+// subscriber cannot stall the eventing goroutine forever.
+var eventNotifyHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
 var eventingLogger = log.New(io.Discard, "", 0)
 
@@ -686,6 +708,16 @@ func (server *Server) contentDirectoryEventSubHandler(w http.ResponseWriter, r *
 	if r.Method == "SUBSCRIBE" && r.Header.Get("SID") == "" {
 		urls := upnp.ParseCallbackURLs(r.Header.Get("CALLBACK"))
 		eventingLogger.Println(urls)
+
+		// SSRF protection: only accept callback URLs that point back at the
+		// subscribing control point itself
+		subscriberHost, _, _ := net.SplitHostPort(r.RemoteAddr)
+		urls = upnp.ValidCallbackURLs(urls, net.ParseIP(subscriberHost))
+		if len(urls) == 0 {
+			http.Error(w, "no acceptable callback URL", http.StatusPreconditionFailed)
+			return
+		}
+
 		var timeout int
 		fmt.Sscanf(r.Header.Get("TIMEOUT"), "Second-%d", &timeout)
 		eventingLogger.Println(timeout, r.Header.Get("TIMEOUT"))
@@ -698,6 +730,17 @@ func (server *Server) contentDirectoryEventSubHandler(w http.ResponseWriter, r *
 			time.Sleep(100 * time.Millisecond)
 			server.contentDirectoryInitialEvent(urls, sid)
 		}()
+	} else if r.Method == "UNSUBSCRIBE" {
+		sid := r.Header.Get("SID")
+		if sid == "" {
+			http.Error(w, "missing SID", http.StatusPreconditionFailed)
+			return
+		}
+		if err := service.Unsubscribe(sid); err != nil {
+			http.Error(w, err.Error(), http.StatusPreconditionFailed)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	} else if r.Method == "SUBSCRIBE" {
 		http.Error(w, "meh", http.StatusPreconditionFailed)
 	} else {
@@ -797,7 +840,6 @@ func (server *Server) initMux(mux *http.ServeMux) {
 	})
 	handleSCPDs(mux)
 	mux.HandleFunc(serviceControlURL, server.serviceControlHandler)
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	for i, di := range server.Icons {
 		mux.HandleFunc(fmt.Sprintf("%s/%d", deviceIconPath, i), func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", di.Mimetype)

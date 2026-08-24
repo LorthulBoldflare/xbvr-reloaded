@@ -3,6 +3,8 @@ package session
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -21,6 +23,11 @@ type DeoPacket struct {
 const PLAYING = 0
 const PAUSED = 1
 const FINISHED = 2
+
+// maxDeoPacketSize bounds incoming DeoVR remote packets; the advertised body
+// length is peer-controlled and was previously used directly in make([]byte),
+// so a hostile or buggy peer could force a huge allocation.
+const maxDeoPacketSize = 1 << 20 // 1 MiB
 
 var DeoPlayerHost = ""
 var DeoRequestHost = ""
@@ -57,16 +64,19 @@ func deoLoop() error {
 
 		// Check incoming packet length
 		lenBuf := make([]byte, 4)
-		_, err = conn.Read(lenBuf[:]) // recv data
-		bodyLength := binary.LittleEndian.Uint32(lenBuf)
+		_, err = io.ReadFull(conn, lenBuf) // recv data
 		if err != nil {
 			return err
 		}
+		bodyLength := binary.LittleEndian.Uint32(lenBuf)
 
 		// Read packet
 		if bodyLength > 0 {
+			if bodyLength > maxDeoPacketSize {
+				return fmt.Errorf("DeoVR remote packet of %d bytes exceeds %d byte limit", bodyLength, maxDeoPacketSize)
+			}
 			recvBuf := make([]byte, bodyLength)
-			_, err = conn.Read(recvBuf[:]) // recv data
+			_, err = io.ReadFull(conn, recvBuf) // recv data
 			if err != nil {
 				return err
 			}

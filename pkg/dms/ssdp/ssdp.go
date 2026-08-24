@@ -22,7 +22,27 @@ const (
 	rootDevice = "upnp:rootdevice"
 	aliveNTS   = "ssdp:alive"
 	byebyeNTS  = "ssdp:byebye"
+
+	// maxMX bounds the M-SEARCH MX header per the UPnP spec. Clamping also
+	// prevents int64 overflow in the response-delay calculation, which
+	// crashed the process via rand.Int63n on a negative value.
+	maxMX = 5
 )
+
+// parseMX parses and clamps an M-SEARCH MX header value to [1, maxMX].
+func parseMX(header string) (uint, error) {
+	i, err := strconv.ParseUint(header, 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	if i < 1 {
+		i = 1
+	}
+	if i > maxMX {
+		i = maxMX
+	}
+	return uint(i), nil
+}
 
 var (
 	NetAddr *net.UDPAddr
@@ -150,8 +170,12 @@ func (me *Server) Serve() (err error) {
 				case *net.IPAddr:
 					return val.IP
 				}
-				panic(fmt.Sprint("unexpected addr type:", addr))
+				me.log("unexpected addr type:", addr)
+				return nil
 			}()
+			if ip == nil {
+				continue
+			}
 			extraHdrs := [][2]string{
 				{"CACHE-CONTROL", fmt.Sprintf("max-age=%d", 5*me.NotifyInterval/2/time.Second)},
 				{"LOCATION", me.Location(ip)},
@@ -253,12 +277,12 @@ func (me *Server) handle(buf []byte, sender *net.UDPAddr) {
 	var mx uint
 	if req.Header.Get("Host") == AddrString {
 		mxHeader := req.Header.Get("mx")
-		i, err := strconv.ParseUint(mxHeader, 0, 0)
+		i, err := parseMX(mxHeader)
 		if err != nil {
 			log.Printf("Invalid mx header %q: %s", mxHeader, err)
 			return
 		}
-		mx = uint(i)
+		mx = i
 	} else {
 		mx = 1
 	}
@@ -276,7 +300,8 @@ func (me *Server) handle(buf []byte, sender *net.UDPAddr) {
 	for _, ip := range func() (ret []net.IP) {
 		addrs, err := me.Interface.Addrs()
 		if err != nil {
-			panic(err)
+			me.log("error getting interface addresses:", err)
+			return
 		}
 		for _, addr := range addrs {
 			if ip, ok := func() (net.IP, bool) {
@@ -289,7 +314,8 @@ func (me *Server) handle(buf []byte, sender *net.UDPAddr) {
 				case *net.IPAddr:
 					return data.IP, true
 				}
-				panic(addr)
+				me.log("unexpected addr type:", addr)
+				return nil, false
 			}(); ok {
 				ret = append(ret, ip)
 			}
@@ -298,6 +324,9 @@ func (me *Server) handle(buf []byte, sender *net.UDPAddr) {
 	}() {
 		for _, type_ := range types {
 			resp := me.makeResponse(ip, type_, req)
+			if resp == nil {
+				continue
+			}
 			delay := time.Duration(rand.Int63n(int64(time.Second) * int64(mx)))
 			me.delayedSend(delay, resp, sender)
 		}
@@ -324,7 +353,8 @@ func (me *Server) makeResponse(ip net.IP, targ string, req *http.Request) (ret [
 	}
 	buf := &bytes.Buffer{}
 	if err := resp.Write(buf); err != nil {
-		panic(err)
+		me.log("error writing SSDP response:", err)
+		return nil
 	}
 	return buf.Bytes()
 }

@@ -1,0 +1,46 @@
+package server
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/emicklei/go-restful/v3"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/xbapps/xbvr/pkg/common"
+)
+
+// apiAuthFilter enforces HTTP Basic Auth on all /api/* routes whenever UI
+// auth is enabled (UI_USERNAME/UI_PASSWORD set). Player endpoints (/deovr,
+// /heresphere) are rooted outside /api and keep their own auth toggles.
+// /api/dms/* is exempt: it is the media surface the players stream from
+// (video, funscripts, previews), and neither DeoVR nor HereSphere can send
+// Authorization headers on those requests.
+// Set XBVR_NO_API_AUTH=1 to disable API-scoped authentication.
+func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
+	if !common.IsUIAuthEnabled() || common.EnvConfig.NoAPIAuth ||
+		!strings.HasPrefix(req.Request.URL.Path, "/api/") ||
+		strings.HasPrefix(req.Request.URL.Path, "/api/dms/") {
+		chain.ProcessFilter(req, resp)
+		return
+	}
+
+	user, password, ok := req.Request.BasicAuth()
+	if !ok || user != common.EnvConfig.UIUsername || !checkUIPassword(password) {
+		resp.AddHeader("WWW-Authenticate", `Basic realm="default"`)
+		resp.WriteErrorString(http.StatusUnauthorized, "401: Unauthorized")
+		return
+	}
+
+	chain.ProcessFilter(req, resp)
+}
+
+func checkUIPassword(password string) bool {
+	// Same scheme as the UI auth handler: the configured plaintext password is
+	// hashed and then compared with the supplied one.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(common.EnvConfig.UIPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword(hashedPassword, []byte(password)) == nil
+}

@@ -203,6 +203,10 @@ func (o *Scene) GetIfExistURL(u string) error {
 		Where(&Scene{SceneURL: u}).First(o).Error
 }
 
+// validCodecName restricts the Codec attribute filter value to simple
+// codec identifiers (h264, hevc, vp9, av1, ...) to prevent SQL injection.
+var validCodecName = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
 func (o *Scene) GetFunscriptTitle() string {
 	// first make the title filename safe
 	re := regexp.MustCompile(`[?/\<>|]`)
@@ -811,6 +815,8 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 	// handle Attribute selections
 	var orAttribute []string
 	var andAttribute []string
+	var orAttributeArgs []interface{}
+	var andAttributeArgs []interface{}
 	combinedWhere := ""
 	for _, attribute := range r.Attributes {
 		fieldName := attribute.OrElse("")
@@ -840,6 +846,7 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		}
 
 		where := ""
+		var whereArgs []interface{}
 		switch fieldName {
 		case "Multiple Video Files":
 			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' group by files.scene_id having count(*) > 1)"
@@ -868,7 +875,11 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		case "Has Subscription":
 			where = "is_subscribed = 1"
 		case "Rating":
-			where = "scenes.star_rating = " + value
+			// value must be numeric; anything else is rejected to prevent SQL injection
+			if rating, err := strconv.ParseFloat(value, 64); err == nil {
+				where = "scenes.star_rating = ?"
+				whereArgs = append(whereArgs, rating)
+			}
 		case "No Actor/Cast":
 			where = "exists (select 1 from scenes s left join scene_cast sc on sc.scene_id =s.id where s.id=scenes.id and  sc.scene_id is NULL)"
 		case "Cast 6+":
@@ -876,13 +887,23 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		case "Cast 1", "Cast 2", "Cast 3", "Cast 4", "Cast 5":
 			where = "exists (select 1 from scene_cast join actors on actors.id = scene_cast.actor_id where scene_cast.scene_id = scenes.id and actors.name not like 'aka:%' group by scene_cast.scene_id having count(*) = " + fieldName[5:] + ")"
 		case "Resolution":
+			// value must be numeric; anything else is rejected to prevent SQL injection
+			resolution, err := strconv.Atoi(value)
+			if err != nil {
+				break
+			}
 			div := "/"
 			if tx.Dialect().GetName() == "mysql" {
 				div = "div"
 			}
-			where = "exists (select 1 from files where files.scene_id = scenes.id and ((files.video_width * (case when files.video_projection like '%_tb' then 2 else 1 end) + 500) " + div + " 1000) = " + value + ")"
+			where = "exists (select 1 from files where files.scene_id = scenes.id and ((files.video_width * (case when files.video_projection like '%_tb' then 2 else 1 end) + 500) " + div + " 1000) = ?)"
+			whereArgs = append(whereArgs, resolution)
 		case "Frame Rate":
-			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_avg_frame_rate_val = " + value + ")"
+			// value must be numeric; anything else is rejected to prevent SQL injection
+			if frameRate, err := strconv.ParseFloat(value, 64); err == nil {
+				where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_avg_frame_rate_val = ?)"
+				whereArgs = append(whereArgs, frameRate)
+			}
 		case "Flat video":
 			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_projection = 'flat')"
 		case "FOV: 180°":
@@ -924,7 +945,12 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		case "Has B Cup Size":
 			where = "exists (select * from scene_cast join actors on actors.id=scene_cast.actor_id where actors.cup_size = 'B' and scene_cast.scene_id=scenes.id)"
 		case "Codec":
-			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_codec_name = '" + value + "')"
+			// codec names are simple identifiers (h264, hevc, vp9, av1, ...);
+			// reject anything else and bind as a parameter to prevent SQL injection
+			if validCodecName.MatchString(value) {
+				where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_codec_name = ?)"
+				whereArgs = append(whereArgs, value)
+			}
 		case "In Watchlist":
 			where = "scenes.watchlist = 1"
 		case "Is Scripted":
@@ -992,14 +1018,21 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 			where = "exists (select 1 from external_reference_links where external_source like 'alternate scene %' and internal_db_id = scenes.id  group by external_source having count(*)>1)"
 		}
 
+		if where == "" {
+			// unknown attribute name or rejected (non-numeric/invalid) value
+			continue
+		}
+
 		if negate {
 			where = "not " + where
 		}
 
 		if negate || mustHave {
 			andAttribute = append(andAttribute, where)
+			andAttributeArgs = append(andAttributeArgs, whereArgs...)
 		} else {
 			orAttribute = append(orAttribute, where)
+			orAttributeArgs = append(orAttributeArgs, whereArgs...)
 		}
 	}
 
@@ -1013,7 +1046,9 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 			combinedWhere = combinedWhere + " and " + strings.Join(andAttribute, " and ")
 		}
 	}
-	tx = tx.Where(combinedWhere)
+	if combinedWhere != "" {
+		tx = tx.Where(combinedWhere, append(orAttributeArgs, andAttributeArgs...)...)
+	}
 
 	var sites []string
 	var excludedSites []string
