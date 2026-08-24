@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ProtonMail/go-appdir"
 )
@@ -57,7 +58,18 @@ func InitPaths() {
 	db_connection_pool_size := flag.Int("db_connection_pool_size", 0, "Optional: sets a limit to the number of db connections while scraping")
 	concurrentSscrapers := flag.Int("concurrent_scrapers", 0, "Optional: sets a limit to the number of concurrent scrapers")
 
-	flag.Parse()
+	if isTestBinary() {
+		// go test registers its flags after package init runs, so parsing
+		// os.Args here would fail on -test.* flags. Redirect application
+		// data to a temporary directory instead.
+		dir, err := os.MkdirTemp("", "xbvr-test")
+		if err != nil {
+			panic(err)
+		}
+		*app_dir = dir
+	} else {
+		flag.Parse()
+	}
 
 	if *app_dir == "" {
 		tmp := os.Getenv("XBVR_APPDIR")
@@ -141,6 +153,11 @@ func InitPaths() {
 	_ = os.MkdirAll(MyFilesDir, os.ModePerm)
 	_ = os.MkdirAll(DownloadDir, os.ModePerm)
 }
+func isTestBinary() bool {
+	base := filepath.Base(os.Args[0])
+	return strings.HasSuffix(base, ".test") || strings.HasSuffix(base, ".test.exe")
+}
+
 func getPath(commandLinePath string, environmentName string, directoryName string) string {
 	if commandLinePath != "" {
 		return commandLinePath

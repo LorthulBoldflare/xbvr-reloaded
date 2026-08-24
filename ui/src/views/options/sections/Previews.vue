@@ -52,7 +52,8 @@
             </b-field>
             <b-field grouped>
               <b-button type="is-primary" @click="saveSettings" style="margin-right:1em">Save settings</b-button>
-              <b-button @click="testSettings">Test settings</b-button>
+              <b-button @click="testSettings" style="margin-right:1em" :disabled="generatingPreview">Test settings</b-button>
+              <b-button @click="regenerateTestVideo" :disabled="generatingPreview">Regenerate test video</b-button>
             </b-field>
           </section>
           <hr/>
@@ -61,16 +62,26 @@
               Once you picked preview settings, you should start generating them.
             </p>
             <p>
-              BETA NOTE: Please note this is CPU-heavy process and once started, it could be stopped only by closing the
-              app.
+              BETA NOTE: Please note this is CPU-heavy process.
             </p>
-            <b-field>
-              <b-button type="is-primary" @click="startGenerating">Start generating previews</b-button>
+            <b-field grouped>
+              <b-button type="is-primary" @click="startGenerating" style="margin-right:1em" :disabled="queue.running">Start generating previews</b-button>
+              <b-button type="is-danger" @click="stopGenerating" :disabled="!queue.running || queue.stopping">
+                {{ queue.stopping ? 'Stopping...' : 'Stop generating previews' }}
+              </b-button>
             </b-field>
+            <div v-if="queue.running" class="queue-progress">
+              <b-progress :value="queue.completed" :max="queue.total" show-value format="percent"></b-progress>
+              <p>
+                {{ queue.completed }} / {{ queue.total }} previews generated
+                <template v-if="queue.remaining > 0">({{ queue.remaining }} remaining)</template>
+                <template v-if="queue.currentScene"> - currently rendering: {{ queue.currentScene }}</template>
+              </p>
+            </div>
           </section>
         </div>
         <div class="column">
-          <video v-if="isPreviewReady" :src="`/api/dms/preview/${previewFn}`" autoplay loop></video>
+          <video v-if="isPreviewReady" :src="`/api/dms/preview/${previewFn}?ts=${previewTs}`" autoplay loop></video>
           <div v-if="generatingPreview">
             <div style="display: flex; flex-wrap: wrap;">
               <div class="bbox">
@@ -102,6 +113,7 @@ export default {
   },
   async mounted () {
     await this.loadState()
+    await this.loadQueueStatus()
   },
   computed: {
     generatingPreview () {
@@ -112,6 +124,12 @@ export default {
     },
     previewFn () {
       return this.$store.state.optionsPreviews.previewFn
+    },
+    previewTs () {
+      return this.$store.state.optionsPreviews.previewTs
+    },
+    queue () {
+      return this.$store.state.optionsPreviews.queue
     }
   },
   methods: {
@@ -144,6 +162,13 @@ export default {
           this.isLoading = false
         })
     },
+    async loadQueueStatus () {
+      await ky.get('/api/task/preview/status')
+        .json()
+        .then(data => {
+          this.$store.commit('optionsPreviews/setQueue', data)
+        })
+    },
     async testSettings () {
       this.$store.commit('optionsPreviews/hidePreview')
       await ky.post('/api/options/previews/test', {
@@ -156,8 +181,24 @@ export default {
         }
       })
     },
+    async regenerateTestVideo () {
+      this.$store.commit('optionsPreviews/hidePreview')
+      await ky.post('/api/options/previews/test', {
+        json: {
+          startTime: this.startTime,
+          snippetLength: this.snippetLength,
+          snippetAmount: this.snippetAmount,
+          resolution: this.resolution,
+          extraSnippet: this.extraSnippet,
+          regenerate: true
+        }
+      })
+    },
     async startGenerating () {
       await ky.get('/api/task/preview/generate')
+    },
+    async stopGenerating () {
+      await ky.get('/api/task/preview/stop')
     },
     prettyBytes
   }
@@ -182,5 +223,9 @@ export default {
     content: '';
     display: block;
     padding-bottom: 100%;
+  }
+
+  .queue-progress {
+    margin-top: 1em;
   }
 </style>

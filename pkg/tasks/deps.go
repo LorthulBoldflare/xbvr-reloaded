@@ -4,8 +4,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/mholt/archiver"
@@ -15,32 +17,95 @@ import (
 	"github.com/xbapps/xbvr/pkg/ffprobe"
 )
 
-func CheckDependencies() {
-	// Check ffprobe
-	ffprobePath := filepath.Join(common.BinDir, "ffprobe")
-	if runtime.GOOS == "windows" {
-		ffprobePath = ffprobePath + ".exe"
-	}
-	if _, err := os.Stat(ffprobePath); os.IsNotExist(err) {
-		log.Info("ffprobe not installed, downloading now...")
-		downloadFfbinaries("ffprobe")
-	}
+var depsOnce sync.Once
 
-	// Check ffmpeg
-	ffmpegPath := filepath.Join(common.BinDir, "ffmpeg")
-	if runtime.GOOS == "windows" {
-		ffmpegPath = ffmpegPath + ".exe"
-	}
-	if _, err := os.Stat(ffmpegPath); os.IsNotExist(err) {
-		log.Info("ffmpeg not installed, downloading now...")
-		downloadFfbinaries("ffmpeg")
+// CheckDependencies ensures ffmpeg and ffprobe are available. Tools installed
+// on the system PATH take precedence over the application-local binaries; only
+// tools missing from both locations are downloaded. It runs at most once per
+// process and concurrent callers block until the first run completes.
+func CheckDependencies() {
+	depsOnce.Do(checkDependencies)
+}
+
+func checkDependencies() {
+	for _, tool := range []string{"ffprobe", "ffmpeg"} {
+		if path, found := findSystemBinary(tool); found {
+			log.Infof("Using %s from %s", tool, path)
+			continue
+		}
+		if _, err := os.Stat(getLocalBinPath(tool)); err == nil {
+			continue
+		}
+		log.Infof("%s not installed, downloading now...", tool)
+		if err := downloadFfbinaries(tool); err != nil {
+			log.Warnf("Failed to download %s: %v", tool, err)
+		}
 	}
 
 	// Set path for go-ffprobe
-	ffprobe.SetFFProbeBinPath(ffprobePath)
+	ffprobe.SetFFProbeBinPath(GetBinPath("ffprobe"))
 }
 
+// resolveBinary ensures dependencies are set up and returns the path to the
+// requested tool, preferring PATH over the application-local binary.
+func resolveBinary(tool string) (string, error) {
+	CheckDependencies()
+	path := GetBinPath(tool)
+	if _, err := os.Stat(path); err != nil {
+		return "", errors.Wrapf(err, "%s not found in PATH or %s", tool, common.BinDir)
+	}
+	return path, nil
+}
+
+// GetBinPath resolves a tool from PATH first, then well-known system bin
+// directories, falling back to the application-local binary in common.BinDir.
 func GetBinPath(tool string) string {
+	if path, found := findSystemBinary(tool); found {
+		return path
+	}
+	return getLocalBinPath(tool)
+}
+
+// findSystemBinary looks for a tool on PATH and in well-known bin
+// directories. Symlinks are accepted: os.Stat follows them, and the symlink
+// path itself is returned so the indirection is preserved.
+func findSystemBinary(tool string) (string, bool) {
+	if path, err := exec.LookPath(tool); err == nil {
+		return path, true
+	}
+	name := tool
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	for _, dir := range binSearchDirs() {
+		path := filepath.Join(dir, name)
+		if info, err := os.Stat(path); err == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
+			return path, true
+		}
+	}
+	return "", false
+}
+
+// binSearchDirs lists well-known bin directories searched in addition to
+// PATH, for platforms where those paths are valid. It is a variable so tests
+// can substitute temporary directories.
+var binSearchDirs = func() []string {
+	var dirs []string
+	switch runtime.GOOS {
+	case "darwin":
+		dirs = append(dirs, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
+	case "linux":
+		dirs = append(dirs, "/usr/local/bin", "/usr/bin", "/snap/bin")
+	}
+	if runtime.GOOS != "windows" {
+		if home, err := os.UserHomeDir(); err == nil {
+			dirs = append(dirs, filepath.Join(home, ".local", "bin"))
+		}
+	}
+	return dirs
+}
+
+func getLocalBinPath(tool string) string {
 	path := filepath.Join(common.BinDir, tool)
 	if runtime.GOOS == "windows" {
 		path = path + ".exe"

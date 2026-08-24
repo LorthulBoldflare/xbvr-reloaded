@@ -53,7 +53,7 @@ Adding `-d` to the docker command will run the container in the background.
 
 In docker, your videos will be mounted at /videos and you should add this path in Options -> Folders.
 
-Please note that during the first run XBVR automatically installs `ffprobe` and `ffmpeg` codecs from [ffbinaries site](https://ffbinaries.com/downloads).
+Please note that during the first run XBVR automatically installs `ffprobe` and `ffmpeg` codecs from [ffbinaries site](https://ffbinaries.com/downloads). If `ffmpeg`/`ffprobe` are already installed, XBVR uses those instead of downloading its own: they are looked up on the system `PATH` as well as in well-known locations such as `/opt/homebrew/bin`, `/usr/local/bin` and `${HOME}/.local/bin` (symlinks are followed). A system ffmpeg with hardware encoders (e.g. NVENC, QSV, VAAPI, AMF, Vulkan) enables GPU-accelerated preview generation. VideoToolbox on macOS is opt-in: set `XBVR_PREVIEW_VIDEOTOOLBOX=1` to enable it.
 
 ## Quick Start
 

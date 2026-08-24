@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/mozillazg/go-slugify"
 
+	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/tasks"
 )
@@ -146,6 +149,10 @@ func (i SceneResource) WebService() *restful.WebService {
 		Writes(models.Scene{}))
 
 	ws.Route(ws.POST("/edit/{scene-id}").To(i.editScene).
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Writes(models.Scene{}))
+
+	ws.Route(ws.DELETE("/{scene-id}/preview").To(i.deleteScenePreview).
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Writes(models.Scene{}))
 
@@ -476,6 +483,37 @@ func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 		_ = scene.GetIfExistByPK(uint(id))
 	}
 	db.Close()
+
+	resp.WriteHeaderAndEntity(http.StatusOK, scene)
+}
+
+func (i SceneResource) deleteScenePreview(req *restful.Request, resp *restful.Response) {
+	var scene models.Scene
+	db, _ := models.GetDB()
+	defer db.Close()
+
+	id, err := strconv.Atoi(req.PathParameter("scene-id"))
+	if err != nil {
+		log.Error(err)
+		resp.WriteError(http.StatusBadRequest, err)
+		return
+	}
+
+	if err := db.First(&scene, id).Error; err != nil {
+		log.Error(err)
+		resp.WriteError(http.StatusNotFound, err)
+		return
+	}
+
+	previewFile := filepath.Join(common.VideoPreviewDir, scene.SceneID+".mp4")
+	if err := os.Remove(previewFile); err != nil && !os.IsNotExist(err) {
+		log.Error(err)
+		resp.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	scene.HasVideoPreview = false
+	scene.Save()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }

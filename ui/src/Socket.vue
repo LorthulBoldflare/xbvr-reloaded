@@ -83,6 +83,10 @@ export default {
       this.$store.commit('optionsPreviews/showPreview', { previewFn: arr.argsDict.previewFn })
     })
 
+    ws.subscribe('options.previews.queue', (arr, obj) => {
+      this.$store.commit('optionsPreviews/setQueue', arr.argsDict)
+    })
+
     // Remote
     ws.subscribe('remote.state', (arr, obj) => {
       this.$store.dispatch('remote/processMessage', arr.argsDict)

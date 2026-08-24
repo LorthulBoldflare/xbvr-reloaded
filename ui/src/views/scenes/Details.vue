@@ -127,6 +127,11 @@
                       <edit-button :item="item"/>
                       <refresh-button :item="item" v-if="!displayingAlternateSource"/>
                       <rescrape-button :item="item" v-if="!displayingAlternateSource"/>
+                      <b-tooltip :label="$t('Delete generated preview')" position="is-top" v-if="!displayingAlternateSource && item.has_preview">
+                        <a class="button is-danger is-outlined is-small" @click="deletePreview()">
+                          <b-icon pack="mdi" icon="video-off" size="is-small"/>
+                        </a>
+                      </b-tooltip>
                       <link-stashdb-button :item="item" objectType="scene" />
                     </div>
                   </div>
@@ -842,6 +847,20 @@ watch:{
         hasIcon: true,
         onConfirm: () => {
           ky.delete(`/api/files/file/${file.id}`).json().then(data => {
+            this.$store.commit('overlay/showDetails', { scene: data })
+          })
+        }
+      })
+    },
+    deletePreview () {
+      this.$buefy.dialog.confirm({
+        title: 'Delete preview',
+        message: `You're about to delete the generated preview for this scene. It can be regenerated at any time.`,
+        type: 'is-danger',
+        hasIcon: true,
+        onConfirm: () => {
+          ky.delete(`/api/scene/${this.item.id}/preview`).json().then(data => {
+            this.$store.commit('sceneList/updateScene', data)
             this.$store.commit('overlay/showDetails', { scene: data })
           })
         }

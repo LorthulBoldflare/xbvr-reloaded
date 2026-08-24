@@ -122,6 +122,7 @@ type RequestSaveOptionsPreviews struct {
 	SnippetAmount int     `json:"snippetAmount"`
 	Resolution    int     `json:"resolution"`
 	ExtraSnippet  bool    `json:"extraSnippet"`
+	Regenerate    bool    `json:"regenerate"`
 }
 
 type GetStateResponse struct {
@@ -925,6 +926,11 @@ func (i ConfigResource) generateTestPreview(req *restful.Request, resp *restful.
 
 	previewFn := fmt.Sprintf("test%x", hash.Sum(nil))
 	destFile := filepath.Join(common.VideoPreviewDir, previewFn+".mp4")
+
+	if r.Regenerate {
+		// Force regeneration of the test preview for the selected video
+		os.Remove(destFile)
+	}
 
 	if _, err := os.Stat(destFile); os.IsNotExist(err) {
 		// Preview file does not exist, generate it
