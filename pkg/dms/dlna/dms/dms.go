@@ -21,6 +21,7 @@ import (
 
 	"github.com/anacrolix/ffprobe"
 	"github.com/thoas/go-funk"
+	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/dms/dlna"
 	"github.com/xbapps/xbvr/pkg/dms/soap"
@@ -673,8 +674,9 @@ func (server *Server) contentDirectoryInitialEvent(urls []*url.URL, sid string) 
 }
 
 // eventNotifyHTTPClient bounds event-callback NOTIFY requests so a hung
-// subscriber cannot stall the eventing goroutine forever.
-var eventNotifyHTTPClient = &http.Client{Timeout: 10 * time.Second}
+// subscriber cannot stall the eventing goroutine forever, and re-validates
+// the target at fetch time.
+var eventNotifyHTTPClient = &http.Client{Timeout: 10 * time.Second, Transport: common.SSRFSafeTransport{}}
 
 var eventingLogger = log.New(io.Discard, "", 0)
 

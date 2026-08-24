@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/fcjr/aia-transport-go"
+	"github.com/xbapps/xbvr/pkg/common"
 )
 
 // Change INCOMING response header's Cache-Control for persistent disk cache
@@ -35,8 +36,11 @@ func NewForceCacheTransport() *ForceCacheTransport {
 	fct := new(ForceCacheTransport)
 
 	// this is what willnorris.com/go/imageproxy does by default,
-	// so keep the same here
-	fct.Transport, _ = aia.NewTransport()
+	// so keep the same here. SSRFSafeTransport re-validates every fetch —
+	// including redirect hops — so a proxied image URL cannot rebound or
+	// redirect to a denied internal address.
+	base, _ := aia.NewTransport()
+	fct.Transport = common.SSRFSafeTransport{Base: base}
 
 	return fct
 }

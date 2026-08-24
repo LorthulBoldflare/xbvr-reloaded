@@ -14,13 +14,16 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/tidwall/gjson"
 
+	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/scrape"
 )
 
 // trailerHTTPClient is shared by the trailer fetchers; the timeout prevents
-// a hung upstream from tying up a request handler forever.
-var trailerHTTPClient = &http.Client{Timeout: 30 * time.Second}
+// a hung upstream from tying up a request handler forever, and the
+// SSRF-safe transport re-validates redirect targets against the public-IP
+// rules.
+var trailerHTTPClient = &http.Client{Timeout: 30 * time.Second, Transport: common.SSRFSafeTransport{}}
 
 func LoadHeresphereScene(scrapeParams string) HeresphereVideo {
 	var params models.TrailerScrape
@@ -34,6 +37,11 @@ func LoadHeresphereScene(scrapeParams string) HeresphereVideo {
 	req, err := http.NewRequest(http.MethodPost, params.SceneUrl, nil)
 	if err != nil {
 		log.Errorf("Error building request for %s: %s", params.SceneUrl, err)
+		return HeresphereVideo{}
+	}
+
+	if err := common.ValidateOutboundURL(params.SceneUrl); err != nil {
+		log.Warnf("Rejected trailer URL %q: %v", params.SceneUrl, err)
 		return HeresphereVideo{}
 	}
 
@@ -78,6 +86,11 @@ func LoadDeovrScene(scrapeParams string) DeoScene {
 		return DeoScene{}
 	}
 
+	if err := common.ValidateOutboundURL(params.SceneUrl); err != nil {
+		log.Warnf("Rejected trailer URL %q: %v", params.SceneUrl, err)
+		return DeoScene{}
+	}
+
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
 	}
@@ -109,6 +122,11 @@ func ScrapeHtml(scrapeParams string) models.VideoSourceResponse {
 	c := colly.NewCollector(colly.UserAgent(scrape.UserAgent))
 	var params models.TrailerScrape
 	json.Unmarshal([]byte(scrapeParams), &params)
+	if err := common.ValidateOutboundURL(params.SceneUrl); err != nil {
+		log.Warnf("Rejected trailer URL %q: %v", params.SceneUrl, err)
+		return models.VideoSourceResponse{}
+	}
+
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
 	}
@@ -155,6 +173,11 @@ func ScrapeJson(scrapeParams string) models.VideoSourceResponse {
 	c := colly.NewCollector(colly.UserAgent(scrape.UserAgent))
 	var params models.TrailerScrape
 	json.Unmarshal([]byte(scrapeParams), &params)
+	if err := common.ValidateOutboundURL(params.SceneUrl); err != nil {
+		log.Warnf("Rejected trailer URL %q: %v", params.SceneUrl, err)
+		return models.VideoSourceResponse{}
+	}
+
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
 	}
@@ -193,6 +216,11 @@ func LoadJson(scrapeParams string) models.VideoSourceResponse {
 	req, err := http.NewRequest(http.MethodGet, params.SceneUrl, nil)
 	if err != nil {
 		log.Errorf("Error building request for %s: %s", params.SceneUrl, err)
+		return models.VideoSourceResponse{}
+	}
+
+	if err := common.ValidateOutboundURL(params.SceneUrl); err != nil {
+		log.Warnf("Rejected trailer URL %q: %v", params.SceneUrl, err)
 		return models.VideoSourceResponse{}
 	}
 

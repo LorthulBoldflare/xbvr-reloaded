@@ -8,6 +8,7 @@ import (
 
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/tasks"
 )
@@ -150,6 +151,11 @@ func (i TaskResource) singleScrape(req *restful.Request, resp *restful.Response)
 		resp.WriteErrorString(http.StatusBadRequest, "invalid request body")
 		return
 	}
+	if err := common.ValidateOutboundURL(scrapeParams.SceneUrl); err != nil {
+		log.Warnf("Rejected scene URL %q: %v", scrapeParams.SceneUrl, err)
+		resp.WriteErrorString(http.StatusBadRequest, "scene URL is not allowed: "+err.Error())
+		return
+	}
 	additionalInfo, _ := json.Marshal(scrapeParams.AdditionalInfo)
 
 	newScene := tasks.ScrapeSingleScene(scrapeParams.Site, scrapeParams.SceneUrl, string(additionalInfo))
@@ -247,6 +253,11 @@ func (i TaskResource) scrapeTPDB(req *restful.Request, resp *restful.Response) {
 	}
 
 	if r.ApiToken != "" && r.SceneUrl != "" {
+		if err := common.ValidateOutboundURL(r.SceneUrl); err != nil {
+			log.Warnf("Rejected TPDB scene URL %q: %v", r.SceneUrl, err)
+			resp.WriteErrorString(http.StatusBadRequest, "scene URL is not allowed: "+err.Error())
+			return
+		}
 		go tasks.ScrapeTPDB(strings.TrimSpace(r.ApiToken), strings.TrimSpace(r.SceneUrl))
 	}
 }

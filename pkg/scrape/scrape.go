@@ -22,6 +22,11 @@ var log = &common.Log
 
 var UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"
 
+// ScraperHTTPClient is a shared client with a sane timeout for plain-HTTP
+// scraper requests (previously several scrapers used timeout-less clients).
+// The SSRF-safe transport re-validates redirect targets.
+var ScraperHTTPClient = &http.Client{Timeout: 60 * time.Second, Transport: common.SSRFSafeTransport{}}
+
 func createCollector(domains ...string) *colly.Collector {
 	c := colly.NewCollector(
 		colly.AllowedDomains(domains...),

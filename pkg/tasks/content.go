@@ -831,6 +831,10 @@ func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bo
 func RestoreBundle(request RequestRestore) {
 	tlog := log.WithField("task", "scrape")
 	if request.BundleUrl != "" {
+		if err := common.ValidateOutboundURL(request.BundleUrl); err != nil {
+			tlog.Warnf("Rejected bundle URL %q: %v", request.BundleUrl, err)
+			return
+		}
 		tlog.Infof("Downloading data from %s", request.BundleUrl)
 		data, err := downloadBundle(request.BundleUrl)
 		if err != nil {
@@ -1760,8 +1764,9 @@ func UpdateSceneStatus(db *gorm.DB) {
 }
 
 func downloadBundle(url string) (string, error) {
-	// Get the response
-	resp, err := http.Get(url)
+	// Get the response; the SSRF-safe transport re-validates redirect targets
+	client := &http.Client{Timeout: 5 * time.Minute, Transport: common.SSRFSafeTransport{}}
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", err
 	}
@@ -1769,7 +1774,7 @@ func downloadBundle(url string) (string, error) {
 
 	// Check for a successful response
 	if resp.StatusCode != http.StatusOK {
-		return "", err
+		return "", fmt.Errorf("download failed: HTTP status %d", resp.StatusCode)
 	}
 
 	// Read the response body

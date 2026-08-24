@@ -199,6 +199,18 @@ func StartServer(version, commit, branch, date string) {
 	}
 
 	http.HandleFunc("/ws/", func(w http.ResponseWriter, req *http.Request) {
+		// When UI auth is enabled, require the same credentials on the
+		// websocket proxy. Browsers send cached basic-auth credentials on the
+		// same-origin WS handshake, so the UI works unchanged, while a
+		// cross-origin (e.g. DNS-rebinding) page cannot authenticate.
+		if common.IsUIAuthEnabled() {
+			user, password, ok := req.BasicAuth()
+			if !ok || user != common.EnvConfig.UIUsername || !checkUIPassword(password) {
+				w.Header().Set("WWW-Authenticate", `Basic realm="default"`)
+				http.Error(w, "401: Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 		// CSWSH protection: a websocket initiated by a web page (Origin header
 		// present) must originate from the XBVR UI itself, i.e. the Origin host
 		// must equal the Host the request was made to. Non-browser clients
