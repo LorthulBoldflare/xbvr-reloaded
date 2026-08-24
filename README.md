@@ -1,27 +1,5 @@
-[![Build Status](https://cloud.drone.io/api/badges/xbapps/xbvr/status.svg)](https://cloud.drone.io/xbapps/xbvr) ![GitHub release](https://img.shields.io/github/release/xbapps/xbvr.svg)
-<br>
-<sup><sub><em>Windows • macOS • Linux • Raspberry Pi</em></sub></sup>
-
-<h1 align="center">
-    <img src="https://i.imgur.com/T2UvcHc.png" width="250"/>
-</h1>
-
-<h3 align="center">
-    The ultimate tool for managing your VR porn library.
-</h3>
-
-<p align="center">
-    <strong>
-        <a href="https://github.com/xbapps/xbvr/issues">Suggestions</a>
-        •
-        <a href="https://discord.gg/wdCHXAG">Discord</a>
-    </strong>
-</p>
-
-<p align="center" stlye="text-shadow: 2px 2px">
-    <kbd><img src="https://i.imgur.com/Q3UdJhV.jpg" width="500"/></kbd>
-    <br>
-</p>
+# XBVR Reloaded
+### The ultimate tool for managing your VR porn library.
 
 
 ## Features
@@ -34,25 +12,33 @@
 - Browse your content by cast, site, tags, and release date
 - Available for Windows, macOS, Linux (including ARM builds for RaspberryPi)
 
+## XBVR vs XBVR Reloaded
+
+XBVR Reloaded is a fork of [XBVR](https://github.com/xbapps/xbvr), currently under active development. Legend: ✅ full support · 🟡 partial · ❌ not available.
+
+| Feature | XBVR | XBVR Reloaded | Difference explained |
+|---------|:----:|:-------------:|----------------------|
+| Scene scrapers for major VR sites | ✅ | ✅ | No difference |
+| DeoVR / HereSphere player API support | ✅ | ✅ | No difference |
+| Built-in DLNA streaming server | ✅ | ✅ | No difference |
+| Content bundle backup & restore | ✅ | ✅ | No difference |
+| **Correct file creation dates on macOS** | ❌ | ✅ | XBVR trusted the filesystem birth time blindly and could store epoch dates (1 Jan 1970) on macOS; Reloaded validates the birth time, falls back to the modification time, and repairs previously stored bad timestamps on rescan |
+| Video preview generation | 🟡 | ✅ | XBVR's pipeline is rudimentary; Reloaded adds a proper job queue with live progress and stop control, GPU hardware acceleration (NVENC, QSV, VAAPI, AMF, Vulkan; VideoToolbox opt-in), and deletion of individual scene previews |
+| MCP (Model Context Protocol) endpoint | ❌ | ✅ | LLM/AI clients can trigger `rescan_storage`, `scrape_scene`, `generate_previews`, and `match_file` via `/mcp` (see below) |
+| Encrypted bundle export | ❌ | ✅ | Credentials in exported bundles are encrypted with a user-supplied password |
+| Bundle validation on restore | ❌ | ✅ | Malformed bundles are rejected with HTTP 400 before any data is imported |
+| Scene metadata sync & smarter matching | 🟡 | ✅ | Duration sorting support in metadata sync and apostrophe-tolerant title matching |
+| Scene sorting options | 🟡 | ✅ | Reloaded adds sorting by video duration (↑/↓, scenes without a known duration always sort last), and the "scene added date" sort now keys off the oldest file creation time instead of the newest, so ordering no longer shifts when files are re-added |
+| SSRF protection on outbound URLs | ❌ | ✅ | User-supplied URLs are validated at config and request time; scraped outbound URLs are sanitized and secrets masked in the UI |
+| Server & protocol hardening | ❌ | ✅ | HTTP server, session handling, DLNA/UPnP/SSDP services, and binary downloads hardened |
+| Database & UI performance | ❌ | ✅ | Connection pooling, query batching, index/auth state caching, additional DB indexes, and route-level code splitting |
+| Self-contained binary | ❌ | ✅ | Release migration data is bundled into the binary via `go:embed` |
+| UI polish | ❌ | ✅ | Confirmation dialogs for destructive actions, accessibility improvements (dialog roles, responsive modals), and translatable dialog strings |
+| Internal cleanup | 🟡 | ✅ | Superficial changes only: shared UI API layer, deduplicated components, dead-code removal, and lint tooling fixes — no user-visible behavior change |
+
 ## Download
 
-The latest version is always available on the [releases page](https://github.com/xbapps/xbvr/releases).
-
-App is also available in form of Docker image, which makes it possible to run in more specialized environments such as QNAP NAS - downloads at [GitHub Container Registry](https://github.com/xbapps/xbvr/pkgs/container/xbvr).
-
-To run this container in docker:
-
-```
-docker run -t --name=xbvr --net=host --restart=always \
-   --mount type=bind,source=/path/to/your/videos,target=/videos \
-   --mount source=xbvr-config,target=/root/.config/ \
-   ghcr.io/xbapps/xbvr:latest
-```
-
-Adding `-d` to the docker command will run the container in the background.
-
-In docker, your videos will be mounted at /videos and you should add this path in Options -> Folders.
-
+Currently only source code is made available.
 Please note that during the first run XBVR automatically installs `ffprobe` and `ffmpeg` codecs from [ffbinaries site](https://ffbinaries.com/downloads). If `ffmpeg`/`ffprobe` are already installed, XBVR uses those instead of downloading its own: they are looked up on the system `PATH` as well as in well-known locations such as `/opt/homebrew/bin`, `/usr/local/bin` and `${HOME}/.local/bin` (symlinks are followed). A system ffmpeg with hardware encoders (e.g. NVENC, QSV, VAAPI, AMF, Vulkan) enables GPU-accelerated preview generation. VideoToolbox on macOS is opt-in: set `XBVR_PREVIEW_VIDEOTOOLBOX=1` to enable it.
 
 ## Quick Start
@@ -65,9 +51,6 @@ When it's all done, you should see your media not only in web UI, but also throu
 
 Enjoy!
 
-## Questions & Suggestions
-
-Ask your questions and suggest features on [Discord](https://discord.gg/wdCHXAG).
 
 ## Development
 
@@ -79,27 +62,6 @@ Make sure you have following installed:
 - air (run `go install github.com/cosmtrek/air@latest` outside project directory)
 
 Once all of the above is installed, running `yarn dev` from project directory launches file-watchers providing livereload for both Go and JavaScript.
-
-## Development in Gitpod
-
-This project is configured for use in Gitpod. It will provide you with a pre-built development environment with all the tools needed to compile XBVR.
-
-When the workspace loads, `yarn dev` runs and it will build and start XBVR automatically. Every time you make a change to a file, watchers will automatically compile the relevant code.
-
-Once XBVR is compiled and starts, a preview panel will open in the IDE. As you modify go files, the preview panel will reload with the latest changes. If you make changes to Vue, you'll need to reload the browser to load the updated JavaScript.
-
-Currently, it's only possible to test XBVR core and Browser applications using Gitpod. Because DLNA requires a local network, you won't be able to connect to the DLNA server running in Gitpod. For most people, this is fine.
-
-sqlite3 is included in the terminal. The XBVR database is located at /home/gitpod/.config/xbvr/main.db
-
-sqlite-web is also included. To browse the db, you can run `sqlite_web /home/gitpod/.config/xbvr/main.db`.
-
-Gitpod has GitHub integration and, once authorized, can fork this repo into your account, push/pull changes, and create pull requests.
-
-Ready to get started?
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/xbapps/xbvr)
-
 
 ### How To
 
