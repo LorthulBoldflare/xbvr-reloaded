@@ -337,6 +337,22 @@ export default {
     }
   },
   methods: {
+    confirmRestore () {
+      const scope = this.overwrite
+        ? 'Existing data will be <strong>overwritten</strong> by the bundle contents.'
+        : 'Only new records will be added.'
+      const creds = this.includeConfig
+        ? '<br/>Credential settings (API tokens, cookies, passwords) included in the bundle will be restored as well.'
+        : ''
+      this.$buefy.dialog.confirm({
+        title: this.$t('Restore bundle'),
+        message: `Restore this bundle? ${scope}${creds}`,
+        type: 'is-warning',
+        hasIcon: true,
+        confirmText: this.$t('Restore'),
+        onConfirm: () => this.restoreContent()
+      })
+    },
     restoreContent () {
       if (this.uploadData !== '' || this.bundleUrl!='') {
         // put up a starting msg, as large files can cause it to appear to hang

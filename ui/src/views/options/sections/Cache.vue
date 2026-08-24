@@ -101,11 +101,11 @@ export default {
     },
     resetCache (kind) {
       this.$buefy.dialog.confirm({
-        title: 'Reset cache',
+        title: this.$t('Reset cache'),
         message: `Do you want to reset the <strong>${kind}</strong> cache?`,
         type: 'is-danger',
         hasIcon: true,
-        confirmText: 'Reset',
+        confirmText: this.$t('Reset'),
         onConfirm: async () => {
           this.isLoading = true
           await api.delete(`/options/cache/reset/${kind}`, { timeout: 30000 })

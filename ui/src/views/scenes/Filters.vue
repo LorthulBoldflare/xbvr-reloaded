@@ -441,11 +441,11 @@ export default {
     },
     deleteTagGroup () {
       this.$buefy.dialog.confirm({
-        title: 'Delete tag group',
+        title: this.$t('Delete tag group'),
         message: `Do you want to delete the tag group for <strong>${this.tags[0]}</strong>?`,
         type: 'is-danger',
         hasIcon: true,
-        confirmText: 'Delete',
+        confirmText: this.$t('Delete'),
         onConfirm: () => {
           this.$store.state.sceneList.isLoading = true
           api.post('/tag_group/delete', {json: {name: this.tags[0]}}).json().then(data => {

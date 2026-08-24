@@ -79,7 +79,7 @@ import { format, parseISO } from 'date-fns'
 import StarRating from 'vue-star-rating'
 
 export default {
-  name: 'ModalNewTag',
+  name: 'QuickFind',
   props: {
     active: Boolean,
     sceneId: String
