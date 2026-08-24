@@ -33,6 +33,25 @@ func getAllowedVideoExt() []string {
 	return config.Config.Storage.VideoExt
 }
 
+func creationTime(fileTimes times.Timespec) time.Time {
+	if fileTimes.HasBirthTime() {
+		birthTime := fileTimes.BirthTime()
+		if hasTimestamp(birthTime) {
+			return birthTime
+		}
+	}
+
+	return fileTimes.ModTime()
+}
+
+func hasTimestamp(timestamp time.Time) bool {
+	return !timestamp.IsZero() && !timestamp.Equal(time.Unix(0, 0))
+}
+
+func needsCreationTimeRefresh(timestamp time.Time) bool {
+	return !hasTimestamp(timestamp)
+}
+
 func RescanVolumes(id int) {
 	if !models.CheckLock("rescan") {
 		models.CreateLock("rescan")
@@ -53,14 +72,29 @@ func RescanVolumes(id int) {
 			db.Find(&vol)
 		}
 
+		var scannedLocalVolumeIDs []uint
 		for i := range vol {
 			tlog.Infof("Scanning %v", vol[i].Path)
 
 			switch vol[i].Type {
 			case "local":
 				scanLocalVolume(vol[i], db, tlog)
+				scannedLocalVolumeIDs = append(scannedLocalVolumeIDs, vol[i].ID)
 			case "putio":
 				scanPutIO(vol[i], db, tlog)
+			}
+		}
+
+		if len(scannedLocalVolumeIDs) > 0 {
+			var scannedScenes []models.Scene
+			db.Model(&models.Scene{}).
+				Joins("JOIN files ON files.scene_id = scenes.id").
+				Where("files.volume_id IN (?) AND files.scene_id != 0", scannedLocalVolumeIDs).
+				Group("scenes.id").
+				Find(&scannedScenes)
+
+			for i := range scannedScenes {
+				scannedScenes[i].UpdateStatus()
 			}
 		}
 
@@ -229,7 +263,7 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 					var fl models.File
 					err = db.Where(&models.File{Path: filepath.Dir(path), Filename: filepath.Base(path)}).First(&fl).Error
 
-					if err == gorm.ErrRecordNotFound || fl.VolumeID == 0 || fl.VideoDuration == 0 || fl.VideoProjection == "" || fl.Size != f.Size() || fl.OsHash == "" {
+					if err == gorm.ErrRecordNotFound || fl.VolumeID == 0 || fl.VideoDuration == 0 || fl.VideoProjection == "" || fl.Size != f.Size() || fl.OsHash == "" || needsCreationTimeRefresh(fl.CreatedTime) {
 						videoProcList = append(videoProcList, path)
 					}
 				}
@@ -256,12 +290,6 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 				tlog.Errorf("Can't get the modification/creation times for %s, error: %s", path, err)
 			}
 
-			var birthtime time.Time
-			if fTimes.HasBirthTime() {
-				birthtime = fTimes.BirthTime()
-			} else {
-				birthtime = fTimes.ModTime()
-			}
 			var fl models.File
 			db.Where(&models.File{
 				Path:     filepath.Dir(path),
@@ -270,7 +298,7 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 			}).FirstOrCreate(&fl)
 
 			fl.Size = fStat.Size()
-			fl.CreatedTime = birthtime
+			fl.CreatedTime = creationTime(fTimes)
 			fl.UpdatedTime = fTimes.ModTime()
 			fl.VolumeID = vol.ID
 
@@ -371,7 +399,7 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 				}
 			}
 
-			fl.CreatedTime = fTimes.ModTime()
+			fl.CreatedTime = creationTime(fTimes)
 			fl.UpdatedTime = fTimes.ModTime()
 			fl.VolumeID = vol.ID
 			fl.Save()
@@ -501,7 +529,7 @@ func ScanLocalHspFile(path string, volID uint, sceneId uint) {
 	fTimes, _ := times.Stat(path)
 
 	fl.Size = fStat.Size()
-	fl.CreatedTime = fTimes.ModTime()
+	fl.CreatedTime = creationTime(fTimes)
 	fl.UpdatedTime = fTimes.ModTime()
 	fl.VolumeID = volID
 	if sceneId > 0 {
@@ -526,7 +554,7 @@ func ScanLocalSubtitlesFile(path string, volID uint, sceneId uint) {
 	fTimes, _ := times.Stat(path)
 
 	fl.Size = fStat.Size()
-	fl.CreatedTime = fTimes.ModTime()
+	fl.CreatedTime = creationTime(fTimes)
 	fl.UpdatedTime = fTimes.ModTime()
 	fl.VolumeID = volID
 	if sceneId > 0 {

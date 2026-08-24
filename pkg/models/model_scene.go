@@ -300,6 +300,21 @@ func (o *Scene) PreviewExists() bool {
 	return true
 }
 
+func oldestCreationTime(files []File) time.Time {
+	var oldestFileDate time.Time
+	for i := range files {
+		if files[i].Type != "video" && files[i].Type != "script" {
+			continue
+		}
+
+		if files[i].Exists() && files[i].CreatedTime.After(time.Unix(0, 0)) && (files[i].CreatedTime.Before(oldestFileDate) || oldestFileDate.IsZero()) {
+			oldestFileDate = files[i].CreatedTime
+		}
+	}
+
+	return oldestFileDate
+}
+
 func (o *Scene) UpdateStatus() {
 	// Check if file with scene association exists
 	files, err := o.GetFiles()
@@ -312,7 +327,6 @@ func (o *Scene) UpdateStatus() {
 	videos := 0
 
 	if len(files) > 0 {
-		var newestFileDate time.Time
 		var totalFileSize int64
 		anyVideoAccessible := false
 
@@ -321,10 +335,6 @@ func (o *Scene) UpdateStatus() {
 
 			if files[j].Type == "script" {
 				scripts = scripts + 1
-
-				if files[j].Exists() && (files[j].CreatedTime.After(newestFileDate) || newestFileDate.IsZero()) {
-					newestFileDate = files[j].CreatedTime
-				}
 			}
 
 			if files[j].Type == "video" {
@@ -332,10 +342,6 @@ func (o *Scene) UpdateStatus() {
 
 				if files[j].Exists() {
 					anyVideoAccessible = true
-
-					if files[j].CreatedTime.After(newestFileDate) || newestFileDate.IsZero() {
-						newestFileDate = files[j].CreatedTime
-					}
 				}
 			}
 		}
@@ -371,8 +377,9 @@ func (o *Scene) UpdateStatus() {
 			changed = true
 		}
 
-		if !newestFileDate.Equal(o.AddedDate) && !newestFileDate.IsZero() {
-			o.AddedDate = newestFileDate
+		oldestFileDate := oldestCreationTime(files)
+		if !oldestFileDate.Equal(o.AddedDate) && !oldestFileDate.IsZero() {
+			o.AddedDate = oldestFileDate
 			changed = true
 		}
 	} else {
@@ -1170,6 +1177,10 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		tx = tx.Order("total_watch_time desc")
 	case "total_watch_time_asc":
 		tx = tx.Order("total_watch_time asc")
+	case "duration_desc":
+		tx = tx.Order("case when scenes.duration <= 0 then 1 else 0 end asc").Order("case when scenes.duration > 0 then scenes.duration end desc")
+	case "duration_asc":
+		tx = tx.Order("case when scenes.duration <= 0 then 1 else 0 end asc").Order("case when scenes.duration > 0 then scenes.duration end asc")
 	case "rating_desc":
 		tx = tx.
 			Where("scenes.star_rating > 0").

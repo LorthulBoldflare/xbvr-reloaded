@@ -51,6 +51,8 @@
             <option value="rating_asc">↑ {{ $t("Rating") }}</option>
             <option value="total_watch_time_desc">↓ {{ $t("Watch time") }}</option>
             <option value="total_watch_time_asc">↑ {{ $t("Watch time") }}</option>
+            <option value="duration_desc">↓ {{ $t("Duration") }}</option>
+            <option value="duration_asc">↑ {{ $t("Duration") }}</option>
             <option value="scene_added_desc">↓ {{ $t("Scene added date") }}</option>
             <option value="scene_updated_desc">↓ {{ $t("Scene updated date") }}</option>
             <option value="last_opened_desc">↓ {{ $t("Last viewed date") }}</option>
