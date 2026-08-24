@@ -56,7 +56,6 @@ func (p *AltSrcMatchParams) Default() {
 	p.BoostTitleAnyWords = boostTitleAnyWords
 	p.BoostCast = boostCast
 	p.BoostDescription = boostDescription
-	p.BoostReleased = boostReleased
 }
 
 func (p *AltSrcMatchParams) UnmarshalParams(jsonStr string) error {
@@ -96,7 +95,7 @@ func (p *AltSrcMatchParams) UnmarshalParams(jsonStr string) error {
 			p.BoostTitleAnyWords = boostTitleAnyWords
 		}
 		if !strings.Contains(jsonStr, "boost_released") {
-			p.BoostCast = boostReleased
+			p.BoostReleased = boostReleased
 		}
 		if !strings.Contains(jsonStr, "boost_cast") {
 			p.BoostCast = boostCast

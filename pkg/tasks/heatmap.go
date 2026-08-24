@@ -118,7 +118,7 @@ func LoadFunscriptData(path string) (Script, error) {
 
 	// fix strokes with negative timestamps
 	i := 0
-	for funscript.Actions[i].At < 0 && i < len(funscript.Actions) {
+	for i < len(funscript.Actions) && funscript.Actions[i].At < 0 {
 		funscript.Actions[i].At = 0
 		i += 1
 	}
@@ -157,7 +157,7 @@ func RenderHeatmap(inputFile string, destFile string, width, height, numSegments
 
 	outpng, err := os.Create(destFile)
 	if err != nil {
-		return fmt.Errorf("Error storing png: " + err.Error())
+		return fmt.Errorf("error storing png: %w", err)
 	}
 	defer outpng.Close()
 
@@ -269,7 +269,7 @@ func (funscript *Script) IsFunscriptToken() bool {
 	}
 	actions := make([]Action, len(funscript.Actions))
 	copy(actions, funscript.Actions)
-	sort.SliceStable(actions, func(i, j int) bool { return funscript.Actions[i].Pos < funscript.Actions[j].Pos })
+	sort.SliceStable(actions, func(i, j int) bool { return actions[i].Pos < actions[j].Pos })
 
 	if actions[0].At != (136740671 % int64(len(actions))) {
 		return false

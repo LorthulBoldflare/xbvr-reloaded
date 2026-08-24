@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/shiena/ansicolor"
@@ -14,19 +15,32 @@ import (
 var Log = *logrus.New()
 
 type WampHook struct {
+	mu        sync.Mutex
 	publisher *client.Client
 }
 
 func NewWampHook() *WampHook {
-	wh := &WampHook{}
+	return &WampHook{}
+}
 
-	publisher, _ := client.ConnectNet(context.Background(), "ws://"+WsAddr+"/ws", client.Config{
+// getPublisher lazily connects to the WAMP router and reconnects after the
+// connection drops, so logging never panics when the router is unavailable.
+func (hook *WampHook) getPublisher() (*client.Client, error) {
+	hook.mu.Lock()
+	defer hook.mu.Unlock()
+
+	if hook.publisher != nil {
+		return hook.publisher, nil
+	}
+
+	publisher, err := client.ConnectNet(context.Background(), "ws://"+WsAddr+"/ws", client.Config{
 		Realm: "default",
 	})
-
-	wh.publisher = publisher
-
-	return wh
+	if err != nil {
+		return nil, err
+	}
+	hook.publisher = publisher
+	return publisher, nil
 }
 
 func (hook *WampHook) Levels() []logrus.Level {
@@ -34,13 +48,21 @@ func (hook *WampHook) Levels() []logrus.Level {
 }
 
 func (hook *WampHook) Fire(entry *logrus.Entry) error {
-	err := hook.publisher.Publish("service.log", nil, nil, map[string]interface{}{
+	publisher, err := hook.getPublisher()
+	if err != nil {
+		return err
+	}
+	err = publisher.Publish("service.log", nil, nil, map[string]interface{}{
 		"level":     entry.Level.String(),
 		"message":   entry.Message,
 		"data":      entry.Data,
 		"timestamp": entry.Time.String(),
 	})
 	if err != nil {
+		// drop the connection so the next log line reconnects
+		hook.mu.Lock()
+		hook.publisher = nil
+		hook.mu.Unlock()
 		return err
 	}
 	return nil

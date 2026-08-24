@@ -144,8 +144,9 @@ func unCache(URL string, cacheDir string) {
 	hash := hex.EncodeToString(sum[:])
 	dir := path.Join(cacheDir, hash[:2])
 	filename := path.Join(dir, hash)
-	if err := os.Remove(filename); err != nil {
-		log.Fatal(err)
+	if err := os.Remove(filename); err != nil && !os.IsNotExist(err) {
+		// a missing cache file is expected (e.g. after a 429); never fatal
+		log.Error(err)
 	}
 }
 
@@ -192,7 +193,8 @@ func getFilenameFromURL(u string) string {
 func getTextFromHTMLWithSelector(data string, sel string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(data))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return ""
 	}
 	return strings.TrimSpace(doc.Find(sel).Text())
 }

@@ -701,6 +701,10 @@ func QueryScenesFull(r RequestSceneList) ResponseSceneList {
 	for len(scenes) < q.Results {
 		r.Offset = optional.NewInt(len(scenes))
 		q := QueryScenes(r, true)
+		if len(q.Scenes) == 0 {
+			// no more rows (count changed between queries); avoid infinite loop
+			break
+		}
 		scenes = append(scenes, q.Scenes...)
 	}
 
@@ -904,7 +908,7 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		case "Top/Bottom":
 			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_projection in ('180_tb','360_tb'))"
 		case "Side by Side":
-			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_projection not in (flat','180_mono','360_mono', '180_tb', '360_tb'))"
+			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_projection not in ('flat','180_mono','360_mono', '180_tb', '360_tb'))"
 		case "MKX200":
 			where = "exists (select 1 from files where files.scene_id = scenes.id and files.`type` = 'video' and files.video_projection = 'mkx200')"
 		case "MKX220":

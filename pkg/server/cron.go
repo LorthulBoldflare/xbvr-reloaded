@@ -21,32 +21,40 @@ var linkScenesTask cron.EntryID
 
 func SetupCron() {
 	cronInstance = cron.New()
-	cronInstance.AddFunc("@every 2s", session.CheckForDeadSession)
-	cronInstance.AddFunc("@every 6h", tasks.CalculateCacheSizes)
+	if _, err := cronInstance.AddFunc("@every 2s", session.CheckForDeadSession); err != nil {
+		log.Printf("Failed to setup dead-session check task: %v", err)
+	}
+	if _, err := cronInstance.AddFunc("@every 6h", tasks.CalculateCacheSizes); err != nil {
+		log.Printf("Failed to setup cache-size task: %v", err)
+	}
+	addCron := func(name string, schedule config.CronSchedule, fn func()) cron.EntryID {
+		spec := formatCronSchedule(schedule)
+		log.Println(fmt.Sprintf("Setup %s Task %v", name, spec))
+		id, err := cronInstance.AddFunc(spec, fn)
+		if err != nil {
+			// previously discarded: an invalid schedule (e.g. "@every 0h")
+			// silently disabled the task
+			log.Printf("Failed to setup %s task with schedule %q: %v", name, spec, err)
+		}
+		return id
+	}
 	if config.Config.Cron.RescrapeSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Rescrape Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.RescrapeSchedule))))
-		rescrapTask, _ = cronInstance.AddFunc(formatCronSchedule(config.CronSchedule(config.Config.Cron.RescrapeSchedule)), scrapeCron)
+		rescrapTask = addCron("Rescrape", config.CronSchedule(config.Config.Cron.RescrapeSchedule), scrapeCron)
 	}
 	if config.Config.Cron.RescanSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Rescan Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.RescanSchedule))))
-		rescanTask, _ = cronInstance.AddFunc(formatCronSchedule(config.CronSchedule(config.Config.Cron.RescanSchedule)), rescanCron)
+		rescanTask = addCron("Rescan", config.CronSchedule(config.Config.Cron.RescanSchedule), rescanCron)
 	}
 	if config.Config.Cron.PreviewSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Preview Generation Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.PreviewSchedule))))
-		ps := formatCronSchedule(config.CronSchedule(config.Config.Cron.PreviewSchedule))
-		previewTask, _ = cronInstance.AddFunc(ps, generatePreviewCron)
+		previewTask = addCron("Preview Generation", config.CronSchedule(config.Config.Cron.PreviewSchedule), generatePreviewCron)
 	}
 	if config.Config.Cron.ActorRescrapeSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Actor Rescrape Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.ActorRescrapeSchedule))))
-		actorScrapeTask, _ = cronInstance.AddFunc(formatCronSchedule(config.CronSchedule(config.Config.Cron.ActorRescrapeSchedule)), actorRescrapeCron)
+		actorScrapeTask = addCron("Actor Rescrape", config.CronSchedule(config.Config.Cron.ActorRescrapeSchedule), actorRescrapeCron)
 	}
 	if config.Config.Cron.StashdbRescrapeSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Stashdb Rescrape Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.StashdbRescrapeSchedule))))
-		stashdbScrapeTask, _ = cronInstance.AddFunc(formatCronSchedule(config.CronSchedule(config.Config.Cron.StashdbRescrapeSchedule)), stashdbRescrapeCron)
+		stashdbScrapeTask = addCron("Stashdb Rescrape", config.CronSchedule(config.Config.Cron.StashdbRescrapeSchedule), stashdbRescrapeCron)
 	}
 	if config.Config.Cron.LinkScenesSchedule.Enabled {
-		log.Println(fmt.Sprintf("Setup Link Scenes Task %v", formatCronSchedule(config.CronSchedule(config.Config.Cron.LinkScenesSchedule))))
-		linkScenesTask, _ = cronInstance.AddFunc(formatCronSchedule(config.CronSchedule(config.Config.Cron.LinkScenesSchedule)), linkScenesCron)
+		linkScenesTask = addCron("Link Scenes", config.CronSchedule(config.Config.Cron.LinkScenesSchedule), linkScenesCron)
 	}
 	cronInstance.Start()
 
@@ -96,13 +104,13 @@ func actorRescrapeCron() {
 	if !session.HasActiveSession() {
 		tasks.ScrapeActors()
 	}
-	log.Println(fmt.Sprintf("Next Rescrape Task at %v", cronInstance.Entry(rescrapTask).Next))
+	log.Println(fmt.Sprintf("Next Actor Rescrape Task at %v", cronInstance.Entry(actorScrapeTask).Next))
 }
 func stashdbRescrapeCron() {
 	if !session.HasActiveSession() {
 		api.StashdbRunAll()
 	}
-	log.Println(fmt.Sprintf("Next Stashdb Rescrape Task at %v", cronInstance.Entry(rescrapTask).Next))
+	log.Println(fmt.Sprintf("Next Stashdb Rescrape Task at %v", cronInstance.Entry(stashdbScrapeTask).Next))
 }
 
 func linkScenesCron() {

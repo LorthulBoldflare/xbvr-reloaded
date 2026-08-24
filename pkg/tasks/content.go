@@ -237,6 +237,9 @@ func ReapplyEdits() {
 			continue
 		}
 		if a.ChangedColumn == "tags" || a.ChangedColumn == "cast" || a.ChangedColumn == "is_multipart" {
+			if a.NewValue == "" {
+				continue
+			}
 			prefix := string(a.NewValue[0])
 			name := a.NewValue[1:]
 			// Reapply Tag edits
@@ -454,7 +457,7 @@ func ScrapeTPDB(apiToken string, sceneUrl string) {
 		err := scrape.ScrapeTPDB(knownScenes, &collectedScenes, apiToken, sceneUrl)
 
 		if err != nil {
-			tlog.Errorf(err.Error())
+			tlog.Error(err)
 		} else if len(collectedScenes) > 0 {
 			// At this point we know the API Token is correct, so we will save
 			// it to the config store
@@ -496,9 +499,21 @@ func ExportBundle() {
 		collectedScenes := make(chan models.ScrapedScene, 100)
 
 		var scrapedScenes []models.ScrapedScene
-		go sceneSliceAppender(&scrapedScenes, collectedScenes)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sceneSliceAppender(&scrapedScenes, collectedScenes)
+		}()
 
 		runScrapers(knownScenes, "_enabled", false, collectedScenes, "", "")
+
+		// Notify the appender that there are no more scenes, and wait for it
+		// to finish before reading scrapedScenes (previously the channel was
+		// never closed — leaking the goroutine — and scrapedScenes was read
+		// while the appender could still be writing to it)
+		close(collectedScenes)
+		wg.Wait()
 
 		out := ContentBundle{
 			Timestamp:     time.Now().UTC(),
@@ -527,9 +542,8 @@ func ImportBundle(uploadData string) {
 
 		var bundleData ContentBundle
 		tlog.Infof("Restoring bundle ...")
-		var err error
 
-		json.Unmarshal([]byte(uploadData), &bundleData)
+		err := json.Unmarshal([]byte(uploadData), &bundleData)
 
 		if err == nil {
 			if bundleData.BundleVersion != "1" {
@@ -818,7 +832,11 @@ func RestoreBundle(request RequestRestore) {
 	tlog := log.WithField("task", "scrape")
 	if request.BundleUrl != "" {
 		tlog.Infof("Downloading data from %s", request.BundleUrl)
-		data, _ := downloadBundle(request.BundleUrl)
+		data, err := downloadBundle(request.BundleUrl)
+		if err != nil {
+			tlog.Errorf("Failed to download bundle: %v", err)
+			return
+		}
 		request.UploadData = data
 	}
 
@@ -838,10 +856,9 @@ func RestoreBundle(request RequestRestore) {
 		}.Froze()
 
 		var bundleData BackupContentBundle
-		var err error
 		tlog.Infof("Restoring data ...")
 
-		json.UnmarshalFromString(request.UploadData, &bundleData)
+		err := json.UnmarshalFromString(request.UploadData, &bundleData)
 
 		if err == nil {
 			if bundleData.BundleVersion != "2.1" {
@@ -1156,9 +1173,9 @@ func RestoreActions(sceneActionList []BackupSceneAction, inclAllSites bool, sele
 
 		if overwrite {
 			if len(actions.Actions) > 0 {
-				err := db.Delete(&models.History{}, "scene_id = ?", actions.SceneID).Error
+				err := db.Delete(&models.Action{}, "scene_id = ?", actions.SceneID).Error
 				if err != nil {
-					tlog.Infof("Eror deleteing history")
+					tlog.Infof("Error deleting old actions: %v", err)
 				}
 			}
 		} else {

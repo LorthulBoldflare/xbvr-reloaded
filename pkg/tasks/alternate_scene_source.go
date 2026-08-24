@@ -267,20 +267,21 @@ func AltSourceSearch(searchRequest *bleve.SearchRequest) (*bleve.SearchResult, e
 	return idx.Bleve.Search(searchRequest)
 }
 func UpdateLinks(db *gorm.DB, externalreference_id uint, newLink models.ExternalReferenceLink) {
-	var extref models.ExternalReference
-	extref.GetIfExist(externalreference_id)
-	exists := false
+	// load the current links for this external reference; the link to
+	// newLink.InternalDbId is kept (so "Released on Alternate Sites" sort is
+	// not disturbed), all other (stale) links are deleted
+	var links []models.ExternalReferenceLink
+	db.Where("external_reference_id = ?", externalreference_id).Find(&links)
 
-	db.Where("external_source = ? and external_reference_id = ? and internal_db_id <> ?").Find(&extref)
-	for _, link := range extref.XbvrLinks {
-		if link.InternalDbId == newLink.InternalDbId {
+	exists := false
+	for _, link := range links {
+		if link.InternalTable == newLink.InternalTable && link.InternalDbId == newLink.InternalDbId {
 			exists = true
 		} else {
-			link.Delete()
+			db.Delete(&link)
 		}
 	}
 	if !exists {
-		newLink.Save()
+		models.SaveWithRetry(db, &newLink)
 	}
-
 }

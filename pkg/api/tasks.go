@@ -145,7 +145,11 @@ func (i TaskResource) scrape(req *restful.Request, resp *restful.Response) {
 }
 func (i TaskResource) singleScrape(req *restful.Request, resp *restful.Response) {
 	var scrapeParams RequestSingleScrape
-	req.ReadEntity(&scrapeParams)
+	if err := req.ReadEntity(&scrapeParams); err != nil {
+		log.Error(err)
+		resp.WriteErrorString(http.StatusBadRequest, "invalid request body")
+		return
+	}
 	additionalInfo, _ := json.Marshal(scrapeParams.AdditionalInfo)
 
 	newScene := tasks.ScrapeSingleScene(scrapeParams.Site, scrapeParams.SceneUrl, string(additionalInfo))

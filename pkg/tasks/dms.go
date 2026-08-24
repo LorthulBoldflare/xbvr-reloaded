@@ -32,7 +32,7 @@ type dmsConfig struct {
 var dmsServer *dms.Server
 var dmsStarted bool
 
-func initDMS() {
+func initDMS() error {
 	var dmsConfig = &dmsConfig{
 		Path:           "",
 		IfName:         "",
@@ -40,6 +40,11 @@ func initDMS() {
 		FriendlyName:   "",
 		LogHeaders:     false,
 		NotifyInterval: 30 * time.Second,
+	}
+
+	httpConn, err := net.Listen("tcp", dmsConfig.Http)
+	if err != nil {
+		return err
 	}
 
 	dmsServer = &dms.Server{
@@ -55,7 +60,7 @@ func initDMS() {
 				}
 			}
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
 			}
 			var tmp []net.Interface
 			for _, if_ := range ifs {
@@ -67,13 +72,7 @@ func initDMS() {
 			ifs = tmp
 			return
 		}(dmsConfig.IfName),
-		HTTPConn: func() net.Listener {
-			conn, err := net.Listen("tcp", dmsConfig.Http)
-			if err != nil {
-				log.Fatal(err)
-			}
-			return conn
-		}(),
+		HTTPConn:        httpConn,
 		FriendlyName:   dmsConfig.FriendlyName,
 		RootObjectPath: filepath.Clean(dmsConfig.Path),
 		LogHeaders:     dmsConfig.LogHeaders,
@@ -100,6 +99,7 @@ func initDMS() {
 		IgnoreHidden:        dmsConfig.IgnoreHidden,
 		IgnoreUnreadable:    dmsConfig.IgnoreUnreadable,
 	}
+	return nil
 }
 
 func getIconReader(fn string) (io.Reader, error) {
@@ -110,11 +110,13 @@ func getIconReader(fn string) (io.Reader, error) {
 func readIcon(path string, size uint) *bytes.Reader {
 	r, err := getIconReader(path)
 	if err != nil {
-		panic(err)
+		log.Errorf("Cannot read DLNA icon %s: %v", path, err)
+		return bytes.NewReader(nil)
 	}
 	imageData, _, err := image.Decode(r)
 	if err != nil {
-		panic(err)
+		log.Errorf("Cannot decode DLNA icon %s: %v", path, err)
+		return bytes.NewReader(nil)
 	}
 	return resizeImage(imageData, size)
 }
@@ -127,11 +129,14 @@ func resizeImage(imageData image.Image, size uint) *bytes.Reader {
 }
 
 func StartDMS() {
-	initDMS()
+	if err := initDMS(); err != nil {
+		log.Errorf("DLNA server not started: %v", err)
+		return
+	}
 	go func() {
 		log.Info("Starting DLNA")
 		if err := dmsServer.Serve(); err != nil {
-			log.Fatal(err)
+			log.Errorf("DLNA server stopped with error: %v", err)
 		}
 	}()
 	dmsStarted = true
@@ -141,7 +146,7 @@ func StopDMS() {
 	log.Info("Stopping DLNA")
 	err := dmsServer.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Errorf("Error stopping DLNA server: %v", err)
 	}
 	dmsStarted = false
 }

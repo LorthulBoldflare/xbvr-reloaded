@@ -13,7 +13,7 @@
             </b-table-column>
             <b-table-column field="created_time" :label="$t('Created')" style="white-space: nowrap;" sortable
                             v-slot="props">
-              {{ format(parseISO(props.row.created_time), "yyyy-MM-dd hh:mm:ss") }}
+              {{ format(parseISO(props.row.created_time), "yyyy-MM-dd HH:mm:ss") }}
             </b-table-column>
             <b-table-column field="size" :label="$t('Size')" style="white-space: nowrap;" sortable v-slot="props">
               {{ prettyBytes(props.row.size) }}

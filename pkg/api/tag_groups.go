@@ -398,6 +398,14 @@ func (i TagGroupResource) renameTagGroup(req *restful.Request, resp *restful.Res
 		return
 	}
 
+	if len(r.Tags) == 0 {
+		createResp := &ResponseTagGroup{
+			Status: "Error: no tag group specified",
+		}
+		resp.WriteHeaderAndEntity(http.StatusOK, createResp)
+		return
+	}
+
 	db.Where("name = ?", strings.TrimPrefix(r.Tags[0], "tag group:")).Preload("TagGroupTag").First(&tagGroup)
 	tagGroup.TagGroupTag.Name = "tag group:" + r.Name
 	tagGroup.Name = r.Name

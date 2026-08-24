@@ -157,6 +157,10 @@ func QueryActorFull(r RequestActorList) ResponseActorList {
 	for len(actors) < q.Results {
 		r.Offset = optional.NewInt(len(actors))
 		q := QueryActors(r, true)
+		if len(q.Actors) == 0 {
+			// no more rows (count changed between queries); avoid infinite loop
+			break
+		}
 		actors = append(actors, q.Actors...)
 	}
 
@@ -284,7 +288,8 @@ func QueryActors(r RequestActorList, enablePreload bool) ResponseActorList {
 			if truefalse {
 				where = "(select count(*) from external_reference_links " + erlAlias + " where " + erlAlias + ".internal_db_id = actors.id and " + erlAlias + ".`external_source` = 'stashdb performer') > 1"
 			} else {
-				where = "(select count(*) from external_reference_links " + erlAlias + " where " + erlAlias + ".internal_db_id = actors.id and " + erlAlias + ".`external_source` = 'stashdb performer') < 1"
+				// negation of "> 1" is "<= 1" — actors with exactly one link are not duplicates
+				where = "(select count(*) from external_reference_links " + erlAlias + " where " + erlAlias + ".internal_db_id = actors.id and " + erlAlias + ".`external_source` = 'stashdb performer') <= 1"
 			}
 		case "Rating 0", "Rating .5", "Rating 1", "Rating 1.5", "Rating 2", "Rating 2.5", "Rating 3", "Rating 3.5", "Rating 4", "Rating 4.5", "Rating 5":
 			if truefalse {

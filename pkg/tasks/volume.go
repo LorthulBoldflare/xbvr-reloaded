@@ -284,10 +284,15 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 		filenameSeparator := regexp.MustCompile("[ _.-]+")
 
 		for j, path := range videoProcList {
-			fStat, _ := os.Stat(path)
+			fStat, err := os.Stat(path)
+			if err != nil {
+				tlog.Errorf("Can't stat %s, error: %s", path, err)
+				continue
+			}
 			fTimes, err := times.Stat(path)
 			if err != nil {
 				tlog.Errorf("Can't get the modification/creation times for %s, error: %s", path, err)
+				continue
 			}
 
 			var fl models.File
@@ -383,8 +388,16 @@ func scanLocalVolume(vol models.Volume, db *gorm.DB, tlog *logrus.Entry) {
 				Type:     "script",
 			}).FirstOrCreate(&fl)
 
-			fStat, _ := os.Stat(path)
-			fTimes, _ := times.Stat(path)
+			fStat, err := os.Stat(path)
+			if err != nil {
+				tlog.Errorf("Can't stat %s, error: %s", path, err)
+				continue
+			}
+			fTimes, err := times.Stat(path)
+			if err != nil {
+				tlog.Errorf("Can't get the modification/creation times for %s, error: %s", path, err)
+				continue
+			}
 
 			if fStat.Size() != fl.Size {
 				fl.Size = fStat.Size()
@@ -525,8 +538,16 @@ func ScanLocalHspFile(path string, volID uint, sceneId uint) {
 		Type:     "hsp",
 	}).FirstOrCreate(&fl)
 
-	fStat, _ := os.Stat(path)
-	fTimes, _ := times.Stat(path)
+	fStat, err := os.Stat(path)
+	if err != nil {
+		log.Errorf("Can't stat %s, error: %s", path, err)
+		return
+	}
+	fTimes, err := times.Stat(path)
+	if err != nil {
+		log.Errorf("Can't get the modification/creation times for %s, error: %s", path, err)
+		return
+	}
 
 	fl.Size = fStat.Size()
 	fl.CreatedTime = creationTime(fTimes)
@@ -550,8 +571,16 @@ func ScanLocalSubtitlesFile(path string, volID uint, sceneId uint) {
 		Type:     "subtitles",
 	}).FirstOrCreate(&fl)
 
-	fStat, _ := os.Stat(path)
-	fTimes, _ := times.Stat(path)
+	fStat, err := os.Stat(path)
+	if err != nil {
+		log.Errorf("Can't stat %s, error: %s", path, err)
+		return
+	}
+	fTimes, err := times.Stat(path)
+	if err != nil {
+		log.Errorf("Can't get the modification/creation times for %s, error: %s", path, err)
+		return
+	}
 
 	fl.Size = fStat.Size()
 	fl.CreatedTime = creationTime(fTimes)

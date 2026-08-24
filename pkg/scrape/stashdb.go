@@ -262,15 +262,23 @@ func FindStashdbStudio(studio string, field string) FindStudioResult {
 	return data
 }
 
+// maxStudioPerformerPages bounds performer pagination so a miscounting or
+// misbehaving API response cannot loop forever.
+const maxStudioPerformerPages = 1000
+
 func processStudioPerformers(studioId string) {
 	page := 1
 	performerList := getPerformersPage(studioId, page)
 	for len(performerList.Data.QueryPerformers.Performers) < performerList.Data.QueryPerformers.Count {
 		page += 1
+		if page > maxStudioPerformerPages {
+			log.Warnf("Stopped paging performers for studio %s after %d pages (%d of %d fetched)", studioId, page-1, len(performerList.Data.QueryPerformers.Performers), performerList.Data.QueryPerformers.Count)
+			break
+		}
 		nextList := getPerformersPage(studioId, page)
 		if len(nextList.Data.QueryPerformers.Performers) == 0 {
-			log.Info("error")
-			page = page - 1
+			log.Infof("No performers returned for studio %s page %d, stopping pagination", studioId, page)
+			break
 		}
 		performerList.Data.QueryPerformers.Performers = append(performerList.Data.QueryPerformers.Performers, nextList.Data.QueryPerformers.Performers...)
 	}
@@ -844,21 +852,15 @@ func CallStashDb(query string, rawVariables string) []byte {
 	req.Header.Set("ApiKey", config.Config.Advanced.StashApiKey)
 
 	callClient := func() []byte {
-		var bodyBytes []byte
-		defer func() {
-			if r := recover(); r != nil {
-				return
-			}
-		}()
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Infof("error client.do  in callStashDb %s", err)
+			log.Infof("error client.do in callStashDb %s", err)
+			return nil
 		}
-
 		defer resp.Body.Close()
 
-		bodyBytes, _ = io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		return bodyBytes
 	}
 	return callClient()

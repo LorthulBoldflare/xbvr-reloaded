@@ -357,7 +357,7 @@
                     </div>
                     <div class="content is-small">
                       <div class="block" v-for="(session, idx) in item.history" :key="idx">
-                        <strong>{{ format(parseISO(session.time_start), "yyyy-MM-dd kk:mm:ss") }} -
+                        <strong>{{ format(parseISO(session.time_start), "yyyy-MM-dd HH:mm:ss") }} -
                           {{ humanizeSeconds(session.duration) }}</strong>
                       </div>
                     </div>

@@ -215,6 +215,7 @@ func (i ActorResource) getFilters(req *restful.Request, resp *restful.Response) 
 func (i ActorResource) getActor(req *restful.Request, resp *restful.Response) {
 	var actor models.Actor
 	db, _ := models.GetDB()
+	defer db.Close()
 
 	if strings.Contains(req.PathParameter("actor-id"), "-") {
 		actor.GetIfExist(req.PathParameter("actor-id"))
@@ -226,7 +227,6 @@ func (i ActorResource) getActor(req *restful.Request, resp *restful.Response) {
 		}
 		_ = actor.GetIfExistByPKWithSceneAvg(uint(id))
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, actor)
 }
@@ -374,6 +374,7 @@ func (i ActorResource) editActor(req *restful.Request, resp *restful.Response) {
 	err = actor.GetIfExistByPK(uint(name))
 	if err != nil {
 		resp.WriteHeaderAndEntity(http.StatusOK, nil)
+		return
 	}
 
 	if len(r.Nationality) > 2 {

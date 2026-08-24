@@ -471,6 +471,7 @@ func (i SceneResource) getFilters(req *restful.Request, resp *restful.Response) 
 func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 	var scene models.Scene
 	db, _ := models.GetDB()
+	defer db.Close()
 
 	if strings.Contains(req.PathParameter("scene-id"), "-") {
 		scene.GetIfExist(req.PathParameter("scene-id"))
@@ -482,7 +483,6 @@ func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 		}
 		_ = scene.GetIfExistByPK(uint(id))
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
@@ -794,6 +794,7 @@ func (i SceneResource) deleteSceneCuepoint(req *restful.Request, resp *restful.R
 	}
 
 	db, _ := models.GetDB()
+	defer db.Close()
 
 	cuepoint := models.SceneCuepoint{}
 	err = db.First(&cuepoint, cuepointId).Error
@@ -803,12 +804,11 @@ func (i SceneResource) deleteSceneCuepoint(req *restful.Request, resp *restful.R
 		return
 	}
 
+	// single delete, scoped to the owning scene
 	db.Where("id = ? AND scene_id = ?", cuepointId, sceneId).Delete(models.SceneCuepoint{})
-	db.Delete(&cuepoint)
 
 	var scene models.Scene
 	_ = scene.GetIfExistByPK(uint(sceneId))
-	defer db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
@@ -1060,6 +1060,7 @@ func (i SceneResource) getSceneAlternateSources(req *restful.Request, resp *rest
 	var refs []models.ExternalReferenceLink
 	var ressults []ResponseGetAlternateSources
 	db, _ := models.GetDB()
+	defer db.Close()
 
 	if strings.Contains(req.PathParameter("scene-id"), "-") {
 		refs = extref.FindByInternalName("scenes", req.PathParameter("scene-id"))
@@ -1084,7 +1085,6 @@ func (i SceneResource) getSceneAlternateSources(req *restful.Request, resp *rest
 			ressults = append(ressults, ResponseGetAlternateSources{Url: ref.ExternalReference.ExternalURL, Icon: site.AvatarURL, ExternalSource: ref.ExternalReference.ExternalSource, ExternalId: ref.ExternalReference.ExternalId, ExternalData: ref.ExternalReference.ExternalData})
 		}
 	}
-	db.Close()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, ressults)
 }

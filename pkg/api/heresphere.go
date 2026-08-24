@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -114,15 +115,29 @@ type HereSphereAuthRequest struct {
 	NeedsMediaSource optional.Bool    `json:"needsMediaSource"`
 }
 
-var RequestBody []byte
+// heresphereRequestBodyKey stores the raw request body on the request
+// context. The body must be buffered by the auth filter (reading it consumes
+// the stream) and shared with the handler without a package-level global,
+// which raced on concurrent requests.
+type heresphereRequestBodyKeyT struct{}
+
+var heresphereRequestBodyKey heresphereRequestBodyKeyT
+
+func getHeresphereRequestBody(req *restful.Request) []byte {
+	if body, ok := req.Request.Context().Value(heresphereRequestBodyKey).([]byte); ok {
+		return body
+	}
+	return nil
+}
 
 func HeresphereAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
-	RequestBody, _ = io.ReadAll(req.Request.Body)
+	requestBody, _ := io.ReadAll(req.Request.Body)
+	req.Request = req.Request.WithContext(context.WithValue(req.Request.Context(), heresphereRequestBodyKey, requestBody))
 	if isDeoAuthEnabled() {
 		authState := 0
 		var requestData HereSphereAuthRequest
 
-		if err := json.Unmarshal(RequestBody, &requestData); err == nil {
+		if err := json.Unmarshal(requestBody, &requestData); err == nil {
 			if requestData.Username != "" && requestData.Password != "" {
 				cmpErr := bcrypt.CompareHashAndPassword([]byte(config.Config.Interfaces.DeoVR.Password), []byte(requestData.Password))
 				if requestData.Username == config.Config.Interfaces.DeoVR.Username && cmpErr == nil {
@@ -202,7 +217,7 @@ func (i HeresphereResource) getHeresphereFile(req *restful.Request, resp *restfu
 	}
 
 	var requestData HereSphereAuthRequest
-	if err := json.Unmarshal(RequestBody, &requestData); err != nil {
+	if err := json.Unmarshal(getHeresphereRequestBody(req), &requestData); err != nil {
 		log.Warnf("Error decoding heresphere api POST request: %v %s", err, req.Request.RequestURI)
 	}
 
@@ -268,7 +283,7 @@ func (i HeresphereResource) getHeresphereScene(req *restful.Request, resp *restf
 
 	var requestData HereSphereAuthRequest
 
-	if err := json.Unmarshal(RequestBody, &requestData); err != nil {
+	if err := json.Unmarshal(getHeresphereRequestBody(req), &requestData); err != nil {
 		log.Warnf("Error decoding heresphere api POST request: %v %s", err, req.Request.RequestURI)
 	}
 
@@ -916,6 +931,10 @@ func ProcessHeresphereUpdates(scene *models.Scene, requestData HereSphereAuthReq
 	}
 
 	if requestData.Hsp != nil && config.Config.Interfaces.Heresphere.AllowHspData {
+		if len(scene.Files) == 0 {
+			log.Errorf("Cannot save hsp data for scene %v: scene has no files", scene.ID)
+			return
+		}
 		hspContent, err := base64.StdEncoding.DecodeString(*requestData.Hsp)
 		if err != nil {
 			log.Errorf("Error decoding heresphere hsp data %v", err)

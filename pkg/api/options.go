@@ -413,7 +413,7 @@ func (i ConfigResource) toggleSiteField(req *restful.Request, resp *restful.Resp
 		db.Model(&models.Scene{}).Where("scraper_id = ?", site.ID).Update("limit_scraping", site.LimitScraping)
 	case "ScrapeStash":
 		site.ScrapeStash = !site.ScrapeStash
-		db.Model(&models.Scene{}).Where("scrape_stash = ?", site.ID).Update("scrape_stash", site.LimitScraping)
+		db.Model(&models.Scene{}).Where("scraper_id = ?", site.ID).Update("scrape_stash", site.ScrapeStash)
 	}
 	site.Save()
 
@@ -917,6 +917,11 @@ func (i ConfigResource) generateTestPreview(req *restful.Request, resp *restful.
 	files, err := scene.GetFiles()
 	if err != nil {
 		log.Error(err)
+		return
+	}
+	if len(files) == 0 {
+		log.Errorf("Scene %v has no files, cannot generate test preview", scene.SceneID)
+		resp.WriteErrorString(http.StatusBadRequest, "scene has no files")
 		return
 	}
 

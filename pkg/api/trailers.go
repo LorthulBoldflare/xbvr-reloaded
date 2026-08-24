@@ -9,6 +9,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/tidwall/gjson"
@@ -16,6 +17,10 @@ import (
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/scrape"
 )
+
+// trailerHTTPClient is shared by the trailer fetchers; the timeout prevents
+// a hung upstream from tying up a request handler forever.
+var trailerHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 func LoadHeresphereScene(scrapeParams string) HeresphereVideo {
 	var params models.TrailerScrape
@@ -26,20 +31,23 @@ func LoadHeresphereScene(scrapeParams string) HeresphereVideo {
 		json.Unmarshal([]byte(scrapeParams), &params)
 	}
 
-	method := "POST"
-	client := &http.Client{}
-	req, _ := http.NewRequest(method, params.SceneUrl, nil)
+	req, err := http.NewRequest(http.MethodPost, params.SceneUrl, nil)
+	if err != nil {
+		log.Errorf("Error building request for %s: %s", params.SceneUrl, err)
+		return HeresphereVideo{}
+	}
 
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
 	}
 	log.Debugf("Using Header/Cookies from %s", params.KVHttpConfig)
 	scrape.SetupHtmlRequest(params.KVHttpConfig, req)
-	response, err := client.Do(req)
+	response, err := trailerHTTPClient.Do(req)
 
 	if err != nil {
 		return HeresphereVideo{}
 	}
+	defer response.Body.Close()
 
 	responseData, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -64,9 +72,11 @@ func LoadDeovrScene(scrapeParams string) DeoScene {
 		json.Unmarshal([]byte(scrapeParams), &params)
 	}
 
-	method := "GET"
-	client := &http.Client{}
-	req, _ := http.NewRequest(method, params.SceneUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, params.SceneUrl, nil)
+	if err != nil {
+		log.Errorf("Error building request for %s: %s", params.SceneUrl, err)
+		return DeoScene{}
+	}
 
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
@@ -74,11 +84,12 @@ func LoadDeovrScene(scrapeParams string) DeoScene {
 	log.Debugf("Using Header/Cookies from %s", params.KVHttpConfig)
 	scrape.SetupHtmlRequest(params.KVHttpConfig, req)
 
-	response, err := client.Do(req)
+	response, err := trailerHTTPClient.Do(req)
 
 	if err != nil {
 		return DeoScene{}
 	}
+	defer response.Body.Close()
 
 	responseData, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -90,9 +101,6 @@ func LoadDeovrScene(scrapeParams string) DeoScene {
 	if err != nil {
 		log.Errorf("Error from %s %s response: %s", params.SceneUrl, err, string(responseData))
 	}
-
-	db, _ := models.GetDB()
-	defer db.Close()
 
 	return video
 }
@@ -124,6 +132,9 @@ func ScrapeHtml(scrapeParams string) models.VideoSourceResponse {
 				re := regexp.MustCompile(params.ExtractRegex)
 				results := re.FindAllStringSubmatch(e.Text, -1)
 				for _, result := range results {
+					if len(result) < 2 {
+						continue
+					}
 					parsedURL, _ := url.Parse(result[0])
 					filename := path.Base(parsedURL.Path)
 					baseFilename := strings.TrimSuffix(filename, path.Ext(filename))
@@ -179,20 +190,23 @@ func LoadJson(scrapeParams string) models.VideoSourceResponse {
 	var params models.TrailerScrape
 	json.Unmarshal([]byte(scrapeParams), &params)
 
-	method := "GET"
-	client := &http.Client{}
-	req, err := http.NewRequest(method, params.SceneUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, params.SceneUrl, nil)
+	if err != nil {
+		log.Errorf("Error building request for %s: %s", params.SceneUrl, err)
+		return models.VideoSourceResponse{}
+	}
 
 	if params.KVHttpConfig == "" {
 		params.KVHttpConfig = scrape.GetCoreDomain(params.SceneUrl) + "-trailers"
 	}
 	log.Debugf("Using Header/Cookies from %s", params.KVHttpConfig)
 	scrape.SetupHtmlRequest(params.KVHttpConfig, req)
-	response, err := client.Do(req)
+	response, err := trailerHTTPClient.Do(req)
 
 	if err != nil {
 		return models.VideoSourceResponse{}
 	}
+	defer response.Body.Close()
 
 	responseData, err := io.ReadAll(response.Body)
 	if err != nil {

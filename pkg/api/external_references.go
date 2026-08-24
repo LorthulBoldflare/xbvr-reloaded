@@ -9,7 +9,6 @@ import (
 	"github.com/xbapps/xbvr/pkg/models"
 )
 
-// var RequestBody []byte
 type RequestEditExtRefLink struct {
 	ID                  uint      `json:"id"`
 	ExternalReferenceID uint      `json:"external_reference_id"`
@@ -92,7 +91,15 @@ func (i ExternalReference) editExtRefLink(req *restful.Request, resp *restful.Re
 
 	var extreflink models.ExternalReferenceLink
 	if r.ID > 0 {
-		extreflink.ExternalReference.GetIfExist(r.ID)
+		// load the link itself, not its parent external reference —
+		// previously this left extreflink zero-valued, so Save() created a
+		// duplicate link instead of editing the existing one
+		commonDb, _ := models.GetCommonDB()
+		commonDb.First(&extreflink, r.ID)
+		if extreflink.ID == 0 {
+			resp.WriteErrorString(http.StatusNotFound, "external reference link not found")
+			return
+		}
 	} else {
 		extreflink.FindByExternaID(r.ExternalSource, r.ExternalId)
 	}
@@ -114,11 +121,17 @@ func (i ExternalReference) deleteExtRefLink(req *restful.Request, resp *restful.
 
 	var extreflink models.ExternalReferenceLink
 	if r.ID > 0 {
-		extreflink.ExternalReference.GetIfExist(r.ID)
+		commonDb, _ := models.GetCommonDB()
+		commonDb.First(&extreflink, r.ID)
+		if extreflink.ID == 0 {
+			resp.WriteErrorString(http.StatusNotFound, "external reference link not found")
+			return
+		}
 	} else {
 		extreflink.FindByExternaID(r.ExternalSource, r.ExternalId)
 	}
-	extreflink.ExternalReference.Delete()
+	// delete only the link; the parent external_reference may be referenced
+	// by other links
 	extreflink.Delete()
 	resp.WriteHeaderAndEntity(http.StatusOK, nil)
 }
@@ -166,11 +179,11 @@ func (i ExternalReference) deleteExtRefSourceLinksKeepManualMatches(req *restful
 	} else {
 		// Fetch records to delete
 		var recordsToDelete []models.ExternalReferenceLink
-		db.Debug().Joins("JOIN external_references ON external_reference_links.external_reference_id = external_references.id").
+		db.Joins("JOIN external_references ON external_reference_links.external_reference_id = external_references.id").
 			Where("external_reference_links.external_source LIKE ? AND match_type NOT IN (99999, -1) AND external_references.external_date >= ?", r.ExternalSource, r.DeleteDate).
 			Find(&recordsToDelete)
 		for _, record := range recordsToDelete {
-			db.Debug().Delete(&record)
+			db.Delete(&record)
 		}
 
 	}
