@@ -226,6 +226,9 @@ const actions = {
       commit('setItems', [])
     }
 
+    // Known limitation: infinite scroll accumulates all loaded scenes in
+    // memory (no windowing). Very large libraries should use filters or
+    // reload the list to reset.
     commit('setItems', state.items.concat(data.scenes))
     state.offset = iOffset + state.limit
     state.total = data.results

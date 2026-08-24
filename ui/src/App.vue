@@ -29,13 +29,15 @@ import GlobalEvents from 'vue-global-events'
 import Navbar from './Navbar.vue'
 import Socket from './Socket.vue'
 import QuickFind from './QuickFind'
-import Details from './views/scenes/Details'
-import EditScene from './views/scenes/EditScene'
-import ActorDetails from './views/actors/ActorDetails'
-import EditActor from './views/actors/EditActor'
-import SearchStashdbScenes from './views/scenes/SearchStashdbScenes'
-import SearchStashdbActors from './views/actors/SearchStashdbActors'
 import MigrationOverlay from './components/MigrationOverlay'
+
+// overlays load on demand — they are behind v-if and rarely all used
+const Details = () => import('./views/scenes/Details')
+const EditScene = () => import('./views/scenes/EditScene')
+const ActorDetails = () => import('./views/actors/ActorDetails')
+const EditActor = () => import('./views/actors/EditActor')
+const SearchStashdbScenes = () => import('./views/scenes/SearchStashdbScenes')
+const SearchStashdbActors = () => import('./views/actors/SearchStashdbActors')
 
 export default {
   components: { Navbar, Socket, QuickFind, GlobalEvents, Details, EditScene, ActorDetails, EditActor, SearchStashdbScenes, SearchStashdbActors, MigrationOverlay },

@@ -40,24 +40,39 @@ export default {
       this.infiniteScrollEnabled = !this.infiniteScrollEnabled
     }
   },
-  mounted () {
-    const toTop = document.getElementById('toTop')
-    const toggleBtn = document.getElementById('toggleInfiniteScroll')
-    addEventListener('scroll', function () {
+  created () {
+    // named handlers so the listeners can be removed on destroy —
+    // previously anonymous listeners leaked on every route mount
+    this._onScroll = () => {
+      const toTop = document.getElementById('toTop')
+      const toggleBtn = document.getElementById('toggleInfiniteScroll')
+      if (!toTop || !toggleBtn) {
+        return
+      }
       const show = document.body.scrollTop > 20 || document.documentElement.scrollTop > 20
       toTop.style.display = show ? 'block' : 'none'
       toggleBtn.style.display = show ? 'block' : 'none'
-    })
-    toTop.addEventListener('click', function () {
-      scrollToTop()
-    })
-
-    const scrollToTop = () => {
+    }
+    this._scrollToTop = () => {
       const c = document.documentElement.scrollTop || document.body.scrollTop
       if (c > 0) {
-        window.requestAnimationFrame(scrollToTop)
+        window.requestAnimationFrame(this._scrollToTop)
         window.scrollTo(0, c - c / 16)
       }
+    }
+    this._onToTopClick = () => {
+      this._scrollToTop()
+    }
+  },
+  mounted () {
+    window.addEventListener('scroll', this._onScroll)
+    document.getElementById('toTop').addEventListener('click', this._onToTopClick)
+  },
+  beforeDestroy () {
+    window.removeEventListener('scroll', this._onScroll)
+    const toTop = document.getElementById('toTop')
+    if (toTop) {
+      toTop.removeEventListener('click', this._onToTopClick)
     }
   },
   beforeRouteEnter (to, from, next) {

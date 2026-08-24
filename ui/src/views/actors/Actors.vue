@@ -26,23 +26,37 @@ import List from './List'
 export default {
   name: 'Actors',  
   components: { Filters, List},
-  mounted () {
-    const toTop = document.getElementById('toTop')
-    addEventListener('scroll', function () {
+  created () {
+    // named handlers so the listeners can be removed on destroy
+    this._onScroll = () => {
+      const toTop = document.getElementById('toTop')
+      if (!toTop) {
+        return
+      }
       toTop.style.display = document.body.scrollTop > 20 || document.documentElement.scrollTop > 20
         ? 'block'
         : 'none'
-    })
-    toTop.addEventListener('click', function () {
-      scrollToTop()
-    })
-
-    const scrollToTop = () => {
+    }
+    this._scrollToTop = () => {
       const c = document.documentElement.scrollTop || document.body.scrollTop
       if (c > 0) {
-        window.requestAnimationFrame(scrollToTop)
+        window.requestAnimationFrame(this._scrollToTop)
         window.scrollTo(0, c - c / 16)
       }
+    }
+    this._onToTopClick = () => {
+      this._scrollToTop()
+    }
+  },
+  mounted () {
+    window.addEventListener('scroll', this._onScroll)
+    document.getElementById('toTop').addEventListener('click', this._onToTopClick)
+  },
+  beforeDestroy () {
+    window.removeEventListener('scroll', this._onScroll)
+    const toTop = document.getElementById('toTop')
+    if (toTop) {
+      toTop.removeEventListener('click', this._onToTopClick)
     }
   },
   beforeRouteEnter (to, from, next) {

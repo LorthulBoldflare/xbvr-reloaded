@@ -177,6 +177,10 @@ export default {
     },
     startPolling() {
       this.pollInterval = setInterval(() => {
+        // pause polling while the tab is hidden
+        if (document.hidden) {
+          return
+        }
         this.checkMigrationStatus()
       }, 2000)
     },
