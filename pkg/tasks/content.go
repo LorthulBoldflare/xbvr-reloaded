@@ -142,6 +142,21 @@ func CleanTags() {
 	CountTags()
 }
 
+// sitesWithPendingUpdates returns the set of scraper IDs that have at least
+// one scene flagged for re-scrape (needs_update).
+func sitesWithPendingUpdates(db *gorm.DB) map[string]bool {
+	pending := map[string]bool{}
+	var ids []string
+	if err := db.Model(&models.Scene{}).Where("needs_update = ?", true).Pluck("DISTINCT scraper_id", &ids).Error; err != nil {
+		log.Error(err)
+		return pending
+	}
+	for _, id := range ids {
+		pending[id] = true
+	}
+	return pending
+}
+
 func runScrapers(knownScenes []string, toScrape string, updateSite bool, collectedScenes chan<- models.ScrapedScene, singleSceneURL string, singeScrapeAdditionalInfo string) error {
 	defer scrape.DeleteScrapeCache()
 
@@ -157,6 +172,11 @@ func runScrapers(knownScenes []string, toScrape string, updateSite bool, collect
 		commonDb.Where(&models.Site{ID: toScrape}).Find(&sites)
 	}
 
+	// Scenes flagged for re-scrape (needs_update) may not appear on the first
+	// page of a site's listing, so limit scraping must not apply to sites with
+	// pending updates or those scenes would silently never be re-scraped.
+	pendingUpdateSites := sitesWithPendingUpdates(commonDb)
+
 	var wg models.ScrapeWG
 
 	concurrent_scrapers := int64(common.ConcurrentScrapers)
@@ -167,9 +187,14 @@ func runScrapers(knownScenes []string, toScrape string, updateSite bool, collect
 		for _, site := range sites {
 			for _, scraper := range scrapers {
 				if site.ID == scraper.ID {
+					limitScraping := site.LimitScraping
+					if limitScraping && pendingUpdateSites[site.ID] {
+						limitScraping = false
+						log.Infof("Limit scraping temporarily disabled for %s: scene(s) flagged for re-scrape", site.ID)
+					}
 					wg.Add(1)
-					go func(scraper models.Scraper) {
-						scraper.Scrape(&wg, updateSite, knownScenes, collectedScenes, singleSceneURL, singeScrapeAdditionalInfo, site.LimitScraping)
+					go func(scraper models.Scraper, limitScraping bool) {
+						scraper.Scrape(&wg, updateSite, knownScenes, collectedScenes, singleSceneURL, singeScrapeAdditionalInfo, limitScraping)
 						var site models.Site
 						err := site.GetIfExist(scraper.ID)
 						if err != nil {
@@ -177,7 +202,7 @@ func runScrapers(knownScenes []string, toScrape string, updateSite bool, collect
 							return
 						}
 						site.Save()
-					}(scraper)
+					}(scraper, limitScraping)
 
 					if wg.Count() >= concurrent_scrapers { // processing batches of 35 sites
 						wg.Wait(concurrent_scrapers)

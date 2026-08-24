@@ -59,6 +59,55 @@ func normalizeSLRSceneURL(u string) string {
 	return urlPrefix + "scenes/" + slug
 }
 
+// extractSLRTimestamps builds the JSON array of {name: seconds} entries from
+// SLR API scene data, for import as scene cuepoints. Returns "" when the
+// scene has no usable timestamps.
+func extractSLRTimestamps(sceneData gjson.Result, sceneID string) string {
+	timeStamps := sceneData.Get("timestamps")
+	if !timeStamps.Exists() {
+		// Legacy API uses "timeStamps" (camelCase) instead of "timestamps"
+		timeStamps = sceneData.Get("timeStamps")
+	}
+	if !timeStamps.Exists() || !timeStamps.IsArray() {
+		return ""
+	}
+
+	var timestampMap []map[string]interface{}
+	timeStamps.ForEach(func(key, value gjson.Result) bool {
+		// v3 API uses "timestamp", legacy API uses "ts" — pick by presence,
+		// not by which endpoint answered, so payload variances don't silently
+		// produce zero-value cuepoints.
+		tsValue := value.Get("timestamp")
+		if !tsValue.Exists() {
+			tsValue = value.Get("ts")
+		}
+		name := strings.TrimSpace(value.Get("name").String())
+		if name != "" && tsValue.Exists() {
+			timestampEntry := map[string]interface{}{
+				name: tsValue.Int(),
+			}
+			timestampMap = append(timestampMap, timestampEntry)
+		}
+		return true
+	})
+
+	if len(timestampMap) == 0 {
+		raw := timeStamps.Raw
+		if len(raw) > 500 {
+			raw = raw[:500]
+		}
+		log.Warnf("Scene %s: timestamps present in API response but no usable entries extracted, raw: %s", sceneID, raw)
+		return ""
+	}
+
+	timestampJSON, err := json.Marshal(timestampMap)
+	if err != nil {
+		log.Errorln("Failed to marshal timestamps for scene", sceneID, ":", err)
+		return ""
+	}
+	return string(timestampJSON)
+}
+
 func SexLikeReal(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out chan<- models.ScrapedScene, singleSceneURL string, scraperID string, siteID string, company string, siteURL string, singeScrapeAdditionalInfo string, limitScraping bool, masterSiteId string) error {
 	defer wg.Done()
 	logScrapeStart(scraperID, siteID)
@@ -295,40 +344,7 @@ func SexLikeReal(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out
 		}
 
 		// Process timestamps from API and save as JSON array
-		timeStamps := sceneData.Get("timestamps")
-		if !timeStamps.Exists() {
-			// Legacy API uses "timeStamps" (camelCase) instead of "timestamps"
-			timeStamps = sceneData.Get("timeStamps")
-		}
-		if timeStamps.Exists() && timeStamps.IsArray() {
-			var timestampMap []map[string]interface{}
-			timeStamps.ForEach(func(key, value gjson.Result) bool {
-				// Legacy API uses "ts" field, v3 uses "timestamp"
-				var ts int64
-				if isLegacyAPI {
-					ts = value.Get("ts").Int()
-				} else {
-					ts = value.Get("timestamp").Int()
-				}
-				name := strings.TrimSpace(value.Get("name").String())
-				if name != "" {
-					timestampEntry := map[string]interface{}{
-						name: ts,
-					}
-					timestampMap = append(timestampMap, timestampEntry)
-				}
-				return true
-			})
-
-			if len(timestampMap) > 0 {
-				timestampJSON, err := json.Marshal(timestampMap)
-				if err == nil {
-					sc.Timestamps = string(timestampJSON)
-				} else {
-					log.Errorln("Failed to marshal timestamps for scene", sceneID, ":", err)
-				}
-			}
-		}
+		sc.Timestamps = extractSLRTimestamps(sceneData, sceneID)
 
 		// Cover image
 		thumbnailURL := sceneData.Get("thumbnailUrl").String()

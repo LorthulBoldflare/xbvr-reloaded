@@ -558,6 +558,7 @@ func SceneCreateUpdateFromExternal(db *gorm.DB, ext ScrapedScene) error {
 			// 	cuepoints where there is a non-null track have probably come from manual entry in heresphere
 			db.Where("scene_id = ? and track is null", o.ID).Delete(&SceneCuepoint{})
 
+			imported := 0
 			// Process each timestamp and create cuepoint
 			for _, ts := range timestamps {
 				for name, value := range ts {
@@ -579,8 +580,12 @@ func SceneCreateUpdateFromExternal(db *gorm.DB, ext ScrapedScene) error {
 					}
 
 					db.Create(&cuepoint)
+					imported++
 				}
 			}
+			log.Debugf("Imported %d cuepoints for scene %s", imported, ext.SceneID)
+		} else {
+			log.Errorf("Failed to parse timestamps for scene %s: %s", ext.SceneID, err)
 		}
 	}
 
