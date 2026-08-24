@@ -162,7 +162,7 @@ XBVR exposes an MCP endpoint (Streamable HTTP transport) at `/mcp` on the web po
 | Tool | Description |
 |------|-------------|
 | `rescan_storage` | Rescan all storage folders (same as Options → Storage → "Rescan all folders") |
-| `scrape_scene` | Scrape a single scene from its URL and store it (same as Options → Create/Import scene → "Scrape a scene", including confirming the scene detail popup). Arguments: `url` (required), `scene_id` (only for wetvr.com scenes). Returns the scene-id determined by the scraper, or `null` if the scene could not be scraped; if the scene is already present, its scene-id is returned. Note: scraping a new scene can take tens of seconds. |
+| `scrape_scene` | Scrape a single scene from its URL and store it (same as Options → Create/Import scene → "Scrape a scene", including confirming the scene detail popup). Arguments: `url` (required), `scene_id` (only for wetvr.com scenes). Returns the scene-id determined by the scraper; if the scene is already present, its scene-id is returned. If the scene could not be scraped, the call fails with an error describing why. Note: scraping a new scene can take tens of seconds. |
 | `generate_previews` | Start generating video preview clips (same as Options → Previews) |
 
 **Authentication:** when UI authentication is enabled (`UI_USERNAME`/`UI_PASSWORD` set), requests must send an `Authorization: Bearer <token>` header where the token is the concatenation of the UI username and UI password. For example, with username `UserA` and password `Password123`, the token is `UserAPassword123`. When UI auth is disabled, the endpoint is open.

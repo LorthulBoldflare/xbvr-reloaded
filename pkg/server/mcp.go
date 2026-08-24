@@ -72,9 +72,9 @@ func newMCPServer(version string) *mcp.Server {
 		Name: "scrape_scene",
 		Description: "Scrape a single scene from its scene-page URL and store it in the library. " +
 			"Same as Options -> Create/Import scene -> 'Scrape a scene' in the web UI, including confirming " +
-			"the scene detail popup. Returns the scene-id as determined by the scraper, or null if the " +
-			"scene could not be scraped. If the scene is already present, its scene-id is returned without " +
-			"re-scraping. May take tens of seconds for a new scene.",
+			"the scene detail popup. Returns the scene-id as determined by the scraper. If the scene is " +
+			"already present, its scene-id is returned without re-scraping. If the scene could not be " +
+			"scraped, an error is returned. May take tens of seconds for a new scene.",
 	}, mcpScrapeScene)
 
 	mcp.AddTool(server, &mcp.Tool{
@@ -277,7 +277,7 @@ func mcpScrapeScene(ctx context.Context, req *mcp.CallToolRequest, args mcpScrap
 
 	scene := tasks.ScrapeSingleScene(site, args.URL, additionalInfo)
 	if scene.ID == 0 {
-		return mcpTextResult("null"), nil, nil
+		return nil, nil, fmt.Errorf("the scene could not be scraped: the %q scraper produced no scene for %s (the URL may not be a scene page, the site may require a login, or the scrape may have failed upstream - check the xbvr log for details)", site, args.URL)
 	}
 
 	// Confirm the scraped scene the same way the EditScene modal's
