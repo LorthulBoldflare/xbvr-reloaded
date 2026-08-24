@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -225,7 +224,7 @@ func GetStashDbScene(stashId string) FindScenesResult {
 		  }
 		  }
 		  `
-	variables := `{"id": "` + stashId + `"}`
+	variables := stashVarsJSON(map[string]interface{}{"id": stashId})
 	resp := CallStashDb(query, variables)
 	json.Unmarshal(resp, &result)
 
@@ -254,7 +253,7 @@ func FindStashdbStudio(studio string, field string) FindStudioResult {
 	`
 
 	// Define the variables needed for your query as a Go map
-	variables := `{"` + field + `": "` + studio + `"}`
+	variables := stashVarsJSON(map[string]interface{}{field: studio})
 
 	resp := CallStashDb(query, variables)
 	var data FindStudioResult
@@ -301,14 +300,11 @@ func getPerformersPage(studioId string, page int) QueryPerformerResult {
 				}
 			}`
 	// Define the variables needed for your query as a Go map
-	variables := `
-		{"input":{
-			"studio_id": "` + studioId + `",
-			"page": ` + strconv.Itoa(page) + `,
-			"per_page": 100
-			}
-		}
-		`
+	variables := StashVariablesJSON(map[string]interface{}{
+		"studio_id": studioId,
+		"page":      page,
+		"per_page":  100,
+	})
 
 	resp := CallStashDb(query, variables)
 	var data QueryPerformerResult
@@ -352,42 +348,33 @@ func getScenes(studioId string, parentId string, tagId string) QueryScenesResult
 
 // Builds a query variable to get scenes from the Studio
 func getStudioSceneQueryVariable(studioId string, page int, count int) string {
-	return `
-	{"input":{
-				"studios": {
-					"modifier": "EQUALS",
-					"value": "` + studioId + `"
-				},
-				"page": ` + strconv.Itoa(page) + `,
-				"per_page": ` + strconv.Itoa(count) + `,
-				"sort": "UPDATED_AT"
-			}
-		}`
-
+	return StashVariablesJSON(map[string]interface{}{
+		"studios": map[string]interface{}{
+			"modifier": "EQUALS",
+			"value":    studioId,
+		},
+		"page":     page,
+		"per_page": count,
+		"sort":     "UPDATED_AT",
+	})
 }
 
 // Builds a query variable to get scenes from the Parent Studio
 // Uses the tagId to filter just scenes tag as Virtual Reality
 func getParentSceneQueryVariable(parentId string, tagId string, page int, count int) string {
-	tag := ""
-	if tagId != "" {
-		tag = `
-		"tags": {					
-			"value": "` + tagId + `",
-			"modifier": "INCLUDES"
-		},
-		`
+	input := map[string]interface{}{
+		"parentStudio": parentId,
+		"page":         page,
+		"per_page":     count,
+		"sort":         "UPDATED_AT",
 	}
-	return `
-	{"input":{` + tag + ` 
-		"parentStudio": "` + parentId + `",				 
-		
-		"page": ` + strconv.Itoa(page) + `,
-		"per_page": ` + strconv.Itoa(count) + `,
-		"sort": "UPDATED_AT"
+	if tagId != "" {
+		input["tags"] = map[string]interface{}{
+			"value":    tagId,
+			"modifier": "INCLUDES",
 		}
 	}
-`
+	return StashVariablesJSON(input)
 }
 
 // calls graphql scene query and return a list of scenes
@@ -469,7 +456,7 @@ func GetScenePage(variables string) QueryScenesResult {
 }
 
 func GetSceneFromStash(sceneId string) models.StashScene {
-	variables := `{"id": "` + sceneId + `"} `
+	variables := stashVarsJSON(map[string]interface{}{"id": sceneId})
 	query := `
 	 query  findScene($id: ID!) {
 		findScene(id: $id) {
@@ -703,7 +690,7 @@ func GetStashPerformer(performer string) FindPerformerResult {
 
 	// Define the variables needed for your query as a Go map
 	var data FindPerformerResult
-	variables := `{"id": "` + performer + `"}`
+	variables := stashVarsJSON(map[string]interface{}{"id": performer})
 	resp := CallStashDb(query, variables)
 	err := json.Unmarshal(resp, &data)
 	if err != nil {
@@ -760,7 +747,7 @@ func SearchStashPerformer(performer string) SearchPerformerResult {
 
 	// Define the variables needed for your query as a Go map
 	var data SearchPerformerResult
-	variables := `{"term": "` + performer + `"}`
+	variables := stashVarsJSON(map[string]interface{}{"term": performer})
 	resp := CallStashDb(query, variables)
 	err := json.Unmarshal(resp, &data)
 	if err != nil {
@@ -824,13 +811,35 @@ func GetStashPerformerFull(performer string) FindPerformerScenesResult {
 
 	// Define the variables needed for your query as a Go map
 	var data FindPerformerScenesResult
-	variables := `{"id": "` + performer + `"}`
+	variables := stashVarsJSON(map[string]interface{}{"id": performer})
 	resp := CallStashDb(query, variables)
 	err := json.Unmarshal(resp, &data)
 	if err != nil {
 		log.Errorf("Eror extracting actor json")
 	}
 	return data
+}
+
+// StashVariablesJSON builds the JSON variables payload for a StashDB GraphQL
+// call from a map, replacing error-prone string concatenation. The provided
+// input is wrapped as {"input": {...}}, the shape used by StashDB queries.
+func StashVariablesJSON(input map[string]interface{}) string {
+	b, err := json.Marshal(map[string]interface{}{"input": input})
+	if err != nil {
+		log.Errorf("failed to marshal stashdb query variables: %v", err)
+		return "{}"
+	}
+	return string(b)
+}
+
+// stashVarsJSON marshals GraphQL variables of any shape.
+func stashVarsJSON(vars map[string]interface{}) string {
+	b, err := json.Marshal(vars)
+	if err != nil {
+		log.Errorf("failed to marshal stashdb query variables: %v", err)
+		return "{}"
+	}
+	return string(b)
 }
 
 func CallStashDb(query string, rawVariables string) []byte {

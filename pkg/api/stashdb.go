@@ -212,7 +212,7 @@ func (i ExternalReference) searchForStashdbScene(req *restful.Request, resp *res
 			warnings = append(warnings, actor.Name+" is not linked to Stashdb")
 		} else {
 			for _, stashPerformer := range stashlinks {
-				xbvrperformers = append(xbvrperformers, `"`+stashPerformer.ExternalId+`"`)
+				xbvrperformers = append(xbvrperformers, stashPerformer.ExternalId)
 			}
 		}
 	}
@@ -312,61 +312,59 @@ func (i ExternalReference) searchForStashdbScene(req *restful.Request, resp *res
 	for _, file := range scene.Files {
 		if file.Type == "video" {
 			file.OsHash = "00000000000000000" + file.OsHash
-			fingerprints = append(fingerprints, `"`+file.OsHash[len(file.OsHash)-16:]+`"`)
+			fingerprints = append(fingerprints, file.OsHash[len(file.OsHash)-16:])
 		}
 	}
 	if len(fingerprints) > 0 {
-		fingerprintList := strings.Join(fingerprints, ",")
-		fingerprintQuery := `
-		{"input":{
-					"page": 1,
-					"per_page": 150,
-					"sort": "UPDATED_AT",
-					"fingerprints": {"value": [` +
-			fingerprintList +
-			`], "modifier":"EQUALS"}
-				}
-			}`
+		fingerprintQuery := scrape.StashVariablesJSON(map[string]interface{}{
+			"page":     1,
+			"per_page": 150,
+			"sort":     "UPDATED_AT",
+			"fingerprints": map[string]interface{}{
+				"value":    fingerprints,
+				"modifier": "EQUALS",
+			},
+		})
 		stashScenes := scrape.GetScenePage(fingerprintQuery)
 		scoreResults(stashScenes, 400, xbvrperformers, stashStudioIds)
 	}
 
 	stashScenes := scrape.QueryScenesResult{}
 	for _, studio := range stashStudioIds {
-		// Exact Title submatch
-		titleQuery := `
-		{"input":{
-					"parentStudio": ` + studio + `,
-					"page": 1,
-					"per_page": 150,
-					"sort": "UPDATED_AT",
-					"title": "\"` +
-			scene.Title + `\""
-				}
-			}`
+		// Exact Title submatch — the title value intentionally carries
+		// embedded double quotes: StashDB treats a quoted phrase as an
+		// exact match, which is what distinguishes this tier (150 pts)
+		// from the loose title search below. StashVariablesJSON escapes
+		// them safely via json.Marshal.
+		titleQuery := scrape.StashVariablesJSON(map[string]interface{}{
+			"parentStudio": studio,
+			"page":         1,
+			"per_page":     150,
+			"sort":         "UPDATED_AT",
+			"title":        `"` + scene.Title + `"`,
+		})
 		stashScenes = scrape.GetScenePage(titleQuery)
 		scoreResults(stashScenes, 150, xbvrperformers, stashStudioIds)
 	}
 
 	if len(xbvrperformers) > 0 {
-		performerList := strings.Join(xbvrperformers, ",")
 		for _, studio := range stashStudioIds {
-			performerQuery := `
-			{"input":{
-						"parentStudio": ` + studio + `,
-						"page": 1,
-						"per_page": 150,
-						"sort": "UPDATED_AT",
-						"performers": {"value": [` +
-				performerList +
-				`], "modifier":"INCLUDES_ALL"}
-					}
-				}`
-			stashScenes = scrape.GetScenePage(performerQuery)
+			buildPerformerQuery := func(modifier string) string {
+				return scrape.StashVariablesJSON(map[string]interface{}{
+					"parentStudio": studio,
+					"page":         1,
+					"per_page":     150,
+					"sort":         "UPDATED_AT",
+					"performers": map[string]interface{}{
+						"value":    xbvrperformers,
+						"modifier": modifier,
+					},
+				})
+			}
+			stashScenes = scrape.GetScenePage(buildPerformerQuery("INCLUDES_ALL"))
 			scoreResults(stashScenes, 200, xbvrperformers, stashStudioIds)
 			if len(stashScenes.Data.QueryScenes.Scenes) == 0 {
-				performerQuery = strings.ReplaceAll(performerQuery, "INCLUDES_ALL", "INCLUDES")
-				stashScenes := scrape.GetScenePage(performerQuery)
+				stashScenes := scrape.GetScenePage(buildPerformerQuery("INCLUDES"))
 				scoreResults(stashScenes, 100, xbvrperformers, stashStudioIds)
 			}
 		}
@@ -375,31 +373,20 @@ func (i ExternalReference) searchForStashdbScene(req *restful.Request, resp *res
 	if len(results) == 0 {
 		for _, studio := range stashStudioIds {
 			// No match yet, try match any words from the title, not likely to find, as this returns too many results
-			titleQuery := `
-		{"input":{
-					"parentStudio": ` + studio + `,
-					"page": 1,
-					"per_page": 100,
-					"sort": "UPDATED_AT",
-					"title": "` +
-				scene.Title + `"
-				}
-			}`
-			stashScenes = scrape.GetScenePage(titleQuery)
+			buildTitleQuery := func(page int) string {
+				return scrape.StashVariablesJSON(map[string]interface{}{
+					"parentStudio": studio,
+					"page":         page,
+					"per_page":     100,
+					"sort":         "UPDATED_AT",
+					"title":        scene.Title,
+				})
+			}
+			stashScenes = scrape.GetScenePage(buildTitleQuery(1))
 			scoreResults(stashScenes, 150, xbvrperformers, stashStudioIds)
 			page := 2
 			for i := 101; i < stashScenes.Data.QueryScenes.Count && page <= 5; {
-				titleQuery := `
-					{"input":{
-								"parentStudio": ` + studio + `,
-								"page": ` + strconv.Itoa(page) + `,
-								"per_page": 100,
-								"sort": "UPDATED_AT",
-								"title": "` +
-					scene.Title + `"
-							}
-						}`
-				stashScenes = scrape.GetScenePage(titleQuery)
+				stashScenes = scrape.GetScenePage(buildTitleQuery(page))
 				scoreResults(stashScenes, 150, xbvrperformers, stashStudioIds)
 				i = i + 100
 				page += 1
@@ -723,7 +710,7 @@ func findStashStudioIds(scraper string) []string {
 	}
 	var results []string
 	for key, _ := range stashIds {
-		results = append(results, `"`+key+`"`)
+		results = append(results, key)
 	}
 	return results
 }
