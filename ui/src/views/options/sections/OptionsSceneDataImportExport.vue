@@ -169,7 +169,7 @@
         </div>
         <b-field>
           <b-tooltip
-            :label="isImport ? 'Requires restarting XBVR once complete. Include XBVR Configuration Settings. Preview setting, task schedules, etc.' : 'Includes passowrds/access tokens. Includes XBVR Configuration Settings. Preview settings, task schedules, etc.'"  
+            :label="isImport ? 'Requires restarting XBVR once complete. Include XBVR Configuration Settings. Preview setting, task schedules, etc.' : 'Credential settings (API tokens, cookies, passwords) are encrypted with the bundle password. Includes XBVR Configuration Settings. Preview settings, task schedules, etc.'"
             size="is-large" :type="isImport ? 'is-warning is-light' : 'is-danger is-light'" multilined :delay="300" >
             <b-switch v-model="includeConfig">Include Config Settings</b-switch>
           </b-tooltip>
@@ -190,6 +190,11 @@
         </b-tooltip>
       </b-field>
       <b-field>
+        <b-tooltip
+          :label="isImport ? 'Password the bundle credentials were encrypted with. Always required.' : 'Encrypts credential settings (API tokens, scraper cookies, passwords) in the bundle. Always required.'"
+          size="is-large" type="is-primary is-light" multilined :delay="300">
+          <b-input type="password" v-model="bundlePassword" :placeholder="$t('Bundle password (required)')" password-reveal style="min-width: 16em"></b-input>
+        </b-tooltip>
         <b-tooltip v-if="isImport && fileBundleSource"
             label="Select a file to import."
             size="is-large" type="is-primary is-light" multilined :delay="1000">
@@ -204,19 +209,20 @@
                 </span>
             </b-upload>
           </b-field>
+          <b-button v-if="file" type="is-primary" @click="confirmRestore" :disabled="passwordRequired">Import</b-button>
         </b-tooltip>
         <b-field v-if="isImport && !fileBundleSource">
           <b-input type="url" v-model="bundleUrl" placeholder="eg https://localhost:9999/myfiles/xbvr-content-bundle.json"
             @input="validateUrl" :class="{ 'is-danger': urlError }">
           </b-input>
           <b-help :text="urlError" v-if="urlError"></b-help>
-          <b-button type="is-primary" @click="restoreContent" :disabled="urlError!='' || bundleUrl==''">Import</b-button>
+          <b-button type="is-primary" @click="confirmRestore" :disabled="urlError!='' || bundleUrl=='' || passwordRequired">Import</b-button>
         </b-field>
 
           <b-tooltip  v-if="activeTab == 1"
             label="Generating the data for a large number of scenes is time consuming, montior progress in the status messages in the top right of the browser."
             size="is-large" type="is-primary is-light" multilined :delay="1000">
-            <b-button type="is-primary"  @click="backupContent" icon-left="download">Export
+            <b-button type="is-primary"  @click="backupContent" icon-left="download" :disabled="passwordRequired">Export
             </b-button>
           </b-tooltip>
         <b-tooltip style="margin-left: 10px"            
@@ -234,7 +240,10 @@
             </b-upload>
           </b-field>
         </b-tooltip>
-      </b-field>    
+      </b-field>
+      <b-message v-if="passwordRequired" type="is-danger" size="is-small">
+        A bundle password is <strong>required</strong>. On export it encrypts the credential settings (API tokens, cookies, passwords); on import it decrypts them. Neither runs without it.
+      </b-message>
     </div>
   </div>
 </template>
@@ -256,7 +265,8 @@ export default {
       includePlaylists: true,
       includeVolumes: true,
       includeSites: true,
-      includeConfig: false,
+      includeConfig: true,
+      bundlePassword: '',
       includeActorAkas: true,
       includeExternalReferences: true,
       includeTagGroups: true,
@@ -289,9 +299,15 @@ export default {
     isExport() {
       return this.activeTab == 1
     },
+    passwordRequired () {
+      // a bundle password is mandatory for both import and export:
+      // exports encrypt credential settings with it, imports decrypt them
+      return this.bundlePassword === ''
+    }
   },
   watch: {
-    // when a file is selected, then this will fire the upload process
+    // when a file is selected, only load it — the restore requires an
+    // explicit Import click plus confirmation
     file: function (o, n) {
       try {
         if (this.file != null) {
@@ -299,7 +315,7 @@ export default {
           reader.onload = (event) => {
             try {
               this.uploadData = JSON.stringify(JSON.parse(event.target.result))
-              this.restoreContent()
+              this.$buefy.toast.open({message: `Loaded ${this.file.name} — click Import to restore`, type: 'is-info', duration: 5000})
           } catch (error) {
             this.$buefy.toast.open({message: `Error:  ${error.message}`, type: 'is-danger', duration: 30000})    
           }
@@ -338,6 +354,10 @@ export default {
   },
   methods: {
     confirmRestore () {
+      if (this.passwordRequired) {
+        this.$buefy.toast.open({message: this.$t('A bundle password is required'), type: 'is-danger', duration: 5000})
+        return
+      }
       const scope = this.overwrite
         ? 'Existing data will be <strong>overwritten</strong> by the bundle contents.'
         : 'Only new records will be added.'
@@ -371,16 +391,20 @@ export default {
           json: { allSites: this.allSites == "true", onlyIncludeOfficalSites: this.onlyIncludeOfficalSites, inclScenes: this.includeScenes, inclHistory: this.includeHistory, 
           inclLinks: this.includeFileLinks, inclCuepoints: this.includeCuepoints, inclActions: this.includeActions, inclPlaylists: this.includePlaylists, inclActorAkas: this.includeActorAkas, inclTagGroups: this.includeTagGroups, 
           inclVolumes: this.includeVolumes, inclExtRefs: this.includeExternalReferences, inclSites: this.includeSites, inclSqlCmds: this.includeSqlCommands, inclActors: this.includeActors,inclActorActions: this.inclActorActions, 
-          inclConfig: this.includeConfig, extRefSubset: this.extRefSubset, overwrite: this.overwrite, uploadData: data, bundleUrl: url }
+          inclConfig: this.includeConfig, extRefSubset: this.extRefSubset, overwrite: this.overwrite, uploadData: data, bundleUrl: url, bundlePassword: this.bundlePassword }
         })
         this.file = null
       }
     },
-    backupContent () {      
+    backupContent () {
+      if (this.passwordRequired) {
+        this.$buefy.toast.open({message: this.$t('A bundle password is required to export credential settings'), type: 'is-danger', duration: 5000})
+        return
+      }
       api.get('/task/bundle/backup', { timeout: false, searchParams: { allSites: this.allSites == "true", onlyIncludeOfficalSites: this.onlyIncludeOfficalSites, inclScenes: this.includeScenes, inclHistory: this.includeHistory,
            inclLinks: this.includeFileLinks, inclCuepoints: this.includeCuepoints, inclActions: this.includeActions, inclPlaylists: this.includePlaylists, inclActorAkas: this.includeActorAkas, inclTagGroups: this.includeTagGroups, 
            inclVolumes: this.includeVolumes, inclExtRefs: this.includeExternalReferences, inclSites: this.includeSites, inclActors: this.includeActors,inclActorActions: this.inclActorActions,
-           inclConfig: this.includeConfig, extRefSubset: this.extRefSubset, playlistId: this.currentPlaylist, download: true } }).json().then(data => {      
+           inclConfig: this.includeConfig, extRefSubset: this.extRefSubset, playlistId: this.currentPlaylist, download: true, bundlePassword: this.bundlePassword } }).json().then(data => {      
         const link = document.createElement('a')
         link.href = this.myUrl
         link.click()

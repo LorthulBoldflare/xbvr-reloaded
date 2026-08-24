@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -195,9 +196,18 @@ func (i TaskResource) backupBundle(req *restful.Request, resp *restful.Response)
 	extRefSubset := req.QueryParameter("extRefSubset")
 	playlistId := req.QueryParameter("playlistId")
 	download := req.QueryParameter("download")
+	bundlePassword := req.QueryParameter("bundlePassword")
+
+	// Credential settings are always encrypted with the bundle password and
+	// never scrubbed from the export — so a password is mandatory when
+	// config settings are included.
+	if inclConfig && bundlePassword == "" {
+		APIError(req, resp, http.StatusBadRequest, errors.New("a bundle password is required when including config settings"))
+		return
+	}
 
 	bundle := tasks.BackupBundle(inclAllSites, onlyIncludeOfficalSites, inclScenes, inclFileLinks, inclCuepoints, inclHistory, inclPlaylists,
-		inclActorAkas, inclTagGroups, inclVolumes, inclSites, inclActions, inclExtRefs, inclActors, inclActorActions, inclConfig, extRefSubset, playlistId, "", "")
+		inclActorAkas, inclTagGroups, inclVolumes, inclSites, inclActions, inclExtRefs, inclActors, inclActorActions, inclConfig, extRefSubset, playlistId, "", "", bundlePassword)
 	if download == "true" {
 		resp.WriteHeaderAndEntity(http.StatusOK, ResponseBackupBundle{Response: "Ready to Download from http://xxx.xxx.xxx.xxx:9999/download/xbvr-content-bundle.json"})
 	} else {

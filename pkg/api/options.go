@@ -582,7 +582,9 @@ func (i ConfigResource) saveOptionsAdvanced(req *restful.Request, resp *restful.
 	config.Config.Advanced.ShowInternalSceneId = r.ShowInternalSceneId
 	config.Config.Advanced.ShowHSPApiLink = r.ShowHSPApiLink
 	config.Config.Advanced.ShowSceneSearchField = r.ShowSceneSearchField
-	config.Config.Advanced.StashApiKey = r.StashApiKey
+	if r.StashApiKey != config.RedactedSecret {
+		config.Config.Advanced.StashApiKey = r.StashApiKey
+	}
 	config.Config.Advanced.ScraperProxy = r.ScraperProxy
 	config.Config.Advanced.ScrapeActorAfterScene = r.ScrapeActorAfterScene
 	config.Config.Advanced.UseImperialEntry = r.UseImperialEntry
@@ -636,7 +638,7 @@ func (i ConfigResource) saveOptionsDeoVR(req *restful.Request, resp *restful.Res
 	config.Config.Interfaces.Players.SubtitleSortSeq = r.SubtitleSortSeq
 	config.Config.Interfaces.Heresphere.MultitrackCastCuepoints = r.MultitrackCastCuepoints
 	config.Config.Interfaces.Heresphere.RetainNonHSPCuepoints = r.RetainNonHSPCuepoints
-	if r.Password != config.Config.Interfaces.DeoVR.Password && r.Password != "" {
+	if r.Password != config.Config.Interfaces.DeoVR.Password && r.Password != "" && r.Password != config.RedactedSecret {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
 		config.Config.Interfaces.DeoVR.Password = string(hash)
 	}
@@ -836,6 +838,7 @@ func (i ConfigResource) getState(req *restful.Request, resp *restful.Response) {
 	}
 
 	out.Config = config.Config
+	config.RedactSecrets(&out.Config)
 	out.CurrentState = config.State
 	out.Scrapers = models.GetScrapers()
 

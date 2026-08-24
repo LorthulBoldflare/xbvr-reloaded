@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	cryptorand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1572,9 +1573,13 @@ func Migrate(migrateTo string) {
 					SiteId    string
 					NewPrefix string
 				}
-				// backup bundle
+				// backup bundle — encrypt the credentials with a generated
+				// password so the backup contains all data without user
+				// interaction; the password is logged for later restores
+				bundlePassword := cryptorand.Text()
 				common.Log.Infof("Creating pre-migration backup, please waiit, backups can take some time on a system with a large number of scenes ")
-				tasks.BackupBundle(true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, false, "", "0", "xbvr-premigration-bundle.json", "2")
+				common.Log.Infof("The pre-migration backup is encrypted with bundle password: %s", bundlePassword)
+				tasks.BackupBundle(true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, false, "", "0", "xbvr-premigration-bundle.json", "2", bundlePassword)
 				common.Log.Infof("Go to download/xbvr-premigration-bundle.json, or http://xxx.xxx.xxx.xxx:9999/download/xbvr-premigration-bundle.json if you need access to the backup")
 				var sites []models.Site
 				officalSiteChanges := []SiteChange{

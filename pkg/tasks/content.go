@@ -18,6 +18,7 @@ import (
 	"github.com/jinzhu/gorm"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/markphelps/optional"
+	"github.com/sirupsen/logrus"
 	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/externalreference"
@@ -96,6 +97,7 @@ type RequestRestore struct {
 	InclConfig       bool   `json:"inclConfig"`
 	ExtRefSubset     string `json:"extRefSubset"`
 	BundleUrl        string `json:"bundleUrl"`
+	BundlePassword   string `json:"bundlePassword"`
 }
 
 func CleanTags() {
@@ -450,6 +452,12 @@ func ScrapeTPDB(apiToken string, sceneUrl string) {
 		// Start scraping
 		var collectedScenes []models.ScrapedScene
 
+		// when the UI passes back the redacted placeholder (or nothing), fall back
+		// to the stored token instead of sending "***" to the TPDB API
+		if apiToken == "" || apiToken == config.RedactedSecret {
+			apiToken = config.Config.Vendor.TPDB.ApiToken
+		}
+
 		tlog.Infof("Scraping TPDB")
 		err := scrape.ScrapeTPDB(knownScenes, &collectedScenes, apiToken, sceneUrl)
 
@@ -457,8 +465,9 @@ func ScrapeTPDB(apiToken string, sceneUrl string) {
 			tlog.Error(err)
 		} else if len(collectedScenes) > 0 {
 			// At this point we know the API Token is correct, so we will save
-			// it to the config store
-			if config.Config.Vendor.TPDB.ApiToken != apiToken {
+			// it to the config store (unless the redacted placeholder from the
+			// state endpoint was passed back)
+			if config.Config.Vendor.TPDB.ApiToken != apiToken && apiToken != config.RedactedSecret {
 				config.Config.Vendor.TPDB.ApiToken = apiToken
 				config.SaveConfig()
 			}
@@ -566,7 +575,7 @@ func ImportBundleV1(bundleData ContentBundle) {
 
 }
 
-func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bool, inclFileLinks bool, inclCuepoints bool, inclHistory bool, inclPlaylists bool, InclActorAkas bool, inclTagGroups bool, inclVolumes bool, inclSites bool, inclActions bool, inclExtRefs bool, inclActors bool, inclActorActions bool, inclConfig bool, extRefSubset string, playlistId string, outputBundleFilename string, version string) string {
+func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bool, inclFileLinks bool, inclCuepoints bool, inclHistory bool, inclPlaylists bool, InclActorAkas bool, inclTagGroups bool, inclVolumes bool, inclSites bool, inclActions bool, inclExtRefs bool, inclActors bool, inclActorActions bool, inclConfig bool, extRefSubset string, playlistId string, outputBundleFilename string, version string, bundlePassword string) string {
 	var out BackupContentBundle
 	var content []byte
 	exportCnt := 0
@@ -779,6 +788,12 @@ func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bo
 		var kvs []models.KV
 		if inclConfig {
 			db.Where("`key` not like 'lock%'").Find(&kvs)
+			protected, err := protectCredentialKVs(kvs, bundlePassword, tlog)
+			if err != nil {
+				tlog.Errorf("Backup aborted: %v", err)
+				return ""
+			}
+			kvs = protected
 		}
 
 		var err error
@@ -863,6 +878,16 @@ func RestoreBundle(request RequestRestore) {
 				tlog.Infof("Restore Failed! Bundle file is version %v, version %v expected", bundleData.BundleVersion, "2.1")
 				return
 			}
+			// Pre-flight: verify the bundle password against every encrypted
+			// credential value before restoring anything — a missing or wrong
+			// password aborts the whole restore instead of silently skipping
+			// fields. Unencrypted bundles pass through.
+			if request.InclConfig {
+				if err := VerifyBundlePassword(bundleData.Kvs, request.BundlePassword); err != nil {
+					tlog.Errorf("Restore aborted: %v", err)
+					return
+				}
+			}
 			db, _ := models.GetDB()
 
 			var selectedSites []models.Site
@@ -930,7 +955,7 @@ func RestoreBundle(request RequestRestore) {
 				RestoreActionActors(bundleData.ActionActors, request.Overwrite, db)
 			}
 			if request.InclConfig {
-				RestoreKvs(bundleData.Kvs, db)
+				RestoreKvs(bundleData.Kvs, request.BundlePassword, db)
 			}
 
 			if request.InclScenes {
@@ -1669,15 +1694,49 @@ func RestoreActionActors(actionActorsList []BackupActionActor, overwrite bool, d
 	}
 	tlog.Infof("%v Actors with edits restored", addedCnt)
 }
-func RestoreKvs(kvs []models.KV, db *gorm.DB) {
+func RestoreKvs(kvs []models.KV, bundlePassword string, db *gorm.DB) {
 	tlog := log.WithField("task", "scrape")
 	tlog.Infof("Restoring System Config")
 
 	for _, kv := range kvs {
+		if IsEncryptedBundleValue(kv.Value) {
+			plain, err := DecryptBundleSecret(bundlePassword, kv.Value)
+			if err != nil {
+				tlog.Warnf("Skipping setting %q: %v", kv.Key, err)
+				continue
+			}
+			kv.Value = plain
+		}
+		// unencrypted values restore as-is — unencrypted bundles are
+		// fully supported
 		models.SaveWithRetry(db, &kv)
 	}
 
 	tlog.Infof("System Config Restored ")
+}
+
+// protectCredentialKVs encrypts credential-bearing KV values with the
+// user-supplied bundle password for export. Credential entries are never
+// dropped and never exported in plaintext: a password is mandatory, and an
+// error is returned when credentials are present but no password was given.
+func protectCredentialKVs(kvs []models.KV, bundlePassword string, tlog *logrus.Entry) ([]models.KV, error) {
+	out := make([]models.KV, 0, len(kvs))
+	for _, kv := range kvs {
+		if !IsCredentialKVKey(kv.Key) {
+			out = append(out, kv)
+			continue
+		}
+		if bundlePassword == "" {
+			return nil, errors.New("bundle password required to export credential settings")
+		}
+		enc, err := EncryptBundleSecret(bundlePassword, kv.Value)
+		if err != nil {
+			return nil, fmt.Errorf("cannot encrypt credential setting %q: %w", kv.Key, err)
+		}
+		kv.Value = enc
+		out = append(out, kv)
+	}
+	return out, nil
 }
 
 func CountTags() {

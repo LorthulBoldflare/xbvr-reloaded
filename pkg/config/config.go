@@ -221,6 +221,28 @@ func SaveConfig() {
 	}
 }
 
+// RedactedSecret is the placeholder returned by the state endpoint in place
+// of real secret values. Save handlers must treat it as "unchanged".
+const RedactedSecret = "***"
+
+// RedactSecrets masks credential fields on a config copy before it is sent
+// to API clients, so the state endpoint does not expose API tokens or
+// password hashes.
+func RedactSecrets(c *ObjectConfig) {
+	if c.Advanced.StashApiKey != "" {
+		c.Advanced.StashApiKey = RedactedSecret
+	}
+	if c.Vendor.TPDB.ApiToken != "" {
+		c.Vendor.TPDB.ApiToken = RedactedSecret
+	}
+	if c.Interfaces.DeoVR.Password != "" {
+		c.Interfaces.DeoVR.Password = RedactedSecret
+	}
+	if c.Security.Password != "" {
+		c.Security.Password = RedactedSecret
+	}
+}
+
 func init() {
 	defaults.Set(&Config)
 	RecentIPAddresses = []string{}
