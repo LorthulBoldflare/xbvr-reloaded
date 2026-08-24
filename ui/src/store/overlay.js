@@ -137,6 +137,12 @@ const mutations = {
   hideQuickFind (state, payload) {
     state.quickFind.show = false
   },
+  setQuickFindSelectedScene (state, scene) {
+    state.quickFind.selectedScene = scene
+  },
+  clearQuickFindSearchString (state) {
+    state.quickFind.searchString = null
+  },
   showSceneMatchParams (state, payload) {
     state.sceneMatchParams.site = payload.site
     state.sceneMatchParams.show = true    

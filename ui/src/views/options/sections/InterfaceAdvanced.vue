@@ -269,7 +269,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 export default {
   name: 'InterfaceAdvanced',
   mounted () {
@@ -329,7 +329,7 @@ export default {
       }
     },
     saveScraper () {
-       ky.put('/api/options/custom-sites/create', {
+       api.put('/options/custom-sites/create', {
         json: {
           scraperUrl: this.scraperUrl,
           scraperName: this.scraperName,
@@ -341,19 +341,19 @@ export default {
 
     },
    stashdb () {
-      ky.get('/api/extref/stashdb/run_all')
+      api.get('/extref/stashdb/run_all')
     },
     scrapeXbvrActors() {
-      ky.get('/api/extref/generic/scrape_all')
+      api.get('/extref/generic/scrape_all')
     },
     clearAltSrcKeepEdits () {
-      ky.delete(`/api/extref/delete_extref_source_links/keep_manual`, { json: {external_source: 'alternate scene %'} });
+      api.delete(`/extref/delete_extref_source_links/keep_manual`, { json: {external_source: 'alternate scene %'} });
     },
     clearAltSrc () {
-      ky.delete(`/api/extref/delete_extref_source_links/all`, { json: {external_source: 'alternate scene %'} });
+      api.delete(`/extref/delete_extref_source_links/all`, { json: {external_source: 'alternate scene %'} });
     },
     relinkAltSrc () {
-      ky.get('/api/task/relink_alt_aource_scenes')
+      api.get('/task/relink_alt_aource_scenes')
     },
     showConfigDetails(option) {      
       let matched = this.$store.state.optionsAdvanced.advanced.collectorConfigs.find((config) => {
@@ -390,7 +390,7 @@ export default {
       this.cookies.splice(props.index,1)
     },
     saveCollectorConfig() {
-      ky.post('/api/options/save-collector-config', {
+      api.post('/options/save-collector-config', {
         json: {
           domain_key: this.kvName,
           body: this.body,
@@ -430,7 +430,7 @@ export default {
     async restoreCollectorConfig () {
       if (this.uploadData !== '') {
         try {
-          const response = await ky.post('/api/options/save-collector-config', {
+          const response = await api.post('/options/save-collector-config', {
             json: JSON.parse(this.uploadData)
           })
         } catch (error) {
@@ -442,7 +442,7 @@ export default {
       }
     },
     async deleteCollectorConfig() {
-      const response = await ky.delete('/api/options/delete-collector-config', {
+      const response = await api.delete('/options/delete-collector-config', {
         json: {
           domain_key: this.kvName,
         }

@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../api'
 
 export default {
   name: 'MigrationOverlay',
@@ -122,7 +122,7 @@ export default {
   methods: {
     async checkMigrationStatus() {
       try {
-        const response = await ky.get('/api/options/state').json()
+        const response = await api.get('/options/state').json()
         if (response.currentState && response.currentState.migration) {
           const migration = response.currentState.migration
           this.migrationState = migration

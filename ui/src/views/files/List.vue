@@ -82,7 +82,7 @@
 <script>
 import prettyBytes from 'pretty-bytes'
 import { format, parseISO } from 'date-fns'
-import ky from 'ky'
+import api from '../../api'
 
 export default {
   name: 'List',
@@ -122,7 +122,7 @@ export default {
       this.$store.commit('overlay/showMatch', { file: file })
     },
     unmatch (file) {
-      ky.post('/api/files/unmatch', {
+      api.post('/files/unmatch', {
         json: {
           file_id: file.id
         }
@@ -143,7 +143,7 @@ export default {
         type: 'is-danger',
         hasIcon: true,
         onConfirm: () => {
-          ky.delete(`/api/files/file/${file.id}`).json().then(data => {
+          api.delete(`/files/file/${file.id}`).json().then(data => {
             this.$store.dispatch('files/load')
           })
         }

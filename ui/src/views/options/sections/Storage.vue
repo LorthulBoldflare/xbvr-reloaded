@@ -146,7 +146,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 import prettyBytes from 'pretty-bytes'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
@@ -173,7 +173,7 @@ export default {
     async taskRescan () {
       try {
         await this.$store.dispatch('optionsStorage/save');
-        await ky.get('/api/task/rescan');
+        await api.get('/task/rescan');
       } catch (e) {
         this.$buefy.dialog.alert({
           title: 'Error',
@@ -186,10 +186,10 @@ export default {
       }
     },
     addFolder: async function () {
-      await ky.post('/api/options/storage', { json: { path: this.newVolumePath, type: 'local' } })
+      await api.post('/options/storage', { json: { path: this.newVolumePath, type: 'local' } })
     },
     addCloudStorage: async function () {
-      await ky.post('/api/options/storage', { json: { token: this.serviceToken, type: this.serviceSelected } })
+      await api.post('/options/storage', { json: { token: this.serviceToken, type: this.serviceSelected } })
     },
     removeFolder: function (folder) {
       this.$buefy.dialog.confirm({
@@ -198,12 +198,12 @@ export default {
         type: 'is-danger',
         hasIcon: true,
         onConfirm: function () {
-          ky.delete(`/api/options/storage/${folder.id}`)
+          api.delete(`/options/storage/${folder.id}`)
         }
       })
     },
     rescanFolder: function (folder) {
-      ky.get(`/api/task/rescan/${folder.id}`)
+      api.get(`/task/rescan/${folder.id}`)
     },
     saveExtensions () {
       this.$store.dispatch('optionsStorage/save')
@@ -303,7 +303,7 @@ export default {
         return this.$store.state.optionsStorage.options.match_ohash
       },
       set (value) {
-        this.$store.state.optionsStorage.options.match_ohash = value
+        this.$store.commit('optionsStorage/setOption', { key: 'match_ohash', value })
       },
     },
     total () {
@@ -320,7 +320,7 @@ export default {
     },
     video_ext: {
       get () {return this.$store.state.optionsStorage.options.video_ext},
-      set (value) {this.$store.state.optionsStorage.options.video_ext = value},
+      set (value) { this.$store.commit('optionsStorage/setOption', { key: 'video_ext', value }) },
     },
     forbidden_video_ext: {
       get () {return this.$store.state.optionsStorage.options.forbidden_video_ext}

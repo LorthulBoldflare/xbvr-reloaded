@@ -1,4 +1,5 @@
-import ky from 'ky'
+import api from '../api'
+import { encodeJsonBase64, decodeJsonBase64 } from '../util/base64'
 import Vue from 'vue'
 
 function defaultValue (v, d) {
@@ -56,13 +57,13 @@ const getters = {
     const st = Object.assign({}, state.filters)
     delete st.cardSize
 
-    return Buffer.from(JSON.stringify(st)).toString('base64')
+    return encodeJsonBase64(st)
   },
   getQueryParamsFromObject: (state) => (payload) => {
     const st = Object.assign({}, JSON.parse(payload))
     delete st.cardSize
 
-    return Buffer.from(JSON.stringify(st)).toString('base64')
+    return encodeJsonBase64(st)
   },
   prevActor: (state) => (currentActor) => {
     const i = state.actors.findIndex(actor => actor.id === currentActor.id)
@@ -106,7 +107,7 @@ const mutations = {
       return obj
     })
 
-    ky.post('/api/actor/toggle', {
+    api.post('actor/toggle', {
       json: {
         actor_id: payload.actor_id,
         list: payload.list
@@ -133,7 +134,7 @@ const mutations = {
   stateFromQuery (state, payload) {
     try {
       state.show_actor_id=payload.actor_id
-      const obj = JSON.parse(Buffer.from(payload.q, 'base64').toString('utf-8'))
+      const obj = decodeJsonBase64(payload.q)
       for (const [k, v] of Object.entries(obj)) {
         Vue.set(state.filters, k, v)
       }
@@ -144,8 +145,8 @@ const mutations = {
 
 const actions = {
   async filters ({ state }) {
-    state.playlists = await ky.get('/api/playlist/actor').json()
-    state.filterOpts = await ky.get('/api/actor/filters').json()    
+    state.playlists = await api.get('playlist/actor').json()
+    state.filterOpts = await api.get('actor/filters').json()    
   },
   async load ({ state, getters, commit }, params) {    
     const iOffset = params.offset || 0
@@ -156,8 +157,8 @@ const actions = {
     q.offset = iOffset
     q.limit = state.limit
     
-    const data = await ky
-      .post('/api/actor/list', { json: q })
+    const data = await api
+      .post('actor/list', { json: q })
       .json()
 
     state.isLoading = false

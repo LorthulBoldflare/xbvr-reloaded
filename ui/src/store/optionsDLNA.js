@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   loading: false,
@@ -17,7 +17,7 @@ const mutations = {}
 const actions = {
   async load ({ state }, params) {
     state.loading = true
-    ky.get('/api/options/state')
+    api.get('/options/state')
       .json()
       .then(data => {
         state.dlna.enabled = data.currentState.dlna.running
@@ -31,7 +31,7 @@ const actions = {
   },
   async save ({ state }, enabled) {
     state.loading = true
-    ky.put('/api/options/interface/dlna', { json: { ...state.dlna } })
+    api.put('/options/interface/dlna', { json: { ...state.dlna } })
       .json()
       .then(data => {
         state.dlna.enabled = data.enabled

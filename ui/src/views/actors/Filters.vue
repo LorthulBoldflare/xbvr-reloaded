@@ -167,7 +167,7 @@
 
 <script>
 import SavedSearch from './SavedSearch'
-import ky from 'ky'
+import api from '../../api'
 
 export default {
   name: 'Filters',
@@ -220,7 +220,7 @@ export default {
     },
     createAkaGroup () {
       this.$store.state.actorList.isLoading = true
-      ky.post('/api/aka/create', {json: {actorList: this.cast}}).json().then(data => {
+      api.post('/aka/create', {json: {actorList: this.cast}}).json().then(data => {
         this.cast.push(data.akas.aka_actor.name)
         this.$store.dispatch('actorList/filters')
         this.reloadList()
@@ -232,7 +232,7 @@ export default {
     },
     deleteAkaGroup () {
       this.$store.state.actorList.isLoading = true
-      ky.post('/api/aka/delete', {json: {name: this.cast[0]}}).json().then(data => {
+      api.post('/aka/delete', {json: {name: this.cast[0]}}).json().then(data => {
         this.cast = []
         this.$store.dispatch('actorList/filters')
         this.reloadList()
@@ -241,7 +241,7 @@ export default {
     },
     addToAkaGroup () {
       this.$store.state.actorList.isLoading = true
-      ky.post('/api/aka/add', {json: {actorList: this.cast}}).json().then(data => {        
+      api.post('/aka/add', {json: {actorList: this.cast}}).json().then(data => {        
         // delete old aka & add new name
         this.cast = this.cast.filter(e => !e.startsWith("aka:")) 
         this.cast.push(data.akas.aka_actor.name) 
@@ -256,7 +256,7 @@ export default {
     },
     removeFromAkaGroup () {
       this.$store.state.actorList.isLoading = true
-      ky.post('/api/aka/remove', {json: {actorList: this.cast}}).json().then(data => {        
+      api.post('/aka/remove', {json: {actorList: this.cast}}).json().then(data => {        
         // delete old aka & add new name
         this.cast = this.cast.filter(e => !e.startsWith("aka:")) 
         this.cast.push(data.akas.aka_actor.name)
@@ -337,7 +337,7 @@ export default {
     },
     async fetchFilters() {
         this.filteredAttributes=['Loading attributes']
-        ky.get('/api/actor/filters').json().then(data => {
+        api.get('/actor/filters').json().then(data => {
           this.filteredAttributes=data.attributes          
       })      
     }

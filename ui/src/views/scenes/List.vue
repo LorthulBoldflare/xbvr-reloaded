@@ -24,7 +24,6 @@
             {{$t("Hidden")}} ({{counts.hidden}})
           </b-radio-button>
         </div>
-        <span v-show="show_scene_id==='never show, just need the computed show_scene_id to trigger '">{{show_scene_id}}</span>
       </div>
       <div class="column">
         <div class="is-pulled-right">
@@ -67,7 +66,7 @@
 
 <script>
 import SceneCard from './SceneCard'
-import ky from 'ky'
+import api from '../../api'
 
 export default {
   name: 'List',
@@ -91,7 +90,7 @@ export default {
         return this.$store.state.sceneList.filters.cardSize
       },
       set (value) {
-        this.$store.state.sceneList.filters.cardSize = value
+        this.$store.commit('sceneList/setFilterValue', { key: 'cardSize', value })
       }
     },
     cardSizeClass () {
@@ -113,36 +112,7 @@ export default {
         return this.$store.state.sceneList.filters.dlState
       },
       set (value) {
-        this.$store.state.sceneList.filters.dlState = value
-
-        switch (this.$store.state.sceneList.filters.dlState) {
-          case 'any':
-            this.$store.state.sceneList.filters.isAvailable = null
-            this.$store.state.sceneList.filters.isAccessible = null
-            this.$store.state.sceneList.filters.isHidden = false
-            break
-          case 'available':
-            this.$store.state.sceneList.filters.isAvailable = true
-            this.$store.state.sceneList.filters.isAccessible = true
-            this.$store.state.sceneList.filters.isHidden = false
-            break
-          case 'downloaded':
-            this.$store.state.sceneList.filters.isAvailable = true
-            this.$store.state.sceneList.filters.isAccessible = null
-            this.$store.state.sceneList.filters.isHidden = false
-            break
-          case 'missing':
-            this.$store.state.sceneList.filters.isAvailable = false
-            this.$store.state.sceneList.filters.isAccessible = null
-            this.$store.state.sceneList.filters.isHidden = false
-            break
-          case 'hidden':
-            this.$store.state.sceneList.filters.isAvailable = null
-            this.$store.state.sceneList.filters.isAccessible = null
-            this.$store.state.sceneList.filters.isHidden = true
-            break
-        }
-
+        this.$store.commit('sceneList/applyDlState', value)
         this.reloadList()
       }
     },
@@ -158,19 +128,6 @@ export default {
     counts () {
       return this.$store.state.sceneList.counts
     },
-    show_scene_id() {
-      if (this.$store.state.sceneList.show_scene_id != undefined && this.$store.state.sceneList.show_scene_id !='')
-      {
-        ky.get('/api/scene/'+this.$store.state.sceneList.show_scene_id).json().then(data => {
-          if (data.id != 0){
-            this.$store.commit('overlay/showDetails', { scene: data })
-          }          
-        })
-        this.$store.state.sceneList.show_scene_id = ''
-      }
-      
-      return this.$store.state.sceneList.show_scene_id
-    }
   },
   methods: {
     reloadList () {
@@ -213,6 +170,18 @@ export default {
     if (this.debounceTimeout) clearTimeout(this.debounceTimeout)
   },
   watch: {
+    // open the details overlay when a scene id is pushed to the store —
+    // replaces the hidden-span + side-effect computed hack
+    '$store.state.sceneList.show_scene_id'(newVal) {
+      if (newVal != undefined && newVal != '') {
+        api.get('/scene/' + newVal).json().then(data => {
+          if (data.id != 0) {
+            this.$store.commit('overlay/showDetails', { scene: data })
+          }
+        })
+        this.$store.commit('sceneList/clearShowSceneId')
+      }
+    },
     infiniteScrollEnabled(newVal) {
       if (newVal) {
         window.addEventListener('scroll', this.scrollHandler)

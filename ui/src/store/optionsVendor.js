@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   tpdb: {
@@ -11,7 +11,7 @@ const mutations = {}
 
 const actions = {
   async load({ state }, params) {
-    ky.get('/api/options/state')
+    api.get('/options/state')
       .json()
       .then(data => {
         state.tpdb.apiToken = data.config.vendor.tpdb.apiToken

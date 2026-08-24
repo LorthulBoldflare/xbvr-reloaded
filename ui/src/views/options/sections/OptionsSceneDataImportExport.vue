@@ -240,7 +240,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 export default {
   name: 'OptionsSceneDataImportExport',
   mounted () {
@@ -348,7 +348,10 @@ export default {
           url=this.bundleUrl
         }
         this.$store.state.messages.lastScrapeMessage = 'Starting restore'
-        ky.post('/api/task/bundle/restore', {
+        api.post('/task/bundle/restore', {
+          // restores of large bundles run long; the task continues
+          // server-side regardless, so don't abort the request
+          timeout: false,
           json: { allSites: this.allSites == "true", onlyIncludeOfficalSites: this.onlyIncludeOfficalSites, inclScenes: this.includeScenes, inclHistory: this.includeHistory, 
           inclLinks: this.includeFileLinks, inclCuepoints: this.includeCuepoints, inclActions: this.includeActions, inclPlaylists: this.includePlaylists, inclActorAkas: this.includeActorAkas, inclTagGroups: this.includeTagGroups, 
           inclVolumes: this.includeVolumes, inclExtRefs: this.includeExternalReferences, inclSites: this.includeSites, inclSqlCmds: this.includeSqlCommands, inclActors: this.includeActors,inclActorActions: this.inclActorActions, 
@@ -358,7 +361,7 @@ export default {
       }
     },
     backupContent () {      
-      ky.get('/api/task/bundle/backup', { timeout: false, searchParams: { allSites: this.allSites == "true", onlyIncludeOfficalSites: this.onlyIncludeOfficalSites, inclScenes: this.includeScenes, inclHistory: this.includeHistory,
+      api.get('/task/bundle/backup', { timeout: false, searchParams: { allSites: this.allSites == "true", onlyIncludeOfficalSites: this.onlyIncludeOfficalSites, inclScenes: this.includeScenes, inclHistory: this.includeHistory,
            inclLinks: this.includeFileLinks, inclCuepoints: this.includeCuepoints, inclActions: this.includeActions, inclPlaylists: this.includePlaylists, inclActorAkas: this.includeActorAkas, inclTagGroups: this.includeTagGroups, 
            inclVolumes: this.includeVolumes, inclExtRefs: this.includeExternalReferences, inclSites: this.includeSites, inclActors: this.includeActors,inclActorActions: this.inclActorActions,
            inclConfig: this.includeConfig, extRefSubset: this.extRefSubset, playlistId: this.currentPlaylist, download: true } }).json().then(data => {      

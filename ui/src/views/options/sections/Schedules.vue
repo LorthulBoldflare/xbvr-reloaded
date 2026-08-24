@@ -268,7 +268,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 import prettyBytes from 'pretty-bytes'
 
 export default {
@@ -382,7 +382,7 @@ export default {
     },
     async loadState () {
       this.isLoading = true
-      await ky.get('/api/options/state')
+      await api.get('/options/state')
         .json()
         .then(data => {
           this.rescrapeEnabled = data.config.cron.rescrapeSchedule.enabled
@@ -473,7 +473,7 @@ export default {
     },
     async saveSettings () {
       this.isLoading = true
-      await ky.post('/api/options/task-schedule', {
+      await api.post('/options/task-schedule', {
         json: {
           rescrapeEnabled: this.rescrapeEnabled,
           rescrapeHourInterval: this.rescrapeHourInterval,

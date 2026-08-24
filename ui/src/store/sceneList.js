@@ -1,5 +1,6 @@
-import ky from 'ky'
+import api from '../api'
 import Vue from 'vue'
+import { encodeJsonBase64, decodeJsonBase64 } from '../util/base64'
 
 function defaultValue (v, d) {
   if (v === undefined) {
@@ -56,13 +57,13 @@ const getters = {
     const st = Object.assign({}, state.filters)
     delete st.cardSize
 
-    return Buffer.from(JSON.stringify(st)).toString('base64')
+    return encodeJsonBase64(st)
   },
   getQueryParamsFromObject: (state) => (payload) => {
     const st = Object.assign({}, JSON.parse(payload))
     delete st.cardSize
 
-    return Buffer.from(JSON.stringify(st)).toString('base64')
+    return encodeJsonBase64(st)
   },
   prevScene: (state) => (currentScene) => {
     const i = state.items.findIndex(item => item.scene_id === currentScene.scene_id)
@@ -112,7 +113,7 @@ const mutations = {
       return obj
     })
 
-    ky.post('/api/scene/toggle', {
+    api.post('scene/toggle', {
       json: {
         scene_id: payload.scene_id,
         list: payload.list
@@ -136,10 +137,53 @@ const mutations = {
     } catch (err) {
     }
   },
+  setFilterValue (state, { key, value }) {
+    Vue.set(state.filters, key, value)
+  },
+  // apply the availability/hidden filter preset for a download-state choice
+  applyDlState (state, value) {
+    state.filters.dlState = value
+    switch (value) {
+      case 'any':
+        state.filters.isAvailable = null
+        state.filters.isAccessible = null
+        state.filters.isHidden = false
+        break
+      case 'available':
+        state.filters.isAvailable = true
+        state.filters.isAccessible = true
+        state.filters.isHidden = false
+        break
+      case 'downloaded':
+        state.filters.isAvailable = true
+        state.filters.isAccessible = null
+        state.filters.isHidden = false
+        break
+      case 'missing':
+        state.filters.isAvailable = false
+        state.filters.isAccessible = null
+        state.filters.isHidden = false
+        break
+      case 'hidden':
+        state.filters.isAvailable = null
+        state.filters.isAccessible = null
+        state.filters.isHidden = true
+        break
+    }
+  },
+  setCastFilterOnly (state, actor) {
+    state.filters.cast = actor
+    state.filters.sites = []
+    state.filters.tags = []
+    state.filters.attributes = []
+  },
+  clearShowSceneId (state) {
+    state.show_scene_id = ''
+  },
   stateFromQuery (state, payload) {
     try {
       state.show_scene_id=payload.scene_id
-      const obj = JSON.parse(Buffer.from(payload.q, 'base64').toString('utf-8'))
+      const obj = decodeJsonBase64(payload.q)
       for (const [k, v] of Object.entries(obj)) {
         Vue.set(state.filters, k, v)
       }
@@ -150,8 +194,10 @@ const mutations = {
 
 const actions = {
   async filters ({ state }) {
-    state.playlists = await ky.get('/api/playlist', {timeout: 300000}).json()
-    state.filterOpts = await ky.get('/api/scene/filters', {timeout: 300000}).json()
+    // long timeouts: these endpoints used 5-min budgets before the shared
+    // API layer introduced a 60s default
+    state.playlists = await api.get('playlist', { timeout: 300000 }).json()
+    state.filterOpts = await api.get('scene/filters', { timeout: 300000 }).json()
 
     // Reverse list of release months for display purposes
     state.filterOpts.release_month = state.filterOpts.release_month.reverse()
@@ -165,9 +211,11 @@ const actions = {
     q.offset = iOffset
     q.limit = state.limit
 
-    const data = await ky
-      .post('/api/scene/list', {
+    const data = await api
+      .post('scene/list', {
         json: q,
+        // heavy on large libraries / slow storage; keep the historical
+        // generous budget instead of the 60s shared default
         timeout: 6e6
       })
       .json()

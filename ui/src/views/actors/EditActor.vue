@@ -119,7 +119,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
 import GlobalEvents from 'vue-global-events'
 import ListEditor from '../../components/ListEditor'
 
@@ -205,14 +205,14 @@ export default {
     },
   },
   mounted () {
-    ky.get('/api/actor/countrylist')
+    api.get('/actor/countrylist')
     .json()
     .then(list => {
       this.countryList = list
       this.convertCountryCodeToName()
     })  
 
-  ky.get(`/api/actor/extrefs/${this.actor.id}`)
+  api.get(`/actor/extrefs/${this.actor.id}`)
     .json()
     .then(list => {
       this.extrefsArray = []
@@ -279,9 +279,9 @@ export default {
 
       this.actor.image_arr = JSON.stringify(this.actor.imageArray)  
 
-      await ky.post(`/api/actor/edit/${this.actor.id}`, { json: { ...this.actor } })
-      await ky.post(`/api/actor/edit_extrefs/${this.actor.id}`, { json: this.extrefsArray  })
-      await ky.get('/api/actor/'+this.actor.id).json().then(data => {
+      await api.post(`/actor/edit/${this.actor.id}`, { json: { ...this.actor } })
+      await api.post(`/actor/edit_extrefs/${this.actor.id}`, { json: this.extrefsArray  })
+      await api.get('/actor/'+this.actor.id).json().then(data => {
         if (data.id != 0){
           this.$store.state.overlay.actordetails.actor = data          
         }          
@@ -301,7 +301,7 @@ export default {
         hasIcon: true,
         id: 'heh',
         onConfirm: () => {
-          ky.delete(`/api/actor/delete/${this.actor.id}`).json().then(data => {
+          api.delete(`/actor/delete/${this.actor.id}`).json().then(data => {
             this.$store.dispatch('actorList/load', { offset: this.$store.state.actorList.offset - this.$store.state.actorList.limit })
             this.$store.commit('overlay/hideActorEditDetails')
             this.$store.commit('overlay/hideActorDetails')

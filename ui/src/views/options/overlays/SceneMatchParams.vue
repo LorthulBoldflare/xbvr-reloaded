@@ -203,7 +203,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 import { format, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
 import GlobalEvents from 'vue-global-events'
@@ -228,7 +228,7 @@ export default {
   methods: {
     initView () {
       this.site=this.$store.state.overlay.sceneMatchParams.site
-      ky.get('/api/options/site/match_params/' + this.site.id).json().then(data => {
+      api.get('/options/site/match_params/' + this.site.id).json().then(data => {
         this.params = data
         this.ignoreReleasedBefore = new Date(this.params.ignore_released_before);
       })
@@ -241,7 +241,7 @@ export default {
     },
     saveSettings() {      
       this.params.ignore_released_before=this.ignoreReleasedBefore
-      ky.post(`/api/options/site/save_match_params`, { json: { site: this.site.id, match_params: this.params } })
+      api.post(`/options/site/save_match_params`, { json: { site: this.site.id, match_params: this.params } })
       if (this.ignoreReleasedBefore != null) {        
         const formattedDate = this.ignoreReleasedBefore.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric',});
         this.$buefy.dialog.confirm({
@@ -251,7 +251,7 @@ export default {
           hasIcon: true,
           id: 'heh',
           onConfirm: () => {
-            ky.delete(`/api/extref/delete_extref_source_links/keep_manual`, { json: {external_source: 'alternate scene ' + this.site.id, delete_date: this.ignoreReleasedBefore} });
+            api.delete(`/extref/delete_extref_source_links/keep_manual`, { json: {external_source: 'alternate scene ' + this.site.id, delete_date: this.ignoreReleasedBefore} });
           }
         })
         

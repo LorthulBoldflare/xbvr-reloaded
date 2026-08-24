@@ -69,7 +69,7 @@
           {{format(parseISO(item.release_date), "yyyy-MM-dd")}}
         </span>        
       </span>
-      <div class="image-row" v-if="getAlternateSceneSourcesWithTitles != 0">
+      <div class="image-row" v-if="alternateSources.length != 0">
         <div v-for="(altsrc, idx) in this.alternateSources" :key="idx" class="altsrc-image-wrapper">
           <b-tooltip type="is-light" :label="altsrc.title" :delay="100">
             <a :href="altsrc.url" target="_blank">
@@ -95,7 +95,7 @@ import EditButton from '../../components/EditButton'
 import LinkStashdbButton from '../../components/LinkStashdbButton'
 import TrailerlistButton from '../../components/TrailerlistButton'
 import HiddenButton from '../../components/HiddenButton'
-import ky from 'ky'
+import api from '../../api'
 import VueLoadImage from 'vue-load-image'
 
 export default {
@@ -173,14 +173,22 @@ export default {
       } else {
         return "cover"
       }
-    },
-    async getAlternateSceneSourcesWithTitles() {
+    }
+  },
+  created () {
+    this.loadAlternateSources()
+  },
+  methods: {
+    // Fetched once when the card is created. Previously this was an async
+    // computed used as v-if — an always-truthy Promise that refetched on
+    // every render of every card.
+    async loadAlternateSources () {
       this.stashLinkExists = false
       try {
-        const response = await ky.get('/api/scene/alternate_source/' + this.item.id).json();
+        const response = await api.get('/scene/alternate_source/' + this.item.id).json();
         this.alternateSources = [];
         if (response == null) {
-          return 0;
+          return;
         }
 
         this.alternateSources = response
@@ -201,14 +209,10 @@ export default {
               title: title
             };
           });
-
-        return this.alternateSources.length;
       } catch (error) {
-        return 0; // Return 0 or handle error as needed
+        // leave the card without alternate sources on error
       }
-    }
-  },
-  methods: {
+    },
     getImageURL (u) {
         if (u.startsWith('http') == false) {
         return u
@@ -224,7 +228,7 @@ export default {
       // the Scenes associated Tables such as Tags, Cast arwon't be Preloaded and
       // will cause errors when the Details Overlay loads
       if (this.reRead) {
-        ky.get('/api/scene/'+scene.id).json().then(data => {
+        api.get('/scene/'+scene.id).json().then(data => {
           if (data.id != 0){
             this.$store.commit('overlay/showDetails', { scene: data })
           }

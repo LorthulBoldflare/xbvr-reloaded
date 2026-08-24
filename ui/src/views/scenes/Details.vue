@@ -136,7 +136,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="image-row is-flex is-pulled-right" v-if="getAlternateSceneSources != 0">
+                <div class="image-row is-flex is-pulled-right" v-if="alternateSources.length != 0">
                   <div v-for="(altsrc, idx) in alternateSourcesWithTitles" :key="idx" class="altsrc-image-wrapper" @click="showExtRefScene(altsrc)">
                     <b-tooltip type="is-light" :label="altsrc.title" :delay="100" append-to-body>
                       <vue-load-image>
@@ -404,7 +404,8 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
+import { encodeJsonBase64 } from '../../util/base64'
 import videojs from 'video.js'
 import 'videojs-vr/dist/videojs-vr.min.js'
 import { format, formatDistance, parseISO } from 'date-fns'
@@ -459,8 +460,12 @@ export default {
   computed: {
     item () {
       const item = this.$store.state.overlay.details.scene
+      if (item == null) {
+        return item
+      }
+      // don't sort the store's array in place; work on a shallow copy
       if (this.$store.state.optionsWeb.web.tagSort === 'alphabetically') {
-        item.tags.sort((a, b) => a.name < b.name ? -1 : 1)
+        return { ...item, tags: [...item.tags].sort((a, b) => a.name < b.name ? -1 : 1) }
       }
       let releasedate = parseISO(item.release_date)
       let imgs = item.cast.map((actor) => {
@@ -483,10 +488,9 @@ export default {
         return {src: img, visible: false, actor_name: actor.name, actor_label: label, actor_id: actor.id};
       });
 
-      this.castimages =  imgs.filter((img) => {
+      this.castimages = imgs.filter((img) => {
         return img.src !== '';
         });
-      this.getSearchFields(item.id)
       return item
     },
     // Properties for gallery
@@ -574,24 +578,6 @@ export default {
       if ( this.$store.state.overlay.details.altsrc != null) return true
       return false
     },
-    async getAlternateSceneSources() {
-      this.alternateSources = [];
-      if (this.displayingAlternateSource) return 0
-      try {
-        const response = await ky.get('/api/scene/alternate_source/' + this.item.id).json();
-        if (response==null){
-          return 0
-        }
-        response.forEach(altsrc => {
-          if (altsrc.external_source.startsWith("alternate scene ")) {
-            this.alternateSources.push(altsrc)
-          }
-        });
-        return this.alternateSources.length;
-      } catch (error) {        
-        return 0; // Return 0 or handle error as needed
-      }
-    },
     changeDetailsTab() {      
       return this.$store.state.overlay.changeDetailsTab
     },
@@ -613,9 +599,16 @@ export default {
   },
   mounted () {
     this.setupPlayer()
+    this.loadAlternateSources()
+    // the 'item.id' watcher below is not immediate, so fetch search fields
+    // for the initially displayed scene here — otherwise the Search fields
+    // tab stays empty until the user navigates to another scene
+    if (this.item && this.item.id) {
+      this.getSearchFields(this.item.id)
+    }
 
     // load default cuepoint actions & positions from kv entry in the db
-    ky.get('/api/options/cuepoints').json().then(data => {
+    api.get('/options/cuepoints').json().then(data => {
       this.cuepointActTags = data.actions
       this.cuepointPositionTags = data.positions
       this.cuepointActTags.unshift("")
@@ -623,6 +616,13 @@ export default {
       })    
 },
 watch:{
+  // refetch alternate sources and search fields when the displayed scene changes
+  'item.id': function (newVal, oldVal) {
+    if (newVal && newVal !== oldVal) {
+      this.loadAlternateSources()
+      this.getSearchFields(newVal)
+    }
+  },
   quickFindOverlayState(newVal, oldVal){
     if (newVal == true) {
       return
@@ -663,6 +663,27 @@ watch:{
   }
 },
   methods: {
+    // Fetched on mount and whenever the displayed scene changes. Previously
+    // an async computed used as v-if — an always-truthy Promise that
+    // refetched on every render.
+    async loadAlternateSources () {
+      this.alternateSources = [];
+      if (this.displayingAlternateSource) return
+      if (!this.item || !this.item.id) return
+      try {
+        const response = await api.get('/scene/alternate_source/' + this.item.id).json();
+        if (response == null) {
+          return
+        }
+        response.forEach(altsrc => {
+          if (altsrc.external_source.startsWith("alternate scene ")) {
+            this.alternateSources.push(altsrc)
+          }
+        });
+      } catch (error) {
+        // leave the view without alternate sources on error
+      }
+    },
     setupPlayer () {
       this.player = videojs(this.$refs.player, {
         aspectRatio: '1:1',
@@ -742,10 +763,7 @@ watch:{
       this.player.poster(this.getImageURL(this.item.cover_url, ''))
     },
     showCastScenes (actor) {
-      this.$store.state.sceneList.filters.cast = actor
-      this.$store.state.sceneList.filters.sites = []
-      this.$store.state.sceneList.filters.tags = []
-      this.$store.state.sceneList.filters.attributes = []
+      this.$store.commit('sceneList/setCastFilterOnly', actor)
       this.$router.push({
         name: 'scenes',
         query: { q: this.$store.getters['sceneList/filterQueryParams'] }
@@ -760,7 +778,7 @@ watch:{
       newfilters.attributes = []
       return this.$router.resolve({
         name: 'scenes',
-        query: { q: Buffer.from(JSON.stringify(newfilters)).toString('base64') }
+        query: { q: encodeJsonBase64(newfilters) }
       }).href
     },
     showTagScenes (tag) {
@@ -782,7 +800,7 @@ watch:{
       newfilters.attributes = []
       return this.$router.resolve({
         name: 'scenes',
-        query: { q: Buffer.from(JSON.stringify(newfilters)).toString('base64') }
+        query: { q: encodeJsonBase64(newfilters) }
       }).href
     },
     showSiteScenes (site) {
@@ -804,11 +822,11 @@ watch:{
       newfilters.attributes = []
       return this.$router.resolve({
         name: 'scenes',
-        query: { q: Buffer.from(JSON.stringify(newfilters)).toString('base64') }
+        query: { q: encodeJsonBase64(newfilters) }
       }).href
     },
     showActorDetail (actor_id) {
-      ky.get('/api/actor/'+actor_id).json().then(data => {
+      api.get('/actor/'+actor_id).json().then(data => {
         if (data.id != 0){
           this.$store.commit('overlay/showActorDetails', { actor: data })
           this.close()
@@ -833,7 +851,7 @@ watch:{
         hasIcon: true,
         id: 'heh',
         onConfirm: () => {
-          ky.post(`/api/files/unmatch`, {json:{file_id: file.id}}).json().then(data => {
+          api.post(`/files/unmatch`, {json:{file_id: file.id}}).json().then(data => {
             this.$store.commit('overlay/showDetails', { scene: data })
           })
         }
@@ -846,7 +864,7 @@ watch:{
         type: 'is-danger',
         hasIcon: true,
         onConfirm: () => {
-          ky.delete(`/api/files/file/${file.id}`).json().then(data => {
+          api.delete(`/files/file/${file.id}`).json().then(data => {
             this.$store.commit('overlay/showDetails', { scene: data })
           })
         }
@@ -859,7 +877,7 @@ watch:{
         type: 'is-danger',
         hasIcon: true,
         onConfirm: () => {
-          ky.delete(`/api/scene/${this.item.id}/preview`).json().then(data => {
+          api.delete(`/scene/${this.item.id}/preview`).json().then(data => {
             this.$store.commit('sceneList/updateScene', data)
             this.$store.commit('overlay/showDetails', { scene: data })
           })
@@ -867,7 +885,7 @@ watch:{
       })
     },
     selectScript (file) {
-      ky.post(`/api/scene/selectscript/${this.item.id}`, {
+      api.post(`/scene/selectscript/${this.item.id}`, {
         json: {
           file_id: file.id,
         }
@@ -938,7 +956,7 @@ watch:{
       }
       this.currentCuepointId = 0
 
-      ky.post(`/api/scene/${this.item.id}/cuepoint`, {
+      api.post(`/scene/${this.item.id}/cuepoint`, {
         json: {
           track: this.track,
           name: name,
@@ -956,7 +974,7 @@ watch:{
       })
     },
     deleteCuepoint (cuepointid) {
-      ky.delete(`/api/scene/${this.item.id}/cuepoint/${cuepointid}`)
+      api.delete(`/scene/${this.item.id}/cuepoint/${cuepointid}`)
         .json().then(data => {
           this.$store.commit('sceneList/updateScene', data)
           this.$store.commit('overlay/showDetails', { scene: data })
@@ -973,7 +991,7 @@ watch:{
       return new Date(seconds * 1000).toISOString().substr(11, 10)
     },
     setRating (val) {
-      ky.post(`/api/scene/rate/${this.item.id}`, { json: { rating: val } })
+      api.post(`/scene/rate/${this.item.id}`, { json: { rating: val } })
 
       const updatedScene = Object.assign({}, this.item)
       updatedScene.star_rating = val
@@ -1118,7 +1136,7 @@ watch:{
       // load search fields
       this.searchfields = []      
       if (this.$store.state.optionsAdvanced.advanced.showSceneSearchField && !this.displayingAlternateSource) {
-        ky.get('/api/scene/searchfields', {
+        api.get('/scene/searchfields', {
           searchParams: {
             q: id
           },
@@ -1143,7 +1161,7 @@ watch:{
       this.waitingForQuickFind = true
     }, 
     async handleRelinkExtRef() {
-      const response = await ky.post(`/api/extref/edit_link`, {
+      const response = await api.post(`/extref/edit_link`, {
         json: {
           external_source: this.$store.state.overlay.details.altsrc.external_source,
           external_id: this.$store.state.overlay.details.altsrc.external_id,
@@ -1190,7 +1208,7 @@ watch:{
       })
     },
     async handleRefreshExtRef() {
-      const response = await ky.delete(`/api/extref/delete_extref`, {
+      const response = await api.delete(`/extref/delete_extref`, {
         json: {
           external_source: this.$store.state.overlay.details.altsrc.external_source,
           external_id: this.$store.state.overlay.details.altsrc.external_id,
@@ -1215,7 +1233,7 @@ watch:{
       })    
     },    
     async handleFlagExtRefDeleted() {
-      const response = await ky.post(`/api/extref/edit_link`, {
+      const response = await api.post(`/extref/edit_link`, {
         json: {
           external_source: this.$store.state.overlay.details.altsrc.external_source,
           external_id: this.$store.state.overlay.details.altsrc.external_id,

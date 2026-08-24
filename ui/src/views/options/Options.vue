@@ -80,20 +80,18 @@ export default {
     }
   },
   computed: {
-    showMatchParamsOverlay () {      
+    showMatchParamsOverlay () {
       return this.$store.state.overlay.sceneMatchParams.show
-    },
-    showSceneCreate() {
-      if (this.$store.state.optionsSceneCreate.showSceneCreate){
-        this.setActive('create-scene')
-        this.$store.commit('optionsSceneCreate/showSceneCreate', false )
-      }
-      return this.$store.state.optionsSceneCreate.showSceneCreate;
     },
   },
   watch: {
-    showSceneCreate(newValue, oldValue) {
-      // dummy watch to trigger the computed function
+    // open the create-scene tab when the store flag is set (was a computed
+    // with side effects plus a dummy watcher)
+    '$store.state.optionsSceneCreate.showSceneCreate' (show) {
+      if (show) {
+        this.setActive('create-scene')
+        this.$store.commit('optionsSceneCreate/showSceneCreate', false)
+      }
     },
   },
 }

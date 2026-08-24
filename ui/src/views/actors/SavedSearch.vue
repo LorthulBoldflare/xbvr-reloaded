@@ -59,7 +59,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
 
 export default {
   name: 'SavedSearch',
@@ -116,9 +116,9 @@ export default {
 
       let p
       if (action === 'create') {
-        p = await ky.post('/api/playlist', { json: payload }).json()
+        p = await api.post('/playlist', { json: payload }).json()
       } else {
-        p = await ky.put(`/api/playlist/${this.currentPlaylistObj.id}`, { json: payload }).json()
+        p = await api.put(`/playlist/${this.currentPlaylistObj.id}`, { json: payload }).json()
       }
 
       await this.$store.dispatch('actorList/filters')
@@ -133,7 +133,7 @@ export default {
         hasIcon: true,
         confirmText: 'Delete',
         onConfirm: () => {
-          ky.delete(`/api/playlist/${this.currentPlaylistObj.id}`).then(() => {
+          api.delete(`/playlist/${this.currentPlaylistObj.id}`).then(() => {
             this.$store.dispatch('actorList/filters')
             this.currentPlaylist = null
           })

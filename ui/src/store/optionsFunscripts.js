@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   countTotal: 0,
@@ -12,13 +12,13 @@ const mutations = {}
 
 const actions = {
   async load({ state }, params) {
-    ky.get('/api/options/funscripts/count')
+    api.get('/options/funscripts/count')
       .json()
       .then(data => {
         state.countTotal = data.total
         state.countUpdated = data.updated
       })
-    ky.get('/api/options/state')
+    api.get('/options/state')
       .json()
       .then(data => {
         state.optionsFunscripts.scrapeFunscripts = data.config.funscripts.scrapeFunscripts
@@ -26,7 +26,7 @@ const actions = {
 
   },
   async save ({ state }) {    
-    ky.put('/api/options/funscripts', { json: { ...state.optionsFunscripts } })
+    api.put('/options/funscripts', { json: { ...state.optionsFunscripts } })
       .json()
       .then(data => {
         state.optionsFunscripts.scrapeFunscripts = data.scrapeFunscripts

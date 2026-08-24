@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../api'
 export default {
   name: 'RescrapeButton',
   props: { item: Object },
@@ -21,13 +21,13 @@ export default {
       this.$store.commit('sceneList/toggleSceneList', {scene_id: this.item.scene_id, list: 'needs_update'})
       if (this.item.scraper_id && this.item.needs_update) {
         await this.delay(200);
-        ky.get(`/api/task/scrape?site=${this.item.scraper_id}`)
+        api.get(`/task/scrape?site=${this.item.scraper_id}`)
       } else {
         if (this.item.scene_url.toLowerCase().includes("dmm.co.jp")) {
-          ky.post('/api/task/scrape-javr', { json: { s: "r18d", q: this.item.scene_id } })
+          api.post('/task/scrape-javr', { json: { s: "r18d", q: this.item.scene_id } })
         } else {
 
-          const sites = await ky.get('/api/options/sites').json()
+          const sites = await api.get('/options/sites').json()
           console.info(sites)
 
           for (const element of sites) {
@@ -61,7 +61,9 @@ export default {
             this.$buefy.toast.open({message: `No scrapers exist for this domain`, type: 'is-danger', duration: 5000})      
             return
           }    
-          ky.post(`/api/task/singlescrape`, {timeout: false, json: { site: site, sceneurl: this.item.scene_url, additionalinfo:[] }})
+          // fire-and-forget, but scrapes can run long — don't abort at the
+          // 60s shared default (historical behavior was timeout: false)
+          api.post(`/task/singlescrape`, {timeout: false, json: { site: site, sceneurl: this.item.scene_url, additionalinfo:[] }})
         }
       }
     }

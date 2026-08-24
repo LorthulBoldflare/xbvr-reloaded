@@ -109,7 +109,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
 import { format, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
 import VueLoadImage from 'vue-load-image'
@@ -159,7 +159,7 @@ export default {
       const requestIndex = this.dataNumRequests
       this.dataNumRequests = this.dataNumRequests + 1
 
-      const resp = await ky.get('/api/scene/search', {
+      const resp = await api.get('/scene/search', {
         searchParams: {
           q: this.queryString
         },
@@ -185,7 +185,7 @@ export default {
       }
     },
     assign: async function assign (scene_id) {
-      await ky.post('/api/files/match', {
+      await api.post('/files/match', {
         json: {
           file_id: this.toInt(this.$store.state.overlay.match.file.id),
           scene_id: scene_id

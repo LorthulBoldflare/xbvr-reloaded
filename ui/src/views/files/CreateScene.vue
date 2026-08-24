@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
 import { format, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
 
@@ -79,10 +79,10 @@ export default {
       return parseInt(value, radix || 10) || defaultValue || 0
     },
     addScene(showEdit) {      
-      ky.post('/api/scene/create', { json: { title: this.title, id: this.sceneId, filename: this.file.filename } })
+      api.post('/scene/create', { json: { title: this.title, id: this.sceneId, filename: this.file.filename } })
         .json()
         .then(scene => {          
-          ky.post('/api/files/match', { json: {file_id: this.file.id, scene_id: scene.scene_id}})          
+          api.post('/files/match', { json: {file_id: this.file.id, scene_id: scene.scene_id}})          
           .then(data => {
             this.$store.dispatch('files/load')
             this.close()

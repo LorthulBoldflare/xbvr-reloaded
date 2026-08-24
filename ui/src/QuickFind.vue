@@ -71,7 +71,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from './api'
 import VueLoadImage from 'vue-load-image'
 import GlobalEvents from 'vue-global-events'
 import { format, parseISO } from 'date-fns'
@@ -87,23 +87,34 @@ export default {
   computed: {
     isActive: {
       get () {
-        if (this.queryString!=null && this.queryString!="") {
-          this.getAsyncData(this.queryString)
-        }
-        const out = this.$store.state.overlay.quickFind.show
-        if (out === true) {
-          this.$nextTick(() => {
-            this.$refs.autocompleteInput.$refs.input.focus()
-          if (this.$store.state.overlay.quickFind.searchString !=null && this.$store.state.overlay.quickFind.searchString!="") {
-              this.queryString = this.$store.state.overlay.quickFind.searchString
-              this.$store.state.overlay.quickFind.searchString = null
-          }
-          })
-        }
-        return out
+        return this.$store.state.overlay.quickFind.show
       },
       set (values) {
-        this.$store.state.overlay.quickFind.show = values
+        if (values) {
+          this.$store.commit('overlay/showQuickFind')
+        } else {
+          this.$store.commit('overlay/hideQuickFind')
+        }
+      }
+    }
+  },
+  watch: {
+    // fetch suggestions when the query changes (was a computed side effect)
+    queryString (newVal) {
+      if (newVal != null && newVal != "") {
+        this.getAsyncData(newVal)
+      }
+    },
+    // focus the input and pick up any preset search string when opened
+    '$store.state.overlay.quickFind.show' (shown) {
+      if (shown === true) {
+        this.$nextTick(() => {
+          this.$refs.autocompleteInput.$refs.input.focus()
+          if (this.$store.state.overlay.quickFind.searchString != null && this.$store.state.overlay.quickFind.searchString != "") {
+            this.queryString = this.$store.state.overlay.quickFind.searchString
+            this.$store.commit('overlay/clearQuickFindSearchString')
+          }
+        })
       }
     }
   },
@@ -133,7 +144,7 @@ export default {
 
       this.isFetching = true
 
-      const resp = await ky.get('/api/scene/search', {
+      const resp = await api.get('/scene/search', {
         searchParams: {
           q: query
         }
@@ -170,7 +181,7 @@ export default {
           this.$store.commit('overlay/showDetails', { scene })
         } else {
           // don't display the scene, just pass the selected scene back in the $store.state and close
-          this.$store.state.overlay.quickFind.selectedScene = scene          
+          this.$store.commit('overlay/setQuickFindSelectedScene', scene)
           this.$store.commit('overlay/hideQuickFind')
           this.data = []
       }

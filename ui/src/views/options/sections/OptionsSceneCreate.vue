@@ -93,7 +93,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 
 export default {
   name: 'OptionsCreateScene',
@@ -124,7 +124,7 @@ export default {
   methods: {
     async loadState () {
       this.isLoading = true
-      await ky.get('/api/options/state')
+      await api.get('/options/state')
         .json()
         .then(data => {
           this.javrScraper = data.config.scraper_settings.javr.javrScraper
@@ -133,7 +133,7 @@ export default {
     },
     addScene(showEdit) {
       if (this.customSceneTitle !== '') {
-        ky.post('/api/scene/create', { json: { title: this.customSceneTitle, id: this.customSceneID } })
+        api.post('/scene/create', { json: { title: this.customSceneTitle, id: this.customSceneID } })
         .json()
         .then(scene => {          
           if (showEdit) {
@@ -143,10 +143,10 @@ export default {
       }
     },
     scrapeJAVR () {
-      ky.post('/api/task/scrape-javr', { json: { s: this.javrScraper, q: this.javrQuery } })
+      api.post('/task/scrape-javr', { json: { s: this.javrScraper, q: this.javrQuery } })
     },
     scrapeTPDB () {
-      ky.post('/api/task/scrape-tpdb', {
+      api.post('/task/scrape-tpdb', {
         json: { apiToken: this.tpdbApiToken, sceneUrl: this.tpdbSceneUrl }
       })
     },
@@ -225,7 +225,9 @@ export default {
       } else {
         this.$buefy.toast.open({message: `Scene scraping in progress`, type: 'is-warning', duration: 5000})
       }
-      ky.post(`/api/task/singlescrape`, {timeout: false, json: { site: site, sceneurl: this.scrapeUrl, additionalinfo: this.additionalInfo}})
+      // scrapes can run long and the response is consumed below — keep the
+      // historical unbounded timeout instead of the 60s shared default
+      api.post(`/task/singlescrape`, {timeout: false, json: { site: site, sceneurl: this.scrapeUrl, additionalinfo: this.additionalInfo}})
       .json()
       .then(data => { 
         if (data.status == 'OK') {          

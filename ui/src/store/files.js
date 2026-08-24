@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   isLoading: false,
@@ -42,7 +42,7 @@ const getters = {
 const actions = {
   load ({ state }, params) {
     state.isLoading = true
-    ky.post('/api/files/list', { json: state.filters })
+    api.post('/files/list', { json: state.filters })
       .json()
       .then(data => {
         state.items = data

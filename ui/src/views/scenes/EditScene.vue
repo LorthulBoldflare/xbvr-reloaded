@@ -106,7 +106,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../api'
 import GlobalEvents from 'vue-global-events'
 import ListEditor from '../../components/ListEditor'
 import GalleryEditor from '../../components/GalleryEditor'
@@ -232,7 +232,7 @@ export default {
       this.scene.duration = String(this.scene.duration);
 
       // Push to backend with proper error handling
-      ky.post(`/api/scene/edit/${this.scene.id}`, { json: { ...this.scene } })
+      api.post(`/scene/edit/${this.scene.id}`, { json: { ...this.scene } })
         .json()
         .then(data => {
           this.$store.commit('sceneList/updateScene', data);
@@ -260,7 +260,7 @@ export default {
         hasIcon: true,
         id: 'heh',
         onConfirm: () => {
-          ky.post(`/api/scene/delete`, {json:{scene_id: this.scene.id}}).json().then(data => {
+          api.post(`/scene/delete`, {json:{scene_id: this.scene.id}}).json().then(data => {
             this.$store.dispatch('sceneList/load', { offset: 0 })
             this.$store.commit('overlay/hideEditDetails')
             this.$store.commit('overlay/hideDetails')

@@ -136,7 +136,7 @@
 
 <script>
 import ActorCard from './ActorCard'
-import ky from 'ky'
+import api from '../../api'
 import GlobalEvents from 'vue-global-events'
 
 export default {
@@ -223,7 +223,7 @@ export default {
     show_actor_id() {
       if (this.$store.state.actorList.show_actor_id != undefined && this.$store.state.actorList.show_actor_id !='')
       {
-        ky.get('/api/actor/'+this.$store.state.actorList.show_actor_id).json().then(data => {
+        api.get('/actor/'+this.$store.state.actorList.show_actor_id).json().then(data => {
           if (data.id != 0){
             this.$store.commit('overlay/showActorDetails', { actor: data })
           }          

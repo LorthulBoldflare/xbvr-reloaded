@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   items: [],
@@ -11,11 +11,14 @@ const state = {
 }
 
 const mutations = {
+  setOption (state, { key, value }) {
+    state.options[key] = value
+  }
 }
 
 const actions = {
   async load ({ state }, params) {
-    await ky.get('/api/options/storage').json()
+    await api.get('/options/storage').json()
     .then(data => {
       state.items = data.volumes
       state.options.match_ohash = data.match_ohash
@@ -25,7 +28,7 @@ const actions = {
     })
   },
   async save ({ state }, enabled) { 
-    ky.put('/api/options/storage', { json: { ...state.options } })      
+    api.put('/options/storage', { json: { ...state.options } })      
   },  
 }
 

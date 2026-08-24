@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from './api'
 
 export default {
   data () {
@@ -64,7 +64,7 @@ export default {
     }
   },
   mounted () {
-    ky.get('/api/options/version-check').json().then(data => {
+    api.get('/options/version-check').json().then(data => {
       this.currentVersion = data.current_version
       this.latestVersion = data.latest_version
 

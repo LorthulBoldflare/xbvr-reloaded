@@ -72,7 +72,7 @@
 </template>
 
 <script>
-import ky from 'ky'
+import api from '../../../api'
 import prettyBytes from 'pretty-bytes'
 
 export default {
@@ -92,7 +92,7 @@ export default {
   methods: {
     async loadState () {
       this.isLoading = true
-      await ky.get('/api/options/state')
+      await api.get('/options/state')
         .json()
         .then(data => {
           this.sizes = data.currentState.cacheSize
@@ -101,16 +101,16 @@ export default {
     },
     async resetCache (kind) {
       this.isLoading = true
-      await ky.delete(`/api/options/cache/reset/${kind}`, { timeout: 30000 })
+      await api.delete(`/options/cache/reset/${kind}`, { timeout: 30000 })
       await this.loadState()
       await this.loadSearchState()
     },
     taskRefresh: function () {
-      ky.get('/api/task/scene-refresh')
+      api.get('/task/scene-refresh')
     },
     async loadSearchState () {
       this.isLoading = true
-      await ky.get('/api/options/state/search')
+      await api.get('/options/state/search')
         .json()
         .then(data => {
           this.indexSceneCount = data.documentCount
@@ -120,7 +120,7 @@ export default {
     },
     async indexRescan () {
       this.isLoading = true
-      await ky.get('/api/task/index')
+      await api.get('/task/index')
       this.searchInprogress = true
       this.isLoading = false
     },

@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   connected: false,
@@ -37,7 +37,7 @@ const actions = {
       if (state.currentSceneID !== 0) {
         commit('addToHistory', state.currentScene)
       }
-      const sceneData = await ky.get(`/api/scene/${payload.currentSceneID}`).json()
+      const sceneData = await api.get(`/scene/${payload.currentSceneID}`).json()
       commit('setCurrentScene', sceneData)
     }
 

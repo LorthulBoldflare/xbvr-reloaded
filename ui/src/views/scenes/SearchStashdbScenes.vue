@@ -65,7 +65,7 @@
 
 <script>
 import GlobalEvents from 'vue-global-events'
-import ky from 'ky'
+import api from '../../api'
 import VueLoadImage from 'vue-load-image'
 import { format, parseISO } from 'date-fns'
 
@@ -108,7 +108,7 @@ export default {
     },
     searchStashdb() {
         this.$buefy.toast.open({message: `Searching scenes`, type: 'is-primary', duration: 5000})
-        ky.get('/api/extref/stashdb/search/' + this.scene.id + "?q=" + this.queryString, {timeout: 6e6}).json().then(data => {
+        api.get('/extref/stashdb/search/' + this.scene.id + "?q=" + this.queryString, {timeout: 6e6}).json().then(data => {
             this.searchResults = Object.values(data.Results).sort((a, b) => b.Weight - a.Weight)
             this.isModalActive = true
             if (data.Status!='') {
@@ -126,7 +126,7 @@ export default {
     },    
     linktoStashdb(option) {
         this.stashdbUrl=option.Url.replace("https://stashdb.org/scenes/","")
-        ky.get('/api/extref/stashdb/link2scene/' + this.scene.id +'/'+this.stashdbUrl ).json().then(data => {          
+        api.get('/extref/stashdb/link2scene/' + this.scene.id +'/'+this.stashdbUrl ).json().then(data => {          
           this.$store.commit('sceneList/updateScene', data)
           this.$store.commit('overlay/showDetails', { scene: data })
           this.close()

@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   loading: false,
@@ -23,12 +23,12 @@ const mutations = {}
 const actions = {
   async load ({ state }) {
     state.loading = true
-    ky.get('/api/options/collector-config-list')
+    api.get('/options/collector-config-list')
       .json()
       .then(data => {
         state.advanced.collectorConfigs = data
       })
-    ky.get('/api/options/state')
+    api.get('/options/state')
       .json()
       .then(data => {
         state.advanced.showInternalSceneId = data.config.advanced.showInternalSceneId
@@ -48,7 +48,7 @@ const actions = {
   },
   async save ({ state }) {
     state.loading = true
-    ky.put('/api/options/interface/advanced', { json: { ...state.advanced } })
+    api.put('/options/interface/advanced', { json: { ...state.advanced } })
       .json()
       .then(data => {
         state.advanced.showInternalSceneId = data.showInternalSceneId

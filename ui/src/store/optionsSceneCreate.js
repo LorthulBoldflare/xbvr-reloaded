@@ -1,4 +1,3 @@
-import ky from 'ky'
 
 const state = {
   scrapeScene: '',

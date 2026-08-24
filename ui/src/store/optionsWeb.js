@@ -1,4 +1,4 @@
-import ky from 'ky'
+import api from '../api'
 
 const state = {
   loading: false,
@@ -33,7 +33,7 @@ const mutations = {}
 const actions = {
   async load ({ state }) {
     state.loading = true
-    ky.get('/api/options/state')
+    api.get('options/state')
       .json()
       .then(data => {
         state.web.tagSort = data.config.web.tagSort
@@ -62,7 +62,7 @@ const actions = {
   },
   async save ({ state }) {
     state.loading = true
-    ky.put('/api/options/interface/web', { json: { ...state.web } })
+    api.put('options/interface/web', { json: { ...state.web } })
       .json()
       .then(data => {
         state.web.tagSort = data.tagSort
