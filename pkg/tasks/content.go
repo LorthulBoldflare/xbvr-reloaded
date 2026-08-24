@@ -327,20 +327,12 @@ func ReapplyEdits() {
 
 func ScrapeSingleScene(toScrape string, singleSceneURL string, singeScrapeAdditionalInfo string) models.Scene {
 	var newScene models.Scene
+
 	Scrape(toScrape, singleSceneURL, singeScrapeAdditionalInfo)
-	commonDb, _ := models.GetCommonDB()
-	commonDb.
-		Preload("Tags").
-		Preload("Cast").
-		Preload("Files").
-		Preload("History").
-		Preload("Cuepoints").
-		Where("scene_url like ?", strings.TrimSuffix(singleSceneURL, "/")+"%").First(&newScene)
-	if newScene.ID != 0 {
+	if err := newScene.GetIfExistByURL(singleSceneURL); err == nil && newScene.ID != 0 {
 		return newScene
 	}
 	return models.Scene{}
-
 }
 func Scrape(toScrape string, singleSceneURL string, singeScrapeAdditionalInfo string) {
 	if !models.CheckLock("scrape") {

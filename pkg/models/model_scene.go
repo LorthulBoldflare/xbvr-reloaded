@@ -223,6 +223,24 @@ func (o *Scene) GetIfExistURL(u string) error {
 		Where(&Scene{SceneURL: u}).First(o).Error
 }
 
+// GetIfExistByURL loads a scene by its scene URL, tolerating a single
+// trailing-slash difference. Unlike a LIKE "url%" prefix match this is an
+// exact comparison, so URLs containing LIKE wildcards (% or _) and URLs that
+// are merely a path prefix of a stored scene URL cannot match unrelated
+// scenes.
+func (o *Scene) GetIfExistByURL(u string) error {
+	commonDb, _ := GetCommonDB()
+
+	trimmed := strings.TrimSuffix(u, "/")
+	return commonDb.
+		Preload("Tags").
+		Preload("Cast").
+		Preload("Files").
+		Preload("History").
+		Preload("Cuepoints").
+		Where("scene_url = ? OR scene_url = ?", trimmed, trimmed+"/").First(o).Error
+}
+
 // validCodecName restricts the Codec attribute filter value to simple
 // codec identifiers (h264, hevc, vp9, av1, ...) to prevent SQL injection.
 var validCodecName = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)

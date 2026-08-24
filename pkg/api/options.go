@@ -239,6 +239,9 @@ func (i ConfigResource) WebService() *restful.WebService {
 	ws.Route(ws.GET("/version-check").To(i.versionCheck).
 		Metadata(restfulspec.KeyOpenAPITags, tags))
 
+	ws.Route(ws.GET("/mcp-token").To(i.getMCPToken).
+		Metadata(restfulspec.KeyOpenAPITags, tags))
+
 	ws.Route(ws.GET("/state").To(i.getState).
 		Metadata(restfulspec.KeyOpenAPITags, tags))
 
@@ -366,6 +369,20 @@ func (i ConfigResource) versionCheck(req *restful.Request, resp *restful.Respons
 	}
 
 	resp.WriteHeaderAndEntity(http.StatusOK, out)
+}
+
+// getMCPToken returns the derived MCP bearer token so the web UI can display
+// it (Options -> Interface -> Advanced) for copy-pasting into MCP client
+// configs. The token is a keyed hash of the UI credentials, not the raw
+// password. Only reachable when UI auth is enabled: /mcp is not served
+// otherwise, and this route is protected by apiAuthFilter like the rest of
+// /api/*.
+func (i ConfigResource) getMCPToken(req *restful.Request, resp *restful.Response) {
+	if !common.IsUIAuthEnabled() {
+		APIError(req, resp, http.StatusNotFound, fmt.Errorf("MCP endpoint is disabled (UI authentication is not enabled)"))
+		return
+	}
+	resp.WriteHeaderAndEntity(http.StatusOK, map[string]string{"token": common.MCPToken()})
 }
 
 func (i ConfigResource) listSites(req *restful.Request, resp *restful.Response) {

@@ -128,7 +128,7 @@ XBVR exposes an MCP endpoint (Streamable HTTP transport) at `/mcp` on the web po
 | `generate_previews` | Start generating video preview clips (same as Options → Previews) |
 | `match_file` | Match a file on disk to a scraped scene (same as the assign action on the Files page, but without fuzzy matching). Arguments: `filename` (exact filename on disk), `scene_id` (as returned by `scrape_scene`). Both must match exactly one record; the file must exist on disk and must not be matched to a different scene. Typical workflow: `scrape_scene` → download the file → `rescan_storage` → `match_file`. |
 
-**Authentication:** when UI authentication is enabled (`UI_USERNAME`/`UI_PASSWORD` set), requests must send an `Authorization: Bearer <token>` header where the token is the concatenation of the UI username and UI password. For example, with username `UserA` and password `Password123`, the token is `UserAPassword123`. When UI auth is disabled, the endpoint is open.
+**Authentication:** the MCP endpoint is only served when UI authentication is enabled (`UI_USERNAME`/`UI_PASSWORD` set) — otherwise `/mcp` is not registered at all. Requests must send an `Authorization: Bearer <token>` header. The token is derived from your UI credentials (a keyed hash, not the raw username/password) and is shown in the web UI under **Options → Interface → Advanced → MCP Access Token** (hidden until revealed, with a copy button). It stays valid until you change the UI username or password.
 
 Example client configuration:
 
@@ -138,7 +138,7 @@ Example client configuration:
     "xbvr": {
       "url": "http://localhost:9999/mcp",
       "headers": {
-        "Authorization": "Bearer UserAPassword123"
+        "Authorization": "Bearer <token from Options → Interface → Advanced>"
       }
     }
   }

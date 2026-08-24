@@ -35,11 +35,28 @@ func createCollector(domains ...string) *colly.Collector {
 		colly.CacheDir(getScrapeCacheDir()),
 		colly.UserAgent(UserAgent),
 	)
-	// use proxy if configured
+	// Route all collector traffic through the SSRF-safe transport, which
+	// re-validates every request target — including redirect hops — against
+	// ValidateOutboundURL, closing the validate-then-fetch gap (DNS rebinding,
+	// 302 to private/loopback) that a one-time URL check leaves open.
+	//
+	// The proxy (if configured) is applied to the base transport directly:
+	// colly's SetProxy/SetProxyFunc would REPLACE any non-*http.Transport
+	// transport (i.e. silently drop the SSRF wrapper) — and wrapping after
+	// SetProxy would drop the proxy. Clone() shares the collector backend, so
+	// this covers cloneCollector users too.
+	base := http.DefaultTransport.(*http.Transport).Clone()
 	if config.Config.Advanced.ScraperProxy != "" {
-		common.Log.Infof("Using proxy for scraping: %s.", config.Config.Advanced.ScraperProxy)
-		c.SetProxy(config.Config.Advanced.ScraperProxy)
+		proxyURL, err := url.Parse(config.Config.Advanced.ScraperProxy)
+		if err != nil {
+			common.Log.Errorf("Ignoring invalid scraper proxy %q: %v", config.Config.Advanced.ScraperProxy, err)
+		} else {
+			common.Log.Infof("Using proxy for scraping: %s.", config.Config.Advanced.ScraperProxy)
+			base.Proxy = http.ProxyURL(proxyURL)
+			base.DisableKeepAlives = true
+		}
 	}
+	c.WithTransport(common.SSRFSafeTransport{Base: base})
 
 	// Set error handler
 	c.OnError(func(r *colly.Response, err error) {

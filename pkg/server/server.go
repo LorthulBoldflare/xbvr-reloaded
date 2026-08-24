@@ -228,11 +228,15 @@ func StartServer(version, commit, branch, date string) {
 		handler.ServeHTTP(w, req)
 	})
 
-	// MCP endpoint (Streamable HTTP). Bearer-token auth applies when UI auth
-	// is enabled; see mcpAuthMiddleware.
-	mcpServer := newMCPServer(version)
-	http.Handle("/mcp", mcpAuthMiddleware(mcp.NewStreamableHTTPHandler(
-		func(r *http.Request) *mcp.Server { return mcpServer }, nil)))
+	// MCP endpoint (Streamable HTTP). Only served when UI auth is enabled —
+	// without UI credentials there would be no bearer token to protect it,
+	// so the route is not registered at all (requests fall through to 404).
+	// See mcpAuthMiddleware for the token check.
+	if common.IsUIAuthEnabled() {
+		mcpServer := newMCPServer(version)
+		http.Handle("/mcp", mcpAuthMiddleware(mcp.NewStreamableHTTPHandler(
+			func(r *http.Request) *mcp.Server { return mcpServer }, nil)))
+	}
 
 	// Attach logrus hook
 	wampHook := common.NewWampHook()
@@ -267,7 +271,11 @@ func StartServer(version, commit, branch, date string) {
 	config.SaveState()
 
 	log.Infof("Web UI available at %s", strings.Join(ips, ", "))
-	log.Infof("MCP endpoint available at /mcp (Streamable HTTP)")
+	if common.IsUIAuthEnabled() {
+		log.Infof("MCP endpoint available at /mcp (Streamable HTTP)")
+	} else {
+		log.Infof("MCP endpoint disabled (set UI_USERNAME/UI_PASSWORD to enable)")
+	}
 	log.Infof("Web UI Authentication enabled: %v", common.IsUIAuthEnabled())
 	log.Infof("Using database: %s", common.DATABASE_URL)
 

@@ -34,6 +34,17 @@
               </b-switch>
               </b-tooltip>
             </b-field>
+            <b-field v-if="!mcpTokenUnavailable" :label="$t('MCP Access Token')" label-position="on-border">
+              <b-input :value="mcpToken" :type="showMcpToken ? 'text' : 'password'" readonly expanded
+                icon-right-clickable :icon-right="showMcpToken ? 'eye-slash' : 'eye'"
+                @icon-right-click="showMcpToken = !showMcpToken"></b-input>
+              <p class="control">
+                <b-button @click="copyMcpToken" :disabled="mcpToken === ''">{{ $t('Copy') }}</b-button>
+              </p>
+            </b-field>
+            <b-message v-if="mcpTokenUnavailable" type="is-info" has-icon>
+              {{ $t('The MCP endpoint is disabled because UI authentication is not enabled (set UI_USERNAME/UI_PASSWORD to enable it).') }}
+            </b-message>
             <b-field>
               <b-button type="is-primary" @click="save">Save</b-button>
             </b-field>
@@ -270,10 +281,14 @@ export default {
   name: 'InterfaceAdvanced',
   mounted () {
     this.$store.dispatch('optionsAdvanced/load')
+    this.loadMcpToken()
   },
   data () {
     return {
       activeTab: 0,
+      mcpToken: '',
+      mcpTokenUnavailable: false,
+      showMcpToken: false,
       scraperUrl: '',
       scraperName: '',
       scraperCompany: '',
@@ -313,6 +328,23 @@ export default {
   methods: {
     save () {
       this.$store.dispatch('optionsAdvanced/save')
+    },
+    async loadMcpToken () {
+      try {
+        const data = await api.get('/options/mcp-token').json()
+        this.mcpToken = data.token
+      } catch (error) {
+        // 404: MCP endpoint disabled (UI authentication not enabled)
+        this.mcpTokenUnavailable = true
+      }
+    },
+    async copyMcpToken () {
+      try {
+        await navigator.clipboard.writeText(this.mcpToken)
+        this.$buefy.toast.open({ message: this.$t('MCP token copied to clipboard'), type: 'is-success' })
+      } catch (error) {
+        this.$buefy.toast.open({ message: `Error: ${error.message}`, type: 'is-danger', duration: 30000 })
+      }
     },
     validateScraperFields() {
       this.scraperFieldsValid=false

@@ -66,20 +66,29 @@ func TestMCPAuthMiddleware(t *testing.T) {
 		}
 	})
 
-	t.Run("accepts concatenated username+password token", func(t *testing.T) {
+	t.Run("rejects legacy concatenated username+password token", func(t *testing.T) {
 		rec := runMCPAuth(t, "Bearer UserAPassword123")
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", rec.Code)
+		}
+	})
+
+	t.Run("accepts derived MCP token", func(t *testing.T) {
+		rec := runMCPAuth(t, "Bearer "+common.MCPToken())
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", rec.Code)
 		}
 	})
 
-	t.Run("open when UI auth disabled", func(t *testing.T) {
+	t.Run("rejects when UI auth disabled", func(t *testing.T) {
+		// The /mcp route is not even registered without UI auth (see
+		// server.go); if the middleware were reached anyway it must reject.
 		common.EnvConfig.UIUsername = ""
 		common.EnvConfig.UIPassword = ""
 		defer func() { common.EnvConfig.UIUsername, common.EnvConfig.UIPassword = "UserA", "Password123" }()
 		rec := runMCPAuth(t, "")
-		if rec.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d", rec.Code)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", rec.Code)
 		}
 	})
 }
@@ -120,8 +129,8 @@ func TestMCPServerHandshake(t *testing.T) {
 }
 
 // TestMCPEndpointAuth verifies the bearer-token requirement end to end: an
-// MCP client without a token is rejected, one with the concatenated
-// username+password token completes the handshake.
+// MCP client without a token is rejected, one with the derived MCP token
+// (common.MCPToken) completes the handshake.
 func TestMCPEndpointAuth(t *testing.T) {
 	origUser, origPass := common.EnvConfig.UIUsername, common.EnvConfig.UIPassword
 	defer func() {
@@ -152,7 +161,7 @@ func TestMCPEndpointAuth(t *testing.T) {
 		Endpoint: ts.URL,
 		HTTPClient: &http.Client{
 			Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
-				r.Header.Set("Authorization", "Bearer UserAPassword123")
+				r.Header.Set("Authorization", "Bearer "+common.MCPToken())
 				return http.DefaultTransport.RoundTrip(r)
 			}),
 		},

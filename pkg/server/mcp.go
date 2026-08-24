@@ -17,24 +17,17 @@ import (
 	"github.com/xbapps/xbvr/pkg/tasks"
 )
 
-// mcpAuthMiddleware enforces Bearer-token auth on the /mcp endpoint whenever
-// UI auth is enabled (UI_USERNAME/UI_PASSWORD set), matching the scope of
-// apiAuthFilter for the REST API. The accepted token is the concatenation of
-// the configured UI username and UI password, e.g. username "UserA" with
-// password "Password123" yields the token "UserAPassword123". Both values are
-// plaintext env config, so the token is compared as a whole — never split it
-// back into user/password parts. When UI auth is disabled the endpoint is
-// open.
+// mcpAuthMiddleware enforces Bearer-token auth on the /mcp endpoint. The
+// accepted token is derived from the UI credentials via common.MCPToken (a
+// keyed hash, never the raw username/password) and is shown in the web UI
+// under Options -> Interface -> Advanced. The /mcp route is only registered
+// when UI auth is enabled (see server.go), so this check is unconditional;
+// unlike apiAuthFilter it is also not exempted by XBVR_NO_API_AUTH.
 func mcpAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !common.IsUIAuthEnabled() {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		expected := common.EnvConfig.UIUsername + common.EnvConfig.UIPassword
-		if token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
+		expected := common.MCPToken()
+		if expected == "" || token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
 			http.Error(w, "401: Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -256,10 +249,8 @@ func mcpScrapeScene(ctx context.Context, req *mcp.CallToolRequest, args mcpScrap
 	}
 
 	// Already present? Return the existing scene-id without re-scraping.
-	commonDb, _ := models.GetCommonDB()
 	var existing models.Scene
-	commonDb.Where("scene_url like ?", strings.TrimSuffix(args.URL, "/")+"%").First(&existing)
-	if existing.ID != 0 {
+	if err := existing.GetIfExistByURL(args.URL); err == nil && existing.ID != 0 {
 		return mcpTextResult(existing.SceneID), nil, nil
 	}
 
