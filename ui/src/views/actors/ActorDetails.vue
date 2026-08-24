@@ -32,7 +32,7 @@
                       <span class="al image" style="width:max-content;">
                         <vue-load-image>
                           <img slot="image" :src="getIndicatorURL(props.i)" style="height:85px;"/>
-                          <img slot="preloader" :src="getImageURL('https://i.stack.imgur.com/kOnzy.gif')" style="height:25px;"/>
+                          <img slot="preloader" :src="'/ui/images/blank.png'" style="height:25px;"/>
                           <img slot="error" src="/ui/images/blank_female_profile.png" style="height:85px;"/>
                         </vue-load-image>
                       </span>
@@ -339,11 +339,7 @@ export default {
     },  
     methods: {
     getImageURL (u, size) {
-      if (u.startsWith('http') || u.startsWith('https')) {
-        return '/img/' + size + '/' + u.replace('://', ':/')
-      } else {
-        return u
-      }
+      return getImageURLUtil(u, size)
     },
     getIndicatorURL (idx) {      
       if (this.images[idx] !== undefined) {
@@ -507,7 +503,7 @@ export default {
     getCountryFlag(countryCode){
       const country = this.countries.find(c => c.code === countryCode)
       if (country == undefined) {
-        return 'https://flagcdn.com/' + countryCode.toLowerCase() +'.svg'
+        return getImageURLUtil('https://flagcdn.com/' + countryCode.toLowerCase() + '.svg', '700x')
       }
       return country.flag_url
     },

@@ -82,9 +82,9 @@
                 <div class="columns">
                   <div class="column pb-0">
                     <small>
-                      <a :href="item.scene_url" target="_blank" rel="noreferrer">{{ item.site }}</a>
+                      <a :href="safeHref(item.scene_url)" target="_blank" rel="noreferrer">{{ item.site }}</a>
                       <br v-if="item.members_url != ''"/>
-                      <a v-if="item.members_url != ''" :href="item.members_url" target="_blank" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px"/>Members Link</a>
+                      <a v-if="item.members_url != ''" :href="safeHref(item.members_url)" target="_blank" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px"/>Members Link</a>
                     </small>
                   </div>
                   <div class="column pb-0">
@@ -154,7 +154,7 @@
                 <b-tooltip  type="is-light" :label="image.actor_label"  :delay=100>
                   <vue-load-image>
                     <img slot="image" :src="getImageURL(image.src)" alt="Image" class="thumbnail" @mouseover="showTooltip(idx)" @mouseout="hideTooltip(idx)" @click='showActorDetail([image.actor_id])' />
-                    <img slot="preloader" :src="getImageURL('https://i.stack.imgur.com/kOnzy.gif')" style="height: 50px;display: block;margin-left:auto;margin-right: auto;" @click='showCastScenes([image.actor_name])' />
+                    <img slot="preloader" :src="'/ui/images/blank.png'" style="height: 50px;display: block;margin-left:auto;margin-right: auto;" @click='showCastScenes([image.actor_name])' />
                     <img slot="error" src="/ui/images/blank_female_profile.png" width="80" @click='showActorDetail([image.actor_id])' />
                   </vue-load-image>
                 </b-tooltip>
@@ -407,6 +407,7 @@
 import api from '../../api'
 import { encodeJsonBase64 } from '../../util/base64'
 import { getImageURL as getImageURLUtil, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
+import { safeHref } from '../../util/url'
 import videojs from 'video.js'
 import 'videojs-vr/dist/videojs-vr.min.js'
 import { format, formatDistance, parseISO } from 'date-fns'
@@ -664,6 +665,7 @@ watch:{
   }
 },
   methods: {
+    safeHref,
     // Fetched on mount and whenever the displayed scene changes. Previously
     // an async computed used as v-if — an always-truthy Promise that
     // refetched on every render.

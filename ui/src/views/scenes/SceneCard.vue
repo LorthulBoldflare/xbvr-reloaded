@@ -63,8 +63,8 @@
       <link-stashdb-button :item="item" v-if="!this.stashLinkExists" objectType="scene"/>
 
       <span class="is-pulled-right" style="font-size:11px;text-align:right;">
-        <a v-if="item.members_url != ''" :href="item.members_url" target="_blank" title="Members Link" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px" style="height:0.7rem"/></a>
-        <a :href="item.scene_url" :class="{'has-text-white has-background-primary-dark': item.is_subscribed }" target="_blank" rel="noreferrer" style="padding:2px">{{item.site}}</a><br/>
+        <a v-if="item.members_url != ''" :href="safeHref(item.members_url)" target="_blank" title="Members Link" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px" style="height:0.7rem"/></a>
+        <a :href="safeHref(item.scene_url)" :class="{'has-text-white has-background-primary-dark': item.is_subscribed }" target="_blank" rel="noreferrer" style="padding:2px">{{item.site}}</a><br/>
         <span v-if="item.release_date !== '0001-01-01T00:00:00Z'">
           {{format(parseISO(item.release_date), "yyyy-MM-dd")}}
         </span>        
@@ -72,7 +72,7 @@
       <div class="image-row" v-if="alternateSources.length != 0">
         <div v-for="(altsrc, idx) in this.alternateSources" :key="idx" class="altsrc-image-wrapper">
           <b-tooltip type="is-light" :label="altsrc.title" :delay="100">
-            <a :href="altsrc.url" target="_blank">
+            <a :href="safeHref(altsrc.url)" target="_blank">
               <vue-load-image>
                 <img slot="image" :src="getImageURL(altsrc.site_icon)" alt="Image" class="thumbnail" width="20" />
                 <b-icon slot="error" pack="mdi" icon="link" size="is-small" />
@@ -98,6 +98,7 @@ import HiddenButton from '../../components/HiddenButton'
 import api from '../../api'
 import VueLoadImage from 'vue-load-image'
 import { getImageURL } from '../../util/image'
+import { safeHref } from '../../util/url'
 
 export default {
   name: 'SceneCard',
@@ -181,6 +182,7 @@ export default {
   },
   methods: {
     getImageURL,
+    safeHref,
     // Fetched once when the card is created. Previously this was an async
     // computed used as v-if — an always-truthy Promise that refetched on
     // every render of every card.

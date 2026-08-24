@@ -101,7 +101,7 @@
             </b-select>
           </b-field>
           <b-field :label="$t('Token')" expanded>
-            <b-input v-model='serviceToken'/>
+            <b-input v-model='serviceToken' type='password' password-reveal/>
           </b-field>
         </b-field>
         <div class="control">

@@ -59,7 +59,7 @@
               </vue-load-image>
             </b-table-column>
             <b-table-column field="site" :label="$t('Site')" sortable v-slot="props">
-              <a :href="props.row.scene_url" target="_blank" rel="noreferrer">{{ props.row.site }}</a><br>
+              <a :href="safeHref(props.row.scene_url)" target="_blank" rel="noreferrer">{{ props.row.site }}</a><br>
               <b-tooltip v-if="props.row.is_hidden" label="Flagged as Hidden"  :delay="250" >
                 <b-tag type="is-info is-light" >
                   <b-icon pack="mdi" icon="eye-off-outline" size="is-small" style="margin-right:0.1em"/>                
@@ -140,6 +140,7 @@ export default {
     this.initView()
   },
   methods: {
+    safeHref,
     initView () {
       const commonWords = [
         '180', '180x180', '2880x1440', '3d', '3dh', '3dv', '30fps', '30m', '360',

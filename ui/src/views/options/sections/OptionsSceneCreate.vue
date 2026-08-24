@@ -29,7 +29,7 @@
         <div class="card-content content">
           <h5 class="title">API Token</h5>
           <b-field label="TPDB API Token" label-position="on-border" grouped>
-            <b-input v-model="tpdbApiToken" placeholder="TPDB API Token" type="search"></b-input>
+            <b-input v-model="tpdbApiToken" placeholder="TPDB API Token" type="password" password-reveal></b-input>
           </b-field>
           <br>
           <b-field label="TPDB Scene URL" label-position="on-border" grouped>
