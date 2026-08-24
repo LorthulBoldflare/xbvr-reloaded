@@ -33,6 +33,11 @@ func getAllowedVideoExt() []string {
 	return config.Config.Storage.VideoExt
 }
 
+// creationTime returns the file's birth time when available, falling back to
+// its modification time. Change time (ctime) is deliberately not used: per
+// POSIX it is the inode-change time — it updates on any metadata change
+// (chmod/chown/xattr/rename) on macOS and Linux and is always >= mtime, so it
+// is not a meaningful proxy for when the file was created.
 func creationTime(fileTimes times.Timespec) time.Time {
 	if fileTimes.HasBirthTime() {
 		birthTime := fileTimes.BirthTime()

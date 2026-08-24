@@ -41,14 +41,14 @@ func TestCreationTime(t *testing.T) {
 			want:  birthTime,
 		},
 		{
-			name:  "uses change time when birth time is unix epoch",
+			name:  "ignores change time when birth time is unix epoch",
 			times: testTimespec{birthTime: time.Unix(0, 0), changeTime: changeTime, modTime: modTime, hasBirthTime: true, hasChangeTime: true},
-			want:  changeTime,
+			want:  modTime,
 		},
 		{
-			name:  "uses change time when birth time is zero",
+			name:  "ignores change time when birth time is zero",
 			times: testTimespec{changeTime: changeTime, modTime: modTime, hasBirthTime: true, hasChangeTime: true},
-			want:  changeTime,
+			want:  modTime,
 		},
 		{
 			name:  "uses modification time when birth and change times are unix epoch",
