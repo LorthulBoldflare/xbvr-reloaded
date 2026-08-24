@@ -100,6 +100,43 @@ type RequestRestore struct {
 	BundlePassword   string `json:"bundlePassword"`
 }
 
+// bundleJSON is the shared codec configuration for v2.1 content bundles,
+// used by both backup (marshal) and restore (decode/validate) so their
+// behavior stays identical.
+var bundleJSON = jsoniter.Config{
+	EscapeHTML:             true,
+	SortMapKeys:            true,
+	ValidateJsonRawMessage: true,
+	TagKey:                 "xbvrbackup",
+}.Froze()
+
+// ValidateBundle decodes bundle JSON and verifies the bundle version,
+// returning a descriptive error without touching the database. It mirrors
+// the decode logic in RestoreBundle so callers (e.g. the restore API
+// handler) can reject malformed bundles synchronously instead of starting
+// a partial restore.
+func ValidateBundle(uploadData string) error {
+	if strings.Contains(uploadData, "\"bundleVersion\":\"1\"") {
+		var bundleData ContentBundle
+		if err := json.Unmarshal([]byte(uploadData), &bundleData); err != nil {
+			return fmt.Errorf("unable to decode bundle: %v", err)
+		}
+		if bundleData.BundleVersion != "1" {
+			return fmt.Errorf("bundle file is version %v, version 1 expected", bundleData.BundleVersion)
+		}
+		return nil
+	}
+
+	var bundleData BackupContentBundle
+	if err := bundleJSON.UnmarshalFromString(uploadData, &bundleData); err != nil {
+		return fmt.Errorf("unable to decode bundle: %v", err)
+	}
+	if bundleData.BundleVersion != "2.1" {
+		return fmt.Errorf("bundle file is version %v, version %v expected", bundleData.BundleVersion, "2.1")
+	}
+	return nil
+}
+
 func CleanTags() {
 	RenameTags()
 	CountTags()
@@ -559,7 +596,7 @@ func ImportBundle(uploadData string) {
 			ImportBundleV1(bundleData)
 			tlog.Infof("Import complete")
 		} else {
-			tlog.Infof("Download failed!")
+			tlog.Errorf("Import failed: unable to decode bundle: %v", err)
 		}
 	}
 }
@@ -816,13 +853,7 @@ func BackupBundle(inclAllSites bool, onlyIncludeOfficalSites bool, inclScenes bo
 			Kvs:           kvs,
 		}
 
-		var json = jsoniter.Config{
-			EscapeHTML:             true,
-			SortMapKeys:            true,
-			ValidateJsonRawMessage: true,
-			TagKey:                 "xbvrbackup",
-		}.Froze()
-		content, err = json.MarshalIndent(out, "", " ")
+		content, err = bundleJSON.MarshalIndent(out, "", " ")
 
 		if err == nil {
 			fName := filepath.Join(common.DownloadDir, outputBundleFilename)
@@ -861,17 +892,10 @@ func RestoreBundle(request RequestRestore) {
 		models.CreateLock("scrape")
 		defer models.RemoveLock("scrape")
 
-		var json = jsoniter.Config{
-			EscapeHTML:             true,
-			SortMapKeys:            true,
-			ValidateJsonRawMessage: true,
-			TagKey:                 "xbvrbackup",
-		}.Froze()
-
 		var bundleData BackupContentBundle
 		tlog.Infof("Restoring data ...")
 
-		err := json.UnmarshalFromString(request.UploadData, &bundleData)
+		err := bundleJSON.UnmarshalFromString(request.UploadData, &bundleData)
 
 		if err == nil {
 			if bundleData.BundleVersion != "2.1" {
@@ -965,7 +989,7 @@ func RestoreBundle(request RequestRestore) {
 
 			tlog.Infof("Restore complete")
 		} else {
-			tlog.Infof("Restore failed!")
+			tlog.Errorf("Restore failed: unable to decode bundle: %v", err)
 		}
 	}
 }

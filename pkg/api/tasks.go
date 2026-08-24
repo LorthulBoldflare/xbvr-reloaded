@@ -225,6 +225,17 @@ func (i TaskResource) restoreBundle(req *restful.Request, resp *restful.Response
 		return
 	}
 
+	// Reject malformed bundles synchronously so a decode failure surfaces as
+	// an HTTP 400 instead of a silent partial import (#2247). The bundleUrl
+	// path can't be validated here — the data is only downloaded inside the
+	// async task, which aborts before any database writes on a decode error.
+	if r.UploadData != "" {
+		if err := tasks.ValidateBundle(r.UploadData); err != nil {
+			APIError(req, resp, http.StatusBadRequest, err)
+			return
+		}
+	}
+
 	go tasks.RestoreBundle(r)
 }
 

@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jinzhu/gorm"
@@ -79,5 +80,59 @@ func TestRestoreActionsOverwritePreservesHistory(t *testing.T) {
 	}
 	if actions[0].ID == oldAction.ID {
 		t.Fatal("old action row was not deleted")
+	}
+}
+
+// Regression test for #2247: a malformed bundle (e.g. an empty string for a
+// time.Time field) must be rejected by validation instead of being restored
+// partially while reporting success.
+func TestValidateBundle(t *testing.T) {
+	tests := []struct {
+		name       string
+		data       string
+		wantErr    bool
+		errContain string
+	}{
+		{
+			name:    "valid 2.1 bundle",
+			data:    `{"bundleVersion":"2.1","scenes":[{"scene_id":"example-1","title":"Example","cast":[{"name":"Example Actor","birth_date":"0001-01-01T00:00:00Z"}]}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "empty birth_date string",
+			data:    `{"bundleVersion":"2.1","scenes":[{"scene_id":"example-1","title":"Example","cast":[{"name":"Example Actor","birth_date":""}]}]}`,
+			wantErr: true,
+		},
+		{
+			name:       "wrong bundle version",
+			data:       `{"bundleVersion":"2.0","scenes":[]}`,
+			wantErr:    true,
+			errContain: "version",
+		},
+		{
+			name:    "valid v1 bundle",
+			data:    `{"bundleVersion":"1","scenes":[]}`,
+			wantErr: false,
+		},
+		{
+			name:    "not JSON",
+			data:    `this is not a bundle`,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateBundle(tc.data)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if tc.errContain != "" && (err == nil || !strings.Contains(err.Error(), tc.errContain)) {
+				t.Fatalf("expected error containing %q, got %v", tc.errContain, err)
+			}
+		})
 	}
 }
