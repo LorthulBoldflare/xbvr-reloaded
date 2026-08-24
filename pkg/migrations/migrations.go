@@ -2478,19 +2478,28 @@ func RenameSceneIdsFromFile(tx *gorm.DB, version int, migration string, filename
 	fName := filepath.Join(common.AppDir, "xbvr_data", "migrations", "custom", filename)
 
 	// if a custom version of the file exists, use that one first
-	if _, err := os.Stat(fName); os.IsNotExist(err) {
-		fName = filepath.Join(common.AppDir, "xbvr_data", "migrations", "release", filename)
-		if _, err := os.Stat(fName); os.IsNotExist(err) {
-			return errors.New("Mapping file " + filename + " not found")
+	var b []byte
+	var err error
+	if _, statErr := os.Stat(fName); statErr == nil {
+		b, err = os.ReadFile(fName)
+	} else {
+		// otherwise use the release migration data bundled with the binary
+		b, err = readReleaseMigrationFile(filename)
+		if err != nil {
+			// legacy installs may still have the file on disk
+			fName = filepath.Join(common.AppDir, "xbvr_data", "migrations", "release", filename)
+			b, err = os.ReadFile(fName)
+			if err != nil {
+				return errors.New("Mapping file " + filename + " not found")
+			}
 		}
+	}
+	if err != nil {
+		return err
 	}
 	reindexRequired := false
 	var deleteSceneList []models.Scene
 
-	b, err := os.ReadFile(fName)
-	if err != nil {
-		return err
-	}
 	mappings := gjson.Get(string(b), "mappings")
 	if !mappings.Exists() {
 		return errors.New("No mappings found")
