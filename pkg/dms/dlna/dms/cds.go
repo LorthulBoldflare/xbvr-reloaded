@@ -204,14 +204,6 @@ func (me *contentDirectoryService) xbaseFileToContainer(file models.File, parent
 	return item
 }
 
-func (me *contentDirectoryService) sceneToContainer(scene models.Scene, parent string, host string) interface{} {
-	videoFiles, err := scene.GetVideoFiles()
-	if err != nil {
-		return nil
-	}
-	return me.sceneToContainerWithFiles(scene, parent, host, videoFiles)
-}
-
 // sceneToContainerWithFiles builds the container using preloaded video files,
 // so browse loops can batch-load files for all scenes at once instead of one
 // query per scene.

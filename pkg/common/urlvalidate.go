@@ -27,7 +27,6 @@ func (t SSRFSafeTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return base.RoundTrip(r)
 }
 
-
 // ValidateOutboundURL checks a user-supplied URL that the server is about to
 // fetch (scraping, trailer lookup, bundle download). Only public http(s)
 // targets are allowed: the host must resolve, and none of its addresses may

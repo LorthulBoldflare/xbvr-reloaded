@@ -79,6 +79,13 @@ func GeneratePreviews(endTime *time.Time) {
 	models.CreateLock("previews")
 	defer models.RemoveLock("previews")
 
+	// Sweep stale per-render temp directories left behind by crashed renders
+	if entries, err := filepath.Glob(filepath.Join(common.VideoPreviewDir, "tmp-*")); err == nil {
+		for _, e := range entries {
+			os.RemoveAll(e)
+		}
+	}
+
 	log.Infof("Generating previews")
 	db, _ := models.GetDB()
 

@@ -1,8 +1,8 @@
 package tasks
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -66,14 +66,6 @@ func NewIndex(name string) (*Index, error) {
 
 	i.Bleve = idx
 	return i, nil
-}
-
-func (i *Index) Exist(id string) bool {
-	d, err := i.Bleve.Document(id)
-	if err != nil || d == nil {
-		return false
-	}
-	return true
 }
 
 var (
@@ -146,10 +138,6 @@ func sceneIndexDoc(scene models.Scene) SceneIndexed {
 	}
 }
 
-func (i *Index) PutScene(scene models.Scene) error {
-	return i.Bleve.Index(scene.SceneID, sceneIndexDoc(scene))
-}
-
 func SearchIndex() {
 	if !models.CheckLock("index") {
 		models.CreateLock("index")
@@ -204,7 +192,6 @@ func SearchIndex() {
 			offset = offset + 100
 		}
 
-
 		tlog.Infof("Search index built!")
 	}
 }
@@ -247,7 +234,6 @@ func IndexScenes(scenes *[]models.Scene) {
 			log.Error(err)
 		}
 
-
 		tlog.Infof("Indexed %v scenes", total)
 	}
 }
@@ -285,7 +271,6 @@ func DeleteIndexScenes(scenes *[]models.Scene) {
 		if err := idx.Bleve.Batch(batch); err != nil {
 			log.Error(err)
 		}
-
 
 		tlog.Infof("Deleted %v scenes from index", total)
 	}

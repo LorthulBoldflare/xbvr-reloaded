@@ -42,7 +42,6 @@
     "@vue/cli-plugin-eslint": "5.0.9",
     "@vue/cli-service": "5.0.9",
     "@vue/eslint-config-standard": "9.0.1",
-    "buffer": "6.0.3",
     "concurrently": "9.2.1",
     "eslint": "9.39.4",
     "eslint-plugin-import": "2.32.0",
@@ -62,21 +61,6 @@
   },
   "resolutions": {
     "@achrinza/node-ipc": "9.2.10"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/essential",
-      "eslint:recommended",
-      "@vue/standard"
-    ],
-    "rules": {},
-    "parserOptions": {
-      "parser": "babel-eslint"
-    }
   },
   "postcss": {
     "plugins": {

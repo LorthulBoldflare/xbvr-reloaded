@@ -388,6 +388,7 @@ func (i ConfigResource) toggleLimitScraping(req *restful.Request, resp *restful.
 func (i ConfigResource) toggleScrapeStash(req *restful.Request, resp *restful.Response) {
 	i.toggleSiteField(req, resp, "ScrapeStash")
 }
+
 // RequestBulkToggleSiteField toggles a boolean field on many sites in one
 // call, replacing O(n) sequential single-site PUTs from the scrapers UI.
 type RequestBulkToggleSiteField struct {
