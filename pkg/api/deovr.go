@@ -165,6 +165,28 @@ func isDeoAuthEnabled() bool {
 	}
 }
 
+// setPlayerSessionCookie mints the Web UI session cookie after a successful
+// native player login. The token is stable, so re-setting it on every
+// authenticated request is idempotent and self-heals the shared cookie jar
+// after a server restart. No-op when player auth is disabled; clients that
+// ignore Set-Cookie are unaffected. HttpOnly is deliberate: no client-side
+// code reads the cookie, and the stable non-expiring token must not be
+// exfiltratable via XSS. No Secure attribute — XBVR serves plain HTTP.
+func setPlayerSessionCookie(resp *restful.Response) {
+	token := config.PlayerSessionToken()
+	if token == "" {
+		return
+	}
+	http.SetCookie(resp.ResponseWriter, &http.Cookie{
+		Name:     config.PlayerSessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   30 * 24 * 60 * 60, // 30 days
+	})
+}
+
 func getProto(req *restful.Request) string {
 	// If XBVR is being run behind a reverse proxy, we will use the industry
 	// standard header X-Forwarded-Proto to set the correct protocol (HTTP or HTTPS)
@@ -224,6 +246,7 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 			return
 		}
 	}
+	setPlayerSessionCookie(resp)
 	chain.ProcessFilter(req, resp)
 }
 

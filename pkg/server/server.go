@@ -41,9 +41,19 @@ var (
 func authHandle(pattern string, authEnabled bool, authSecret auth.SecretProvider, handler http.Handler) {
 	if authEnabled {
 		authenticator := auth.NewBasicAuthenticator("default", authSecret)
-		http.HandleFunc(pattern, authenticator.Wrap(func(res http.ResponseWriter, req *auth.AuthenticatedRequest) {
+		basicWrapped := authenticator.Wrap(func(res http.ResponseWriter, req *auth.AuthenticatedRequest) {
 			http.StripPrefix(pattern, handler).ServeHTTP(res, &req.Request)
-		}))
+		})
+		// A valid player-session cookie (minted by a native DeoVR/HereSphere
+		// login) is accepted as an alternative to Basic Auth, so the headset
+		// browser reaches the Web UI without a second login.
+		http.HandleFunc(pattern, func(res http.ResponseWriter, req *http.Request) {
+			if hasValidPlayerSession(req) {
+				http.StripPrefix(pattern, handler).ServeHTTP(res, req)
+				return
+			}
+			basicWrapped(res, req)
+		})
 	} else {
 		http.Handle(pattern, http.StripPrefix(pattern, handler))
 	}
@@ -203,8 +213,10 @@ func StartServer(version, commit, branch, date string) {
 		// When UI auth is enabled, require the same credentials on the
 		// websocket proxy. Browsers send cached basic-auth credentials on the
 		// same-origin WS handshake, so the UI works unchanged, while a
-		// cross-origin (e.g. DNS-rebinding) page cannot authenticate.
-		if common.IsUIAuthEnabled() {
+		// cross-origin (e.g. DNS-rebinding) page cannot authenticate. A valid
+		// player-session cookie (attached by the browser to the same-origin
+		// handshake) is accepted as an alternative credential.
+		if common.IsUIAuthEnabled() && !hasValidPlayerSession(req) {
 			user, password, ok := req.BasicAuth()
 			if !ok || user != common.EnvConfig.UIUsername || !checkUIPassword(password) {
 				w.Header().Set("WWW-Authenticate", `Basic realm="default"`)
@@ -212,13 +224,15 @@ func StartServer(version, commit, branch, date string) {
 				return
 			}
 		}
-		// CSWSH protection: a websocket initiated by a web page (Origin header
-		// present) must originate from the XBVR UI itself, i.e. the Origin host
-		// must equal the Host the request was made to. Non-browser clients
-		// without an Origin header are unaffected.
+		// CSWSH note: a websocket initiated by a standard web page (Origin
+		// header present) should originate from the XBVR UI itself, i.e. the
+		// Origin host equals the request Host. Players are non-standard
+		// browsers whose Origin headers cannot be relied upon, so a mismatch
+		// is logged but the request is allowed. Non-browser clients without
+		// an Origin header are unaffected.
 		if !wsOriginAllowed(req) {
-			http.Error(w, "origin not allowed", http.StatusForbidden)
-			return
+			log.Warnf("websocket request with non-matching Origin %q (Host %q) — allowing (non-standard browser)",
+				req.Header.Get("Origin"), req.Host)
 		}
 		// The origin has been validated above; remove it so the WAMP server's
 		// own same-host check (which sees the loopback backend address, not

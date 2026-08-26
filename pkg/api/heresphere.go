@@ -166,6 +166,7 @@ func HeresphereAuthFilter(req *restful.Request, resp *restful.Response, chain *r
 			return
 		}
 	}
+	setPlayerSessionCookie(resp)
 	chain.ProcessFilter(req, resp)
 }
 
