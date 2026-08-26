@@ -1,5 +1,5 @@
 <template>
-  <div class="card is-shadowless">
+  <div class="card actor-card">
     <div class="card-image">
       <div class="bbox"
            v-bind:style="{backgroundImage: `url(${getImageURL(actor.image_url)})`, backgroundSize: actorCardScale, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity:isAvailable(actor) ? 1.0 : isAvailOpacity, aspectRatio: actorCardAspectRatio}"
@@ -35,7 +35,7 @@
       </b-tag>
       </b-tooltip>
 
-      <span class="is-pulled-right" style="font-size:11px;text-align:right;">                
+      <span class="is-pulled-right card-meta">
           <span v-if="actor.birth_date != '0001-01-01T00:00:00Z'">{{format(parseISO(actor.birth_date), "yyyy-MM-dd")}}</span>
           <vue-load-image style="display:inline-block">
             <img slot="image" :src="getImageURL('https://flagcdn.com/' + actor.nationality.toLowerCase() +'.svg')" style="height:10px;border: 1px solid black;margin-left:0.5em" />
@@ -127,19 +127,46 @@ export default {
 </script>
 
 <style scoped>
+  .actor-card {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .actor-card:hover {
+    transform: none;
+    border-color: transparent;
+  }
+
   .button {
     margin-right: 3px;
   }
 
+  .card-image {
+    border-radius: var(--xbvr-radius, 12px);
+    overflow: hidden;
+    box-shadow: var(--xbvr-shadow, 0 1px 3px rgba(16, 24, 40, 0.08));
+    transition: box-shadow var(--xbvr-med, 220ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      transform var(--xbvr-med, 220ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+  }
+
+  .actor-card:hover .card-image {
+    box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16));
+    transform: translateY(-3px);
+  }
+
   .bbox {
     flex: 1 0 calc(25%);
-    background: #f0f0f0;
+    position: relative;
+    background: var(--xbvr-surface-sunken, #eef0f4);
+    border-radius: var(--xbvr-radius, 12px);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     padding: 0;
     line-height: 0;
+    cursor: pointer;
   }
 
   .bbox:not(:hover) > video {
@@ -157,7 +184,7 @@ export default {
    position: absolute;
   bottom: 0;
   right: 0;
-  display: flex;  
+  display: flex;
   padding: 5px;
   max-width: 5px;
   }
@@ -175,13 +202,24 @@ export default {
 
   .tag {
     margin-left: 0.1em;
+    border-radius: 999px;
   }
 
   .scene_title {
-    font-size: 12px;
-    text-align: right;
-    white-space: nowrap;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--xbvr-text, #1c2333);
+    margin-top: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
+    overflow-wrap: break-word;
+  }
+
+  .card-meta {
+    font-size: 0.7rem;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--xbvr-text-muted, #64708a);
   }
 </style>

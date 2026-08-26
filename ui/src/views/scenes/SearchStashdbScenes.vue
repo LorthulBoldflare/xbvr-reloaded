@@ -8,53 +8,53 @@
            can-cancel>
     
 
-    <div class="modal-card" :style="getOverlayPosition()">
+    <div class="modal-card stashdb-card" :style="getOverlayPosition()">
       <header class="modal-card-head">
         <p class="modal-card-title">Search Stashdb Scenes</p>
         <button class="delete" @click="close" aria-label="close"></button>
       </header>
 
       <div class="modal-card-body">
-                <div >
-          <b-field label="Find scene...">
+        <div class="stashdb-body">
+          <b-field label="Find scene..." class="stashdb-search">
             <b-input v-model="queryString" placeholder="Find scene..." @input="debouncedSearch" :loading="isFetching" custom-class="is-large"/>
           </b-field>
     
-        <b-table :data="searchResults" >
-          <b-table-column field="ImageUrl" >
-            <template slot-scope="props">
-              <div class="media">
-                <div class="media-left">
-                    <vue-load-image>
-                        <img slot="image" :src="getImageURL(props.row.ImageUrl)" width="150" @mouseover="showTooltipImage(props.row.ImageUrl)" @mouseout="showTooltipImage('')" />
-                        <img slot="preloader" src="/ui/images/blank.png" height="150"/>
-                        <img slot="error" src="/ui/images/blank.png" height="150"/>
-                    </vue-load-image>
-                    <div v-if="tooltipImage!='' && tooltipImage==props.row.ImageUrl" class="tooltipimg">
-                      <img :src="tooltipImage" alt="Tooltip Image" width="400px" />
+          <b-table :data="searchResults" class="stashdb-table">
+            <b-table-column field="ImageUrl" >
+              <template slot-scope="props">
+                <div class="media result-card">
+                  <div class="media-left">
+                      <vue-load-image>
+                          <img slot="image" :src="getImageURL(props.row.ImageUrl)" width="150" class="result-thumb" @mouseover="showTooltipImage(props.row.ImageUrl)" @mouseout="showTooltipImage('')" />
+                          <img slot="preloader" src="/ui/images/blank.png" height="150"/>
+                          <img slot="error" src="/ui/images/blank.png" height="150"/>
+                      </vue-load-image>
+                      <div v-if="tooltipImage!='' && tooltipImage==props.row.ImageUrl" class="tooltipimg">
+                        <img :src="tooltipImage" alt="Tooltip Image" width="400px" />
+                      </div>
+                    <div v-if="props.row.Date!=''" class="result-meta"><small><strong>Released:</strong> {{format(parseISO(props.row.Date), "yyyy-MM-dd")}}</small></div>
+                    <div v-if="props.row.Duration!=''" class="result-meta"><small><strong>Durn:</strong> {{ props.row.Duration }}</small></div>
+                    <div class="result-meta"><small><strong>Score:</strong> {{ props.row.Weight }}</small></div>
+                    <div class="result-link">
+                      <a class="button is-primary is-small" @click="linktoStashdb(props.row)" :title="'Link scene with stashdb'">
+                        <b-icon pack="mdi" :icon="'link-variant-plus'" size="is-small"/>
+                      </a>
                     </div>
-                  <div v-if="props.row.Date!=''"><small><strong>Released:</strong> {{format(parseISO(props.row.Date), "yyyy-MM-dd")}}</small></div>
-                  <div v-if="props.row.Duration!=''"><small><strong>Durn:</strong> {{ props.row.Duration }}</small></div>
-                  <div><small><strong>Score:</strong> {{ props.row.Weight }}</small></div>
-                  <div>
-                    <a class="button is-primary is-small" @click="linktoStashdb(props.row)" :title="'Link scene with stashdb'">
-                      <b-icon pack="mdi" :icon="'link-variant-plus'" size="is-small"/>
-                    </a>
                   </div>
+                  <div class="media-content">
+                    <div class="truncate"><strong><a :href="props.row.Url"  target="_blank">{{ props.row.Studio }} - {{ props.row.Title }}</a></strong></div>
+                    <div class="result-desc"><small>{{props.row.Description}}</small></div>
+                    <div class="result-cast">
+                      <small>
+                        <span v-for="(c, idx) in props.row.Performers" :key="'Performers' + idx">{{c.Name}}<span v-if="idx < props.row.Performers.length-1">, </span></span>
+                      </small>
+                    </div>
+                  </div>            
                 </div>
-                <div class="media-content">
-                  <div class="truncate"><strong><a :href="props.row.Url"  target="_blank">{{ props.row.Studio }} - {{ props.row.Title }}</a></strong></div>
-                  <div><small style="white-space: normal; display: block;">{{props.row.Description}}</small></div>
-                  <div style="margin-top:0.5em">
-                    <small style="white-space: normal; display: block;">
-                      <span v-for="(c, idx) in props.row.Performers" :key="'Performers' + idx">{{c.Name}}<span v-if="idx < props.row.Performers.length-1">, </span></span>
-                    </small>
-                  </div>
-                </div>            
-              </div>
-            </template>
-          </b-table-column>
-        </b-table>
+              </template>
+            </b-table-column>
+          </b-table>
         </div>
       </div>
       <footer class="modal-card-foot">
@@ -172,23 +172,112 @@ export default {
   overflow: auto;
 }
 
+.stashdb-card {
+  overflow-y: auto;
+}
+
+.stashdb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stashdb-search :deep(.label) {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.stashdb-search :deep(.input.is-large) {
+  border-radius: var(--xbvr-radius, 12px);
+}
+
+/* result cards */
+.stashdb-table :deep(.table) {
+  background: transparent;
+}
+
+.stashdb-table :deep(.table td) {
+  border: none;
+  padding: 0.35rem 0;
+}
+
+.result-card {
+  padding: 0.75rem;
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  transition: box-shadow var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.result-card:hover {
+  background: var(--xbvr-hover-bg, #fafbfd);
+  border-color: var(--xbvr-border-strong, #cdd2dc);
+  box-shadow: var(--xbvr-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.10), 0 2px 4px rgba(16, 24, 40, 0.05));
+}
+
+.result-thumb {
+  border-radius: var(--xbvr-radius-sm, 8px);
+}
+
+.result-meta {
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.result-link {
+  margin-top: 0.4rem;
+}
+
+.result-link .button {
+  border-radius: 8px;
+}
+
+.result-desc {
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.result-desc small,
+.result-cast small {
+  white-space: normal;
+  display: block;
+}
+
+.result-cast {
+  margin-top: 0.5em;
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tab-item {
   height: 40vh;
 }
+
 .tooltipimg {
   position: absolute;
-  z-index: 1;
-  width: 350;
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+  width: 350px;
+  background-color: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16), 0 4px 10px rgba(16, 24, 40, 0.08));
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 10px;
   transform: translateX(60px) translateY(-50px);
 }
+
 .tooltipimg img {
   max-width: 100%;
   max-height: 100%;
+  border-radius: var(--xbvr-radius-sm, 8px);
 }
 </style>

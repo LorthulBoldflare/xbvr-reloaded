@@ -2,65 +2,58 @@
   <div ref="scrollContainer">
     <b-loading :is-full-page="true" :active.sync="isLoading"></b-loading>
 
-    <div class="columns is-multiline is-full">
-      <div class="column">
-        <strong>{{total}} results</strong>
-        <b-field grouped style="display:inline-flex; margin-left:1em; vertical-align:middle;">
-          <b-button size="is-small" icon-pack="mdi" icon-left="import"
-                    :disabled="!webhookConfigured('trigger_external_import')"
-                    :title="webhookConfigured('trigger_external_import') ? $t('Trigger External Import') : $t('Configure in Options → Storage → Webhooks')"
-                    @click="triggerWebhook('trigger-import')">
-            {{$t("Import")}}
-          </b-button>
-          <b-button size="is-small" icon-pack="mdi" icon-left="refresh"
-                    :disabled="!webhookConfigured('refresh_external_import')"
-                    :title="webhookConfigured('refresh_external_import') ? $t('Refresh External Import') : $t('Configure in Options → Storage → Webhooks')"
-                    @click="triggerWebhook('refresh-import')">
-            {{$t("Refresh")}}
-          </b-button>
-        </b-field>
-      </div>
-      <div class="column">
-        <div class="columns is-gapless">
-          <b-radio-button v-model="dlState" native-value="any" size="is-small">
-            {{$t("Any")}} ({{counts.any}})
-          </b-radio-button>
-          <b-radio-button v-model="dlState" native-value="available" size="is-small">
-            {{$t("Available right now")}} ({{counts.available}})
-          </b-radio-button>
-          <b-radio-button v-model="dlState" native-value="downloaded" size="is-small">
-            {{$t("Downloaded")}} ({{counts.downloaded}})
-          </b-radio-button>
-          <b-radio-button v-model="dlState" native-value="missing" size="is-small">
-            {{$t("Not downloaded")}} ({{counts.not_downloaded}})
-          </b-radio-button>
-          <b-radio-button v-model="dlState" native-value="hidden" size="is-small">
-            {{$t("Hidden")}} ({{counts.hidden}})
-          </b-radio-button>
-        </div>
-      </div>
-      <div class="column">
-        <div class="is-pulled-right">
-          <b-field>
-            <span class="list-header-label">{{$t('Card size')}}</span>
-            <b-radio-button v-model="cardSize" native-value="1" size="is-small">
-              XS
-            </b-radio-button>
-            <b-radio-button v-model="cardSize" native-value="2" size="is-small">
-              S
-            </b-radio-button>
-            <b-radio-button v-model="cardSize" native-value="3" size="is-small">
-              M
-            </b-radio-button>
-            <b-radio-button v-model="cardSize" native-value="4" size="is-small">
-              L
-            </b-radio-button>
-          </b-field>
-        </div>
+    <div class="list-toolbar">
+      <strong class="results-count">{{total}} results</strong>
+      <div class="toolbar-actions">
+        <b-button size="is-small" icon-pack="mdi" icon-left="import"
+                  :disabled="!webhookConfigured('trigger_external_import')"
+                  :title="webhookConfigured('trigger_external_import') ? $t('Trigger External Import') : $t('Configure in Options → Storage → Webhooks')"
+                  @click="triggerWebhook('trigger-import')">
+          {{$t("Import")}}
+        </b-button>
+        <b-button size="is-small" icon-pack="mdi" icon-left="refresh"
+                  :disabled="!webhookConfigured('refresh_external_import')"
+                  :title="webhookConfigured('refresh_external_import') ? $t('Refresh External Import') : $t('Configure in Options → Storage → Webhooks')"
+                  @click="triggerWebhook('refresh-import')">
+          {{$t("Refresh")}}
+        </b-button>
       </div>
     </div>
 
-    <div class="is-clearfix"></div>
+    <div class="list-controls">
+      <b-field class="control-field availability-field">
+        <b-radio-button v-model="dlState" native-value="any" size="is-small">
+          {{$t("Any")}} ({{counts.any}})
+        </b-radio-button>
+        <b-radio-button v-model="dlState" native-value="available" size="is-small">
+          {{$t("Available right now")}} ({{counts.available}})
+        </b-radio-button>
+        <b-radio-button v-model="dlState" native-value="downloaded" size="is-small">
+          {{$t("Downloaded")}} ({{counts.downloaded}})
+        </b-radio-button>
+        <b-radio-button v-model="dlState" native-value="missing" size="is-small">
+          {{$t("Not downloaded")}} ({{counts.not_downloaded}})
+        </b-radio-button>
+        <b-radio-button v-model="dlState" native-value="hidden" size="is-small">
+          {{$t("Hidden")}} ({{counts.hidden}})
+        </b-radio-button>
+      </b-field>
+      <b-field class="control-field card-size-field">
+        <span class="list-header-label">{{$t('Card size')}}</span>
+        <b-radio-button v-model="cardSize" native-value="1" size="is-small">
+          XS
+        </b-radio-button>
+        <b-radio-button v-model="cardSize" native-value="2" size="is-small">
+          S
+        </b-radio-button>
+        <b-radio-button v-model="cardSize" native-value="3" size="is-small">
+          M
+        </b-radio-button>
+        <b-radio-button v-model="cardSize" native-value="4" size="is-small">
+          L
+        </b-radio-button>
+      </b-field>
+    </div>
 
     <div class="columns is-multiline">
       <div :class="['column', 'is-multiline', cardSizeClass]"
@@ -219,7 +212,52 @@ export default {
 </script>
 
 <style scoped>
+  /* results count + webhook actions */
+  .list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .results-count {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--xbvr-text, #1c2333);
+    white-space: nowrap;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* availability + card-size segmented controls */
+  .list-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .control-field {
+    margin-bottom: 0;
+  }
+
+  .card-size-field {
+    align-items: center;
+  }
+
   .list-header-label {
-    padding-right: 1em;
+    padding-right: 0.75em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--xbvr-text-muted, #64708a);
+    white-space: nowrap;
   }
 </style>

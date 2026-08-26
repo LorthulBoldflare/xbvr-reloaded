@@ -1,8 +1,9 @@
 <template>
-  <div class="container">
+  <div class="container options-page">
     <div class="columns">
 
       <div class="column is-one-fifth custom-menu">
+        <div class="options-nav">
         <b-menu :accordion="false">
           <b-menu-list :label="$t('Options')">
             <b-menu-item :label="$t('Storage')" :active="active==='storage'" @click="setActive('storage')"/>
@@ -28,24 +29,23 @@
             <b-menu-item :label="$t('Advanced')" :active="active==='interface_advanced'" @click="setActive('interface_advanced')"/>
           </b-menu-list>
         </b-menu>
+        </div>
       </div>
 
-      <div class="column">
-        <div style="padding-top:2em">
-          <Storage v-show="active==='storage'"/>
-          <Cache v-show="active==='cache'"/>
-          <Previews v-show="active==='previews'"/>
-          <Schedules v-show="active==='schedules'"/>
-          <SceneDataScrapers v-show="active==='data-scrapers'"/>
-          <SceneCreate v-show="active==='create-scene'"/>
-          <Funscripts v-show="active==='funscripts'"/>
-          <SceneDataImportExport v-show="active==='data-import-export'"/>
-          <InterfaceWeb v-show="active==='interface_web'"/>
-          <InterfaceDLNA v-show="active==='interface_dlna'"/>
-          <InterfaceDeoVR v-show="active==='interface_deovr'"/>
-          <InterfaceAdvanced v-show="active==='interface_advanced'"/>
-          <SceneMatchParams v-if="showMatchParamsOverlay"/>
-        </div>
+      <div class="column options-content">
+        <Storage v-show="active==='storage'"/>
+        <Cache v-show="active==='cache'"/>
+        <Previews v-show="active==='previews'"/>
+        <Schedules v-show="active==='schedules'"/>
+        <SceneDataScrapers v-show="active==='data-scrapers'"/>
+        <SceneCreate v-show="active==='create-scene'"/>
+        <Funscripts v-show="active==='funscripts'"/>
+        <SceneDataImportExport v-show="active==='data-import-export'"/>
+        <InterfaceWeb v-show="active==='interface_web'"/>
+        <InterfaceDLNA v-show="active==='interface_dlna'"/>
+        <InterfaceDeoVR v-show="active==='interface_deovr'"/>
+        <InterfaceAdvanced v-show="active==='interface_advanced'"/>
+        <SceneMatchParams v-if="showMatchParamsOverlay"/>
       </div>
 
     </div>
@@ -96,3 +96,32 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.options-page {
+  padding: 1.5rem 0 2.5rem;
+}
+
+/* visually separate the section menu from the content column */
+.custom-menu {
+  border-right: 1px solid var(--xbvr-border, #e3e6ec);
+}
+
+/* keep the section menu within reach while the content column scrolls */
+.options-nav {
+  position: sticky;
+  top: 4.75rem;
+  padding-right: 1.25rem;
+}
+
+.options-nav :deep(.menu-list li) {
+  margin-bottom: 1px;
+}
+
+/* cap the content column so forms don't sprawl on ultrawide screens */
+.options-content {
+  min-width: 0;
+  max-width: 1100px;
+  padding: 0.75rem 1.5rem 1.5rem;
+}
+</style>

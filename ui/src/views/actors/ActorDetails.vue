@@ -1,5 +1,5 @@
 <template>
-  <div class="modal is-active">
+  <div class="modal is-active" role="dialog" aria-modal="true">
     <GlobalEvents
       :filter="e => !['INPUT', 'TEXTAREA'].includes(e.target.tagName)"
       @keyup.esc="close"
@@ -16,12 +16,12 @@
 
     <div class="modal-background"></div>
 
-    <div class="modal-card">
-      <section class="modal-card-body">
-        <div class="columns">
+    <div class="modal-card details-card">
+      <section class="modal-card-body details-body">
+        <div class="details-grid">
 
-          <div class="column is-half">
-            <b-tabs v-model="activeMedia" position="is-centered" :animated="false">
+          <div class="media-pane">
+            <b-tabs v-model="activeMedia" position="is-centered" :animated="false" class="media-tabs">
               <b-tab-item :label="$t('Gallery')">
                 <b-carousel v-model="carouselSlide" @change="scrollToActiveIndicator" :autoplay="false" :indicator-inside="false">
                   <b-carousel-item v-for="(carousel, i) in images" :key="i">
@@ -29,76 +29,78 @@
                          v-bind:style="{backgroundImage: `url(${getImageURL(carousel, '700,fit')})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}"></div>
                   </b-carousel-item>
                   <template slot="indicators" slot-scope="props">
-                      <span class="al image" style="width:max-content;">
+                      <span class="al image indicator-thumb">
                         <vue-load-image>
-                          <img slot="image" :src="getIndicatorURL(props.i)" style="height:85px;"/>
-                          <img slot="preloader" :src="'/ui/images/blank.png'" style="height:25px;"/>
-                          <img slot="error" src="/ui/images/blank_female_profile.png" style="height:85px;"/>
+                          <img slot="image" :src="getIndicatorURL(props.i)" class="indicator-img"/>
+                          <img slot="preloader" :src="'/ui/images/blank.png'" class="indicator-img is-placeholder"/>
+                          <img slot="error" src="/ui/images/blank_female_profile.png" class="indicator-img"/>
                         </vue-load-image>
                       </span>
                   </template>
                 </b-carousel>
-                <div class="flexcentre">
-                <b-button class="button is-primary is-small" style="display: flex; justify-content: center;" v-on:click="setActorImage()">{{$t('Set Main Image')}}</b-button>
-                <b-button v-if="images.length != 0" class="button is-primary is-small" style="display: flex; justify-content: center;margin-left: 1em;" v-on:click="deleteActorImage()">{{$t('Delete Image')}}</b-button>
+                <div class="media-actions">
+                  <b-button class="button is-primary is-small" v-on:click="setActorImage()">{{$t('Set Main Image')}}</b-button>
+                  <b-button v-if="images.length != 0" class="button is-danger is-outlined is-small" v-on:click="deleteActorImage()">{{$t('Delete Image')}}</b-button>
                 </div>
               </b-tab-item>
             </b-tabs>
           </div>
 
-          <div class="column is-half">
-            <div class="block-info block">
-              <div class="content">
-                <h3>
-                  <span>
-                    {{ actor.name }}
-                    <b-tooltip position="is-right" :label="$t('Delete Aka Group')" multilined :delay="200" v-if="actor.name.startsWith('aka:')">
-                      <button class="button is-small is-outlined" @click="deleteAkaGroup" >
-                        <b-icon pack="mdi" icon="delete-outline"></b-icon>
-                      </button>
-                    </b-tooltip>
-                    <b-tooltip v-if="enableNewAkaGroup()" position="is-right" :label="$t('Create a new Aka Group')" multilined :delay="200">
-                      <button class="button is-small is-outlined" @click="createAkaGroup">
-                        <b-icon pack="mdi" icon="account-multiple-plus-outline"></b-icon>
-                      </button>
-                    </b-tooltip>
-                  </span>
-                  <small v-if="actor.birth_date != '0001-01-01T00:00:00Z'" class="is-pulled-right">
-                    {{ format(parseISO(actor.birth_date), "yyyy-MM-dd") }}
-                  </small>
-                </h3>
-                <div class="columns">
-                  <div class="column pb-0">
-                  </div>
-                </div>
-                <div class="columns is-vcentered">
-                  <div class="column pt-0">
-                    <b-field>
-                      <strong style="width: 8em;">{{ $t('Your Rating') }}</strong>
-                      <star-rating :key="actor.id" v-model="actor.star_rating" :rating="actor.star_rating" @rating-selected="setRating"
-                                   :increment="0.5" :star-size="20" :show-rating="true" />
-                      <b-tooltip :label="$t('Reset Rating')" position="is-right" :delay="250">
-                        <b-icon pack="mdi" icon="autorenew" size="is-small" @click.native="setRating(0)" style="padding-left: 1em;padding-top: .5em;"/>
-                      </b-tooltip>
-                    </b-field>
-                    <b-field>
-                      <strong style="width: 8em;">{{ $t('Scene Average') }}</strong>
-                    <star-rating :key="actor.id" :rating="Math.round(actor.scene_rating_average * 4) / 4" read-only :increment="0.25" :star-size="20" :show-rating="true" active-color="#7957d5"/>
-                    </b-field>
+          <div class="info-pane">
 
-                  </div>
-                  <div class="column pt-0">
-                    <div class="is-pulled-right">
-                      <actor-favourite-button :actor="actor"/>&nbsp;
-                      <actor-watchlist-button :actor="actor"/>&nbsp;
-                      <actor-edit-button :actor="actor"/>&nbsp;
-                      <link-stashdb-button :item="actor" objectType="actor" />
-                    </div>
-                  </div>
-                </div>
+            <header class="details-header">
+              <h2 class="details-title">
+                <span>{{ actor.name }}</span>
+                <span class="title-actions">
+                  <b-tooltip position="is-right" :label="$t('Delete Aka Group')" multilined :delay="200" v-if="actor.name.startsWith('aka:')">
+                    <button class="button is-small is-outlined" @click="deleteAkaGroup" >
+                      <b-icon pack="mdi" icon="delete-outline"></b-icon>
+                    </button>
+                  </b-tooltip>
+                  <b-tooltip v-if="enableNewAkaGroup()" position="is-right" :label="$t('Create a new Aka Group')" multilined :delay="200">
+                    <button class="button is-small is-outlined" @click="createAkaGroup">
+                      <b-icon pack="mdi" icon="account-multiple-plus-outline"></b-icon>
+                    </button>
+                  </b-tooltip>
+                </span>
+              </h2>
+              <div class="meta-chips">
+                <span v-if="actor.birth_date != '0001-01-01T00:00:00Z'" class="meta-chip">
+                  <b-icon pack="mdi" icon="calendar-outline" size="is-small" aria-hidden="true"/><span>{{ format(parseISO(actor.birth_date), "yyyy-MM-dd") }}</span>
+                </span>
+                <span v-if="actor.birth_date != '0001-01-01T00:00:00Z'" class="meta-chip">
+                  <b-icon pack="mdi" icon="cake-variant-outline" size="is-small" aria-hidden="true"/><span>{{ $t('Age') }}: {{ calcAge(actor.birth_date) }}</span>
+                </span>
+                <span v-if="actor.start_year + actor.end_year  != 0" class="meta-chip">
+                  <b-icon pack="mdi" icon="calendar-range-outline" size="is-small" aria-hidden="true"/><span>{{ $t('Active') }}: {{ getYearsActive() }}</span>
+                </span>
+                <span class="meta-chip">
+                  <b-icon pack="mdi" icon="filmstrip" size="is-small" aria-hidden="true"/><span>{{ $t('Scenes') }}: {{ actor.scenes.length }}</span>
+                </span>
+              </div>
+            </header>
+
+            <div class="details-toolbar">
+              <b-field class="rating-block">
+                <span class="rating-label">{{ $t('Your Rating') }}</span>
+                <star-rating :key="actor.id" v-model="actor.star_rating" :rating="actor.star_rating" @rating-selected="setRating"
+                             :increment="0.5" :star-size="20" :show-rating="true" />
+                <b-tooltip :label="$t('Reset Rating')" position="is-right" :delay="250">
+                  <b-icon pack="mdi" icon="autorenew" size="is-small" @click.native="setRating(0)" class="rating-reset"/>
+                </b-tooltip>
+              </b-field>
+              <b-field class="rating-block">
+                <span class="rating-label">{{ $t('Scene Average') }}</span>
+                <star-rating :key="actor.id" :rating="Math.round(actor.scene_rating_average * 4) / 4" read-only :increment="0.25" :star-size="20" :show-rating="true" active-color="var(--xbvr-primary, #7957d5)"/>
+              </b-field>
+              <div class="action-row">
+                <actor-favourite-button :actor="actor"/>
+                <actor-watchlist-button :actor="actor"/>
+                <actor-edit-button :actor="actor"/>
+                <link-stashdb-button :item="actor" objectType="actor" />
               </div>
             </div>
-                        
+
             <div class="block-opts block">
               <b-tabs v-model="activeTab" :animated="false">
                 <b-tab-item :label="$t('Details')">
@@ -113,7 +115,7 @@
                       <strong class="attribute-heading">{{ $t('Nationality') }}:</strong>
                       <b-field grouped class="attribute-data">
                         <vue-load-image>
-                            <img slot="image" :src="getImageURL(this.getCountryFlag(actor.nationality))" style="height:15px;border: 1px solid black;margin-right:0.5em;"/>
+                            <img slot="image" :src="getImageURL(this.getCountryFlag(actor.nationality))" class="flag-img"/>
                         </vue-load-image>
                         <small>{{ this.getCountryName(actor.nationality) }}</small>
                       </b-field>
@@ -154,8 +156,8 @@
                     </b-message>
                 </b-tab-item>
                 <b-tab-item>
-                  <template #header>                    
-                    Scenes ({{ actor.scenes.length }}) <a v-if="showOpenInNewWindow" :href='getCastScenesUrl([actor.name])' target="_blank" style="padding-left: 0.1em; border-bottom-style: none;"><b-icon pack="mdi" icon="open-in-new" size="is-small" style="background-color: hsl(0, 0%, 100%);"></b-icon></a>
+                  <template #header>
+                    Scenes ({{ actor.scenes.length }}) <a v-if="showOpenInNewWindow" :href='getCastScenesUrl([actor.name])' target="_blank" class="tab-link-icon"><b-icon pack="mdi" icon="open-in-new" size="is-small"></b-icon></a>
                   </template>
                   <div v-show="activeTab == 1" :class="['columns', 'is-multiline', actor.scenes.length > 6 ? 'scroll' : '']">
                     <div :class="['column', 'is-multiline', 'is-one-third']"
@@ -201,7 +203,7 @@
                       </div>
                     </b-field>
                   </div>
-                </b-tab-item>                
+                </b-tab-item>
                 <b-tab-item :visible="colleagues.length != 0" :label="`Colleagues (${colleagues.length})`">
                   <div v-show="activeTab == 3" class="columns is-multiline scroll">
                     <div :class="['column', 'is-multiline', 'is-one-third']"
@@ -212,13 +214,13 @@
                 </b-tab-item>
                 <b-tab-item :label="`Links (${getActorUrls().length})`" v-show="getActorUrls().length !=0">
                   <div v-show="activeTab == 4">
-                    <div >                    
+                    <div >
                       <b-field :label="$t('Links')" >
-                        <div >                       
-                          <div 
+                        <div class="link-list">
+                          <div
                             v-for="(urllink, idx) in getActorUrls()" :key="idx">
-                            <a class="tag is-info" :href="urllink.url" target="_blank" rel="noreferrer" style="margin-bottom: .5em;">{{urllink.url}}</a>                            
-                          </div>                        
+                            <a class="tag is-info link-tag" :href="urllink.url" target="_blank" rel="noreferrer">{{urllink.url}}</a>
+                          </div>
                         </div>
                       </b-field>
                     </div>
@@ -226,17 +228,15 @@
                 </b-tab-item>
                 <b-tab-item  :label="`Scrapers (${extrefs.length})`" v-show="extrefs.length !=0">
                   <div v-show="activeTab == 5">
-                    <div >                    
+                    <div >
                       <b-field :label="$t('Actor Scrapers')" >
-                        <div >                       
-                          <div v-for="(extref, idx) in extrefs" :key="idx">
-                            <b-field grouped>
-                              <a @click="refreshScraper(extref.external_reference.external_url)" :title="'Rescrape Actor Details now'">
-                                <b-icon pack="mdi" icon="refresh" size="is-small" style="margin-right: 1em;"/>
+                        <div class="link-list">
+                          <div v-for="(extref, idx) in extrefs" :key="idx" class="scraper-row">
+                              <a @click="refreshScraper(extref.external_reference.external_url)" :title="'Rescrape Actor Details now'" class="refresh-icon">
+                                <b-icon pack="mdi" icon="refresh" size="is-small"/>
                               </a>
-                            <a class="tag is-info" :href="extref.external_reference.external_url" target="_blank" rel="noreferrer" style="margin-bottom: .5em;">{{extref.external_source}} - Updated: {{format(parseISO(extref.external_reference.external_date), "yyyy-MM-dd") }}</a>                            
-                            </b-field>
-                          </div>                        
+                            <a class="tag is-info link-tag" :href="extref.external_reference.external_url" target="_blank" rel="noreferrer">{{extref.external_source}} - Updated: {{format(parseISO(extref.external_reference.external_date), "yyyy-MM-dd") }}</a>
+                          </div>
                         </div>
                       </b-field>
                     </div>
@@ -250,10 +250,14 @@
       </section>
     </div>
     <button class="modal-close is-large" aria-label="close" @click="close()"></button>
-    <a class="prev" @click="prevActor"
-       title="Keyboard shortcut: O">&#10094;</a>
-    <a class="next" @click="nextActor"
-       title="Keyboard shortcut: P">&#10095;</a>
+    <button type="button" class="actor-nav prev" @click="prevActor"
+            title="Keyboard shortcut: O" aria-label="Previous actor">
+      <b-icon pack="mdi" icon="chevron-left" size="is-medium" aria-hidden="true"/>
+    </button>
+    <button type="button" class="actor-nav next" @click="nextActor"
+            title="Keyboard shortcut: P" aria-label="Next actor">
+      <b-icon pack="mdi" icon="chevron-right" size="is-medium" aria-hidden="true"/>
+    </button>
   </div>
 </template>
 
@@ -647,109 +651,295 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.bbox {
-  flex: 1 0 calc(25%);
+/* ------------------------------------------------------------------
+   Actor details overlay — two-pane media/info layout
+   (mirrors scenes/Details.vue)
+   ------------------------------------------------------------------ */
+
+.details-card {
+  width: min(1500px, 92vw);
+}
+
+@media (max-width: 768px) {
+  .details-card {
+    width: 98vw;
+  }
+}
+
+.details-body {
+  padding: 1.25rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Media pane — follows the active theme via --xbvr-media-* tokens
+   ------------------------------------------------------------------ */
+
+.media-pane {
+  background: var(--xbvr-media-bg, #eef0f4);
+  border-radius: var(--xbvr-radius-lg, 16px);
+  padding: 0.75rem 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+}
+
+.media-tabs :deep(.tabs ul) {
+  border-bottom: none;
+  justify-content: center;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 auto 0.6rem;
+  padding: 4px;
+  background: var(--xbvr-media-tabbar, rgba(16, 24, 40, 0.06));
+  border-radius: 999px;
+}
+
+.media-tabs :deep(.tabs a) {
+  border-bottom: none;
+  border-radius: 999px;
+  padding: 0.3em 1.2em;
+  color: var(--xbvr-media-muted, #64708a);
+  font-weight: 600;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.media-tabs :deep(.tabs a:hover) {
+  color: var(--xbvr-text, #1c2333);
+  border-bottom: none;
+}
+
+.media-tabs :deep(.tabs li.is-active a) {
+  background: var(--xbvr-media-tab-active-bg, #ffffff);
+  color: var(--xbvr-media-tab-active-text, #4338ca);
+}
+
+.media-pane :deep(.carousel-item .image) {
+  border-radius: var(--xbvr-radius-sm, 8px);
+}
+
+.media-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.media-actions :deep(.button) {
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------
+   Info pane
+   ------------------------------------------------------------------ */
+
+.details-header {
+  margin-bottom: 0.9rem;
+}
+
+.details-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--xbvr-text, #1c2333);
+  overflow-wrap: break-word;
+  margin-bottom: 0.55rem;
+}
+
+.title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: 999px;
+  padding: 0.25em 0.7em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* rating + action toolbar */
+.details-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.9rem;
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+}
+
+.rating-block {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0 !important;
+}
+
+.rating-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-right: 0.6em;
+  white-space: nowrap;
+}
+
+.rating-reset {
+  padding-left: 0.6em;
+  color: var(--xbvr-text-faint, #7d88a1);
+  cursor: pointer;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.rating-reset:hover {
+  color: var(--xbvr-text, #1c2333);
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.action-row :deep(.button.is-small) {
+  border-radius: 8px;
+}
+
+.vue-star-rating {
   line-height: 0;
 }
 
-.is-1by1 {
-  padding-top: calc(100% - 40px - 1em) !important;
+/* details tab attribute grid */
+.attribute-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.5rem;
+  margin-bottom: 0.9rem;
 }
 
-.modal-card {
-  width: 85%;
+.attribute-container :deep(.field) {
+  margin-bottom: 0.35rem;
 }
 
-.missing {
-  opacity: 0.6;
+.attribute-heading {
+  width: 120px;
+  color: var(--xbvr-text-muted, #64708a);
+  font-weight: 600;
+}
+
+.attribute-data {
+  width: 200px;
+}
+
+.attribute-long-data {
+  min-width: 320px;
+}
+
+.flag-img {
+  height: 15px;
+  border: 1px solid var(--xbvr-border-strong, #cdd2dc);
+  border-radius: 2px;
+  margin-right: 0.5em;
+}
+
+/* links & scrapers tabs */
+.link-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.link-tag {
+  border-radius: 999px;
+}
+
+.scraper-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.refresh-icon {
+  color: var(--xbvr-text-muted, #64708a);
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.refresh-icon:hover {
+  color: var(--xbvr-primary, #4f46e5);
+}
+
+.tab-link-icon {
+  padding-left: 0.1em;
+  border-bottom-style: none;
+}
+
+/* card grids inside tabs */
+.image-wrapper {
+  position: relative;
+}
+
+div.scroll {
+  max-height: 60vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .block-tab-content {
   flex: 1 1 auto;
 }
 
-.block-info {
+.is-1by1 {
+  padding-top: calc(100% - 40px - 1em) !important;
 }
 
-.block-tags {
-  max-height: 200px;
-  overflow: scroll;
-  scrollbar-width: none;
+/* carousel indicators */
+.indicator-thumb {
+  width: max-content;
 }
 
-.block-tags::-webkit-scrollbar {
-  display: none;
+.indicator-img {
+  height: 85px;
+  border-radius: 6px;
 }
 
-.block-opts {
-}
-
-.vue-star-rating {
-    line-height: 0;
-}
-
-.scene-id {
-  position: absolute;
-  right:10px;
-  bottom: 5px;
-  font-size: 11px;
-  color: #b0b0b0;
-}
-
-.prev, .next {
-  cursor: pointer;
-  position: absolute;
-  top: 50%;
-  width: auto;
-  padding: 16px;
-  margin-top: -50px;
-  color: white;
-  font-weight: bold;
-  font-size: 24px;
-  border-radius: 0 3px 3px 0;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.next {
-  right: 0;
-  border-radius: 3px 0 0 3px;
-}
-
-.prev {
-  left: 0;
-  border-radius: 3px 0 0 3px;
-}
-
-span.is-active img {
-  border: 2px;
-}
-
-.pathDetails {
-  color: #b0b0b0;
-}
-
-.heatmapFunscript {
-  width: 100%;
-  padding: 0;
-  margin-top: 0.5em;
-}
-
-.heatmapFunscript img {
-  border: 1px #888 solid;
-  width: 100%;
-  height: 20px;
-  margin: 0;
-  padding: 0;
-}
-.videosize {
-  color: rgb(60, 60, 60);
-  font-weight: 550;
+.indicator-img.is-placeholder {
+  height: 25px;
 }
 
 :deep(.carousel .carousel-indicator) {
@@ -760,64 +950,73 @@ span.is-active img {
   margin-right: auto;
   overflow: auto;
 }
+
 :deep(.carousel .carousel-indicator .indicator-item:not(.is-active)) {
-  opacity: 0.5;
-}
-.is-divider {
-  margin: .8rem 0;
-}
-.image-row {
-  display: flex;  
-}
-.image-wrapper {
-  position: relative;
-}
-.thumbnail {
-  height: 100px;
-  margin-right: .5em;
-  object-fit: cover;
-}
-.tooltip {
-  position: absolute;
-  z-index: 1;
-  top: 50px;
-  right: 100%;
-  width: 400px;
-  height: 400px;
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-  transform: translateX(10px);
-}
-.tooltip img {
-  max-width: 100%;
-  max-height: 100%;
-}
-div.scroll {
-  height: 1000px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  text-align: center;
-}
-.attribute-container {  
-  display: flex; 
-  flex-wrap: wrap;
-}
-.attribute-heading {  
-  width: 120px; 
-}
-.attribute-data {  
-  width: 200px;  
-}
-.attribute-long-data {  
-  min-width: 320px;  
-}
-.flexcentre {
-  display: flex;
-  justify-content: center;
+  opacity: 0.45;
 }
 
+:deep(.carousel .carousel-indicator .indicator-item img) {
+  border-radius: 6px;
+}
+
+:deep(.carousel .carousel-indicator .indicator-item.is-active img) {
+  outline: 2px solid var(--xbvr-primary, #4f46e5);
+  outline-offset: 1px;
+}
+
+/* close + prev/next — circular glass controls over the overlay */
+.modal-close {
+  background: var(--xbvr-chip-bg, rgba(20, 24, 36, 0.55));
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-close::before,
+.modal-close::after {
+  background-color: #fff;
+}
+
+.actor-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: var(--xbvr-chip-bg, rgba(20, 24, 36, 0.55));
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.actor-nav:hover {
+  background: rgba(20, 24, 36, 0.8);
+}
+
+.actor-nav.prev {
+  left: 14px;
+}
+
+.actor-nav.prev:hover {
+  transform: translateY(-50%) translateX(-2px);
+}
+
+.actor-nav.next {
+  right: 14px;
+}
+
+.actor-nav.next:hover {
+  transform: translateY(-50%) translateX(2px);
+}
 </style>

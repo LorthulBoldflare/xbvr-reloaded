@@ -7,7 +7,7 @@
 
     <div class="modal-background"></div>
 
-    <div class="modal-card">
+    <div class="modal-card edit-card">
       <header class="modal-card-head">
         <p class="modal-card-title">{{ this.scene.id == 0 ? $t('Display scene details') : $t('Edit scene details') }}</p>
         <button class="delete" @click="close" aria-label="close"></button>
@@ -17,15 +17,11 @@
         <b-tabs position="is-centered" :animated="false">
 
           <b-tab-item :label="$t('Information')">
-            <b-field :label="$t('Title')">
-              <b-input type="text" v-model="scene.title" @blur="blur('title')"/>
-            </b-field>
+            <div class="edit-grid">
+              <b-field :label="$t('Title')" class="span-2">
+                <b-input type="text" v-model="scene.title" @blur="blur('title')"/>
+              </b-field>
 
-            <b-field :label="$t('Multipart scene')">
-              <b-checkbox v-model="scene.is_multipart"/>
-            </b-field>
-
-            <b-field grouped group-multiline>
               <b-field :label="$t('Studio')">
                 <b-input type="text" v-model="scene.studio" @blur="blur('studio')"/>
               </b-field>
@@ -48,37 +44,41 @@
               <b-field :label="$t('Duration')">
                 <b-input type="number" v-model="scene.duration" @blur="blur('duration')"/>
               </b-field>
-            </b-field>
 
-            <b-field :label="$t('Cast')">
-              <b-taginput type="is-warning"
-                          icon="label"
-                          placeholder="Add an actor"
-                          v-model="scene.castArray"
-                          autocomplete
-                          :allow-new="true"
-                          :allow-duplicates="false"
-                          :data="filteredCast"
-                          @typing="getFilteredCast"
-                          @blur="blur('castArray')"/>
-            </b-field>
+              <b-field :label="$t('Multipart scene')" class="multipart-field">
+                <b-checkbox v-model="scene.is_multipart"/>
+              </b-field>
 
-            <b-field :label="$t('Tags')">
-              <b-taginput type="is-info"
-                          icon="label"
-                          placeholder="Add a tag"
-                          v-model="scene.tagsArray"
-                          autocomplete
-                          :allow-new="true"
-                          :allow-duplicates="false"
-                          :data="filteredTags"
-                          @typing="getFilteredTags"
-                          @blur="blur('tagsArray')"/>
-            </b-field>
+              <b-field :label="$t('Cast')" class="span-2">
+                <b-taginput type="is-warning"
+                            icon="label"
+                            placeholder="Add an actor"
+                            v-model="scene.castArray"
+                            autocomplete
+                            :allow-new="true"
+                            :allow-duplicates="false"
+                            :data="filteredCast"
+                            @typing="getFilteredCast"
+                            @blur="blur('castArray')"/>
+              </b-field>
 
-            <b-field :label="$t('Description')">
-              <b-input type="textarea" v-model="scene.synopsis" @blur="blur('synopsis')"/>
-            </b-field>
+              <b-field :label="$t('Tags')" class="span-2">
+                <b-taginput type="is-info"
+                            icon="label"
+                            placeholder="Add a tag"
+                            v-model="scene.tagsArray"
+                            autocomplete
+                            :allow-new="true"
+                            :allow-duplicates="false"
+                            :data="filteredTags"
+                            @typing="getFilteredTags"
+                            @blur="blur('tagsArray')"/>
+              </b-field>
+
+              <b-field :label="$t('Description')" class="span-2">
+                <b-input type="textarea" v-model="scene.synopsis" @blur="blur('synopsis')"/>
+              </b-field>
+            </div>
           </b-tab-item>
 
           <b-tab-item :label="$t('Filenames')">
@@ -97,9 +97,13 @@
 
       </section>
 
-      <footer class="modal-card-foot is-justify-content-space-between">
-        <b-button type="is-primary" @click="save">{{ $t('Save Scene Details') }}</b-button>
-        <b-button v-if="this.scene.id != 0" type="is-danger" outlined @click="deletescene">{{ $t('Delete Scene') }}</b-button>
+      <footer class="modal-card-foot edit-footer">
+        <div class="edit-footer-group">
+          <b-button type="is-primary" @click="save">{{ $t('Save Scene Details') }}</b-button>
+        </div>
+        <div class="edit-footer-group">
+          <b-button v-if="this.scene.id != 0" type="is-danger" outlined @click="deletescene">{{ $t('Delete Scene') }}</b-button>
+        </div>
       </footer>
     </div>
   </div>
@@ -301,17 +305,63 @@ export default {
 </script>
 
 <style scoped>
-.modal-card {
-  width: 65%;
+.edit-card {
+  width: min(1100px, 92vw);
 }
 
 @media (max-width: 768px) {
-  .modal-card {
+  .edit-card {
     width: 98%;
   }
 }
 
 .tab-item {
   height: 40vh;
+}
+
+/* tidy 2-column form on wide screens */
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+  align-items: start;
+}
+
+.edit-grid .span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .edit-grid .span-2 {
+    grid-column: span 1;
+  }
+}
+
+.edit-grid :deep(.label) {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.3rem;
+}
+
+.multipart-field {
+  align-self: end;
+  padding-bottom: 0.75rem;
+}
+
+/* grouped action footer */
+.edit-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.edit-footer-group {
+  display: flex;
+  gap: 0.5rem;
 }
 </style>

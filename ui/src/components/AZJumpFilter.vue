@@ -1,5 +1,5 @@
 <template>
-  <div class="columns is-gapless is-centered">
+  <div class="columns is-gapless is-centered az-jump">
     <b-radio-button :value="value" @input="$emit('input', $event)" native-value="" size="is-small"></b-radio-button>
     <b-radio-button :value="value" @input="$emit('input', $event)" native-value="A" size="is-small">A</b-radio-button>
     <b-radio-button :value="value" @input="$emit('input', $event)" native-value="B" size="is-small">B</b-radio-button>
@@ -31,3 +31,29 @@ export default {
   props: { value: String }
 }
 </script>
+
+<style scoped>
+.az-jump {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.az-jump :deep(.b-radio.button) {
+  border-radius: 8px;
+  min-width: 1.9rem;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  border-color: var(--xbvr-border, #e3e6ec);
+  background: var(--xbvr-surface, #ffffff);
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.az-jump :deep(.b-radio.button:hover) {
+  color: var(--xbvr-text, #1c2333);
+  border-color: var(--xbvr-border-strong, #cdd2dc);
+  background: var(--xbvr-hover-bg, #fafbfd);
+}
+</style>

@@ -1,12 +1,18 @@
 <template>
-  <div class="container">
+  <div>
     <b-loading :is-full-page="false" :active.sync="isLoading" />
     <div class="content">
-      <h3>{{ $t('Web UI') }}</h3>
-      <hr />
+      <header class="options-page-head">
+        <h1 class="options-title">{{ $t('Web UI') }}</h1>
+        <p class="options-desc">{{ $t('Tune what the web interface shows and how scene cards look.') }}</p>
+      </header>
       <div class="columns">
         <div class="column">
-          <section>
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="sort" size="is-small"/>
+              {{ $t('General') }}
+            </div>
             <b-field label="Tag Sort">
               <div class="block">
                 <b-radio v-model="tagSort" name="tagSort" native-value="by-tag-count">
@@ -18,8 +24,19 @@
               </div>
             </b-field>
 
-            <b-field label="Buttons in Scene List">
+            <b-field label="Automatically Check for Updates">
+              <b-switch v-model="updateCheck">
+                Enabled
+              </b-switch>
             </b-field>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="button-cursor" size="is-small"/>
+              {{ $t('Buttons in Scene List') }}
+            </div>
+            <div class="switch-grid">
             <b-field>
               <b-switch v-model="sceneHidden" type="is-danger">
                 show Toggle Hidden Status button
@@ -90,6 +107,14 @@
                 show Open Tag in New Window
               </b-switch>
             </b-field>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="palette-outline" size="is-small"/>
+              {{ $t('Appearance') }}
+            </div>
             <b-field label="Opacity of unavailable scenes">
               <div class="columns">
                 <div class="column is-two-thirds">
@@ -123,17 +148,11 @@
                 Scale cover to fit
               </b-switch>
             </b-field>
-
-            <b-field label="Automatically Check for Updates">
-              <b-switch v-model="updateCheck">
-                Enabled
-              </b-switch>
-            </b-field>
-
-            <b-field>
-              <b-button type="is-primary" @click="save">Save</b-button>
-            </b-field>
           </section>
+
+          <div class="save-row">
+            <b-button type="is-primary" @click="save">Save</b-button>
+          </div>
         </div>
       </div>
     </div>
@@ -331,5 +350,73 @@ export default {
 </script>
 
 <style scoped>
+.options-page-head {
+  margin-bottom: 1.25rem;
+}
 
+.options-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.15rem;
+}
+
+.options-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.settings-card {
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.settings-card-title {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.9rem;
+}
+
+.settings-card-title .icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+/* switches are full-row toggles inside cards */
+.settings-card :deep(.field) {
+  margin-bottom: 0.45rem;
+}
+
+.settings-card :deep(.field:last-child) {
+  margin-bottom: 0;
+}
+
+/* long toggle lists flow into two columns instead of one tall stack */
+.switch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0 1.5rem;
+}
+
+.switch-grid :deep(.field) {
+  margin-bottom: 0.45rem;
+}
+
+.save-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
 </style>

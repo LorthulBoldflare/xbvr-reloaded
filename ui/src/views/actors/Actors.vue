@@ -5,7 +5,7 @@
       <div class="column is-one-fifth">
          <Filters/> 
 
-        <a id="toTop">
+        <a id="toTop" aria-label="Back to top" role="button">
           <b-icon pack="mdi" icon="navigation" />
         </a>
       </div>
@@ -34,7 +34,7 @@ export default {
         return
       }
       toTop.style.display = document.body.scrollTop > 20 || document.documentElement.scrollTop > 20
-        ? 'block'
+        ? 'flex'
         : 'none'
     }
     this._scrollToTop = () => {
@@ -71,7 +71,7 @@ export default {
   },
   beforeRouteUpdate (to, from, next) {
     if (to.query !== undefined) {
-      this.$store.commit('actorList/stateFromQuery', to.query)
+      vm.$store.commit('actorList/stateFromQuery', to.query)
     }
     this.$store.dispatch('actorList/load', { offset: 0 })
     next()
@@ -84,17 +84,29 @@ export default {
 <style scoped>
   #toTop {
     display: none;
+    align-items: center;
+    justify-content: center;
     position: fixed;
     bottom: 20px;
     left: 30px;
-    background-color: #f0f0f0;
-    color: #4a4a4a;
-    padding: 15px;
-    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background-color: var(--xbvr-surface, #ffffff);
+    color: var(--xbvr-text-muted, #64708a);
+    border: 1px solid var(--xbvr-border, #e3e6ec);
+    border-radius: 999px;
     font-size: 18px;
+    box-shadow: var(--xbvr-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.10));
+    transition: box-shadow var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
   }
 
   #toTop:hover {
-    background-color: #BDBDBD;
+    background-color: var(--xbvr-surface, #ffffff);
+    color: var(--xbvr-primary, #4f46e5);
+    transform: translateY(-2px);
+    box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16));
   }
 </style>

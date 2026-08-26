@@ -1,11 +1,12 @@
 <template>
   <div class="content">
     <b-loading :is-full-page="true" :active.sync="isLoading"></b-loading>
-    <div class="columns">
-      <div class="column">
-        <h3 class="title">{{$t('Scrape scenes from studios')}}</h3>
+    <header class="options-page-head options-head-row">
+      <div>
+        <h1 class="options-title">{{$t('Scrapers')}}</h1>
+        <p class="options-desc">{{ $t('Enable studios and control how their scenes get scraped.') }}</p>
       </div>
-      <div class="column buttons" align="right">
+      <div class="options-head-actions buttons">
         <b-dropdown aria-role="list" position="is-bottom-left">
           <template slot="trigger">
             <b-button icon-left="cog" />
@@ -23,7 +24,8 @@
         </a>
         <a class="button is-primary" v-on:click="taskScrape('_enabled')">{{$t('Run selected scrapers')}}</a>
       </div>
-    </div>
+    </header>
+    <div class="settings-card table-card">
     <b-table :data="scraperList" ref="scraperTable">
       <b-table-column field="is_enabled" :label="$t('Enabled')" v-slot="props" width="80" sortable>
           <span><b-switch v-model ="props.row.is_enabled" @input="$store.dispatch('optionsSites/toggleSite', {id: props.row.id})"/></span>
@@ -39,7 +41,7 @@
       </b-table-column>
       <b-table-column field="sitename" :label="$t('Studio')" sortable searchable v-slot="props">
         <b-tooltip class="is-warning" :active="props.row.has_scraper == false" :label="$t('Scraper does not exist')"  :delay="250" >
-          <a @click="navigateToStudio(props.row.name)" :class="[props.row.has_scraper ? 'has-text-link' : 'has-text-danger']" style="cursor: pointer;">{{ props.row.sitename }}</a>
+          <a @click="navigateToStudio(props.row.name)" :class="[props.row.has_scraper ? 'has-text-link' : 'has-text-danger']" class="clickable">{{ props.row.sitename }}</a>
         </b-tooltip>
       </b-table-column>
       <b-table-column field="source" :label="$t('Source')" sortable searchable v-slot="props">
@@ -73,7 +75,7 @@
         </b-tooltip>
       </b-table-column>
       <b-table-column field="scene_count" :label="$t('Scenes')" v-slot="props" width="40" sortable numeric>
-        <a @click="navigateToStudio(props.row.name)" style="cursor: pointer;">
+        <a @click="navigateToStudio(props.row.name)" class="clickable">
           <span class="tag is-info is-light is-medium"><strong>{{ props.row.scene_count }}</strong></span>
         </a>
       </b-table-column>
@@ -116,13 +118,10 @@
         </span>
       </b-table-column>
     </b-table>
-    <div class="columns">
-      <div class="column">
-      </div>
-        <div class="column buttons" align="right">
-          <a class="button is-small" v-on:click="toggleAllLimitScraping()">{{$t('Toggle Limit Scraping of all visible sites')}}</a>
-          <a class="button is-small" v-on:click="toggleAllSubscriptions()">{{$t('Toggle Subscriptions of all visible sites')}}</a>
-        </div>
+    </div>
+    <div class="footer-actions buttons">
+      <a class="button is-small" v-on:click="toggleAllLimitScraping()">{{$t('Toggle Limit Scraping of all visible sites')}}</a>
+      <a class="button is-small" v-on:click="toggleAllSubscriptions()">{{$t('Toggle Subscriptions of all visible sites')}}</a>
     </div>
 
     <b-modal :active.sync="isSingleScrapeModalActive"
@@ -130,7 +129,7 @@
              trap-focus
              aria-role="dialog"
              aria-modal>
-      <div class="modal-card" style="width: auto">
+      <div class="modal-card modal-card-auto">
         <header class="modal-card-head">
           <p class="modal-card-title">{{$t('Additional Details Required')}}</p>
         </header>
@@ -460,6 +459,66 @@ export default {
 </script>
 
 <style scoped>
+  .options-page-head {
+    margin-bottom: 1.25rem;
+  }
+
+  .options-head-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .options-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--xbvr-text, #1c2333);
+    margin-bottom: 0.15rem;
+  }
+
+  .options-desc {
+    color: var(--xbvr-text-muted, #64708a);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .options-head-actions {
+    justify-content: flex-end;
+  }
+
+  .settings-card {
+    background: var(--xbvr-surface, #ffffff);
+    border: 1px solid var(--xbvr-border, #e3e6ec);
+    border-radius: var(--xbvr-radius, 12px);
+    box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+    padding: 0.5rem 1rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .table-card :deep(.table) {
+    border-radius: var(--xbvr-radius-sm, 8px);
+    background: transparent;
+  }
+
+  .table-card :deep(.table tbody tr) {
+    transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+  }
+
+  .table-card :deep(.table tbody tr:hover) {
+    background: var(--xbvr-hover-bg, #fafbfd);
+  }
+
+  .footer-actions {
+    justify-content: flex-end;
+  }
+
+  .modal-card-auto {
+    width: auto;
+  }
+
   .running {
     opacity: 0.6;
     pointer-events: none;
@@ -468,34 +527,17 @@ export default {
   .tag.is-medium {
     padding-left: 0.5em;
     padding-right: 0.5em;
-    transition: background-color 0.2s ease;
+    transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
   }
 
   a:hover .tag.is-medium {
-    background-color: #3273dc !important;
-    color: white !important;
+    background-color: var(--xbvr-info, #3e8ed0) !important;
+    color: var(--xbvr-on-primary, #ffffff) !important;
   }
 
-  .card {
-    overflow: visible;
-    height: 100%;
-  }
-
-  .card-content {
-    padding-top: 1em;
-    padding-left: 1em;
-  }
-
-  .avatar {
-    margin-right: 1em;
-  }
-
-  p {
-    margin-bottom: 0.5em !important;
-  }
-
-  h5 {
-    margin-bottom: 0.25em !important;
+  .clickable {
+    cursor: pointer;
   }
 
   .invisible {
@@ -512,7 +554,7 @@ export default {
     display: inline-block;
     font-size: 1.2em;
     font-weight: bold;
-    color: #3273dc;
+    color: var(--xbvr-primary, #4f46e5);
     line-height: 1;
     vertical-align: middle;
     position: relative;

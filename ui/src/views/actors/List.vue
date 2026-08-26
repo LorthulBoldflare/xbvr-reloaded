@@ -9,11 +9,11 @@
     />
     <b-loading :is-full-page="true" :active.sync="isLoading"></b-loading>
 
-    <div class="columns is-multiline is-full">
-      <div class="column">
-        <strong>{{total}} results</strong>
+    <div class="columns is-multiline is-full list-toolbar">
+      <div class="column is-narrow results-col">
+        <strong class="results-count">{{total}} results</strong>
       </div>
-      <div class="column">
+      <div class="column pagination-col">
         <b-tooltip :label="$t('Press o/left arrow to page back, p/right arrow to page forward')" :delay="500" position="is-top">
           <b-pagination
               :total="total"
@@ -34,9 +34,9 @@
         </b-tooltip>
         <span v-show="show_actor_id==='never show, just need the computed show_actor_id to trigger '">{{show_actor_id}}</span>
       </div>
-      <div class="column">
-        <div class="is-pulled-right">
-          <b-field>
+      <div class="column is-narrow">
+        <div class="toolbar-end">
+          <b-field class="card-size-field">
             <span class="list-header-label">{{$t('Card size')}}</span>
             <b-radio-button v-model="cardSize" native-value="1" size="is-small">
               XS
@@ -54,9 +54,7 @@
         </div>
       </div>
     </div>
-        <AZJumpFilter v-model="jumpTo" v-if="hideLetters"/>
-
-    <div class="is-clearfix"></div>
+        <AZJumpFilter v-model="jumpTo" v-if="hideLetters" class="az-jump"/>
 
     <div class="columns is-multiline">
       <div :class="['column', 'is-multiline', cardSizeClass]"
@@ -64,8 +62,8 @@
         <ActorCard :actor="actor"/>
       </div>
     </div>
-      <AZJumpFilter v-model="jumpTo" v-if="hideLetters"/>
-      <div class="columns is-gapless is-centered">          
+      <AZJumpFilter v-model="jumpTo" v-if="hideLetters" class="az-jump az-jump-bottom"/>
+      <div class="columns is-gapless is-centered pagination-bottom">
         <b-tooltip :label="$t('Press k to page back, l to page forward')" :delay="500" position="is-top">
           <b-pagination
             :total="total"
@@ -248,7 +246,60 @@ export default {
 </script>
 
 <style scoped>
+  .list-toolbar {
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .results-col {
+    padding-top: 0;
+    padding-bottom: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .results-count {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--xbvr-text, #1c2333);
+    white-space: nowrap;
+  }
+
+  .pagination-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toolbar-end {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
   .list-header-label {
-    padding-right: 1em;
+    padding-right: 0.75em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--xbvr-text-muted, #64708a);
+    white-space: nowrap;
+  }
+
+  .card-size-field {
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .az-jump {
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  .az-jump-bottom {
+    margin: 1rem 0 0;
+  }
+
+  .pagination-bottom {
+    margin-top: 1rem;
+    justify-content: center;
   }
 </style>

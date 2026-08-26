@@ -1,7 +1,7 @@
 <template>
-  <div>
-    <b-field grouped>
-      <b-select size="is-small" @input="setPlaylist" expanded v-model="currentPlaylist">
+  <div class="saved-search">
+    <div class="saved-search-row">
+      <b-select size="is-small" @input="setPlaylist" expanded v-model="currentPlaylist" class="saved-search-select">
         <optgroup label="Web">
           <option v-for="(obj, idx) in playlistsWeb" :value="obj.id" :key="idx">
             {{ obj.name }}
@@ -14,40 +14,43 @@
         </optgroup>
       </b-select>
 
-      <b-tooltip position="is-bottom" label="Save as new" :delay="200">
-        <button class="button is-small is-outlined" @click="showNewDialog" :aria-label="$t('Save as new')">
-          <b-icon pack="mdi" icon="content-save-outline"></b-icon>
-        </button>
-      </b-tooltip>
-      <b-tooltip position="is-bottom" label="Edit" :delay="200">
-        <button class="button is-small is-outlined" @click="showEditDialog" :disabled="disableEditDelete" :aria-label="$t('Edit saved search')">
-          <b-icon pack="mdi" icon="square-edit-outline"></b-icon>
-        </button>
-      </b-tooltip>
-      <b-tooltip position="is-bottom" label="Delete" :delay="200">
-        <button class="button is-small is-outlined" @click="removePlaylist" :disabled="disableEditDelete" :aria-label="$t('Delete saved search')">
-          <b-icon pack="mdi" icon="delete-outline"></b-icon>
-        </button>
-      </b-tooltip>
-    </b-field>
+      <div class="saved-search-actions">
+        <b-tooltip position="is-bottom" label="Save as new" :delay="200">
+          <button class="button is-small is-outlined" @click="showNewDialog" :aria-label="$t('Save as new')">
+            <b-icon pack="mdi" icon="content-save-outline"></b-icon>
+          </button>
+        </b-tooltip>
+        <b-tooltip position="is-bottom" label="Edit" :delay="200">
+          <button class="button is-small is-outlined" @click="showEditDialog" :disabled="disableEditDelete" :aria-label="$t('Edit saved search')">
+            <b-icon pack="mdi" icon="square-edit-outline"></b-icon>
+          </button>
+        </b-tooltip>
+        <b-tooltip position="is-bottom" label="Delete" :delay="200">
+          <button class="button is-small is-outlined" @click="removePlaylist" :disabled="disableEditDelete" :aria-label="$t('Delete saved search')">
+            <b-icon pack="mdi" icon="delete-outline"></b-icon>
+          </button>
+        </b-tooltip>
+      </div>
+    </div>
 
     <b-modal :active.sync="isPlaylistModalActive"
              has-modal-card
              trap-focus
              aria-role="dialog"
              aria-modal>
-      <div class="modal-card" style="width: auto">
+      <div class="modal-card saved-search-modal">
         <header class="modal-card-head">
           <p class="modal-card-title">{{ modalTitle }}</p>
         </header>
         <section class="modal-card-body">
-          <b-field label="Name">
+          <div class="filter-field">
+            <label class="filter-label">{{ $t('Name') }}</label>
             <b-input
               type="name"
               v-model="playlistName"
               required>
             </b-input>
-          </b-field>
+          </div>
           <b-checkbox v-if="!isActorMode" v-model="playlistDeoEnabled">Use as DeoVR list</b-checkbox>
         </section>
         <footer class="modal-card-foot">
@@ -207,7 +210,46 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-button {
-  margin-left: 0.1rem;
+.saved-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.saved-search-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.saved-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+.saved-search-actions .button {
+  margin: 0;
+  border-radius: var(--xbvr-radius-sm, 8px);
+}
+
+.saved-search-modal {
+  width: min(420px, 92vw);
+}
+
+/* reuse the filter-panel field language inside the modal */
+.filter-field {
+  margin-bottom: 0.8rem;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.3rem;
 }
 </style>

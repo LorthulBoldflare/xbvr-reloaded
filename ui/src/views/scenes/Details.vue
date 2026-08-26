@@ -19,12 +19,12 @@
 
     <div class="modal-background"></div>
 
-    <div class="modal-card">
-      <section class="modal-card-body">
-        <div class="columns">
+    <div class="modal-card details-card">
+      <section class="modal-card-body details-body">
+        <div class="details-grid">
 
-          <div class="column is-half">
-            <b-tabs v-model="activeMedia" position="is-centered" :animated="false">
+          <div class="media-pane">
+            <b-tabs v-model="activeMedia" position="is-centered" :animated="false" class="media-tabs">
 
               <b-tab-item label="Gallery">
                 <b-carousel v-model="carouselSlide" @change="scrollToActiveIndicator" :autoplay="false" :indicator-inside="false">
@@ -46,7 +46,7 @@
 
               <b-tab-item label="Player" v-if="!displayingAlternateSource">
                 <video ref="player" class="video-js vjs-default-skin" controls playsinline preload="none"/>
-                <b-field position="is-centered">
+                <b-field position="is-centered" class="skip-row">
                   <b-field>
                     <b-tooltip v-for="(skipBack, i) in skipBackIntervals" class="is-size-7" :key="i" :active="skipBack == lastSkipBackInterval ? true : false" :label="$t('Keyboard shortcut: Left Arrow')"
                         position="is-top" type="is-primary is-light" >
@@ -68,88 +68,83 @@
 
           </div>
 
-          <div class="column is-half">
+          <div class="info-pane">
 
-            <div class="block-info block">
-              <div class="content">
-                <h3>
-                  <span v-if="item.title">{{ item.title }}</span>
-                  <span v-else class="missing">(no title)</span>                  
-                  <small class="is-pulled-right">
-                    {{ format(parseISO(item.release_date), "yyyy-MM-dd") }}
-                  </small>
-                </h3>
-                <div class="columns">
-                  <div class="column pb-0">
-                    <small>
-                      <a :href="safeHref(item.scene_url)" target="_blank" rel="noreferrer">{{ item.site }}</a>
-                      <br v-if="item.members_url != ''"/>
-                      <a v-if="item.members_url != ''" :href="safeHref(item.members_url)" target="_blank" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px"/>Members Link</a>
-                    </small>
-                  </div>
-                  <div class="column pb-0">
-                    <small v-if="item.duration" class="is-pulled-right">{{ item.duration }} minutes</small>
-                  </div>
-                </div>
-                <div class="columns is-vcentered">
-                  <div class="column pt-0">
-                    <b-field v-if="!displayingAlternateSource">
-                      <star-rating :key="item.id" v-model="item.star_rating" :rating="item.star_rating" @rating-selected="setRating"
-                                   :increment="0.5" :star-size="20" :show-rating="false" />
-                      <b-tooltip :label="$t('Reset Rating')" position="is-right" :delay="250">
-                        <b-icon pack="mdi" icon="autorenew" size="is-small" @click.native="setRating(0)" style="padding-left: 1em;padding-top: .5em;"/>
-                      </b-tooltip>
-                    </b-field>
-                    <b-field v-if="displayingAlternateSource">
-                      <strong>Linked scene, Not an XBVR Scene</strong>
-                    </b-field>
-                  </div>
-                  <div class="column pt-0">
-                    <div class="is-flex is-pulled-right" style="gap: 0.25rem">
-                      <a class="button is-primary is-outlined is-small" @click="searchAlternateSourceScene()" title="Search for a different scene" v-if="displayingAlternateSource">
-                        <b-icon pack="mdi" icon="movie-search-outline" size="is-small"/>
-                      </a>
-                      <a class="button is-primary is-outlined is-small" @click="scrapeScene()" title="Scrape and create an XBVR scene (not a link)" v-if="displayingAlternateSource">
-                        <b-icon pack="mdi" icon="plus" size="is-medium"/>
-                      </a>
-                      <a class="button is-primary is-outlined is-small" @click="refreshExtRef()" title="Removes the scene.  Rescrape to refresh the scene data and relink" v-if="displayingAlternateSource">
-                        <b-icon pack="mdi" icon="refresh" size="is-small"/>
-                      </a>
-                      <a class="button is-danger is-outlined is-small" @click="flagExtRefDeleted()" title="Unlinks the scene. It cannot be relinked to any scene. This cannot be undone" v-if="displayingAlternateSource">
-                        <b-icon pack="mdi" icon="delete" size="is-small"/>
-                      </a>
-                      <hidden-button :item="item" v-if="!displayingAlternateSource"/>
-                      <watchlist-button :item="item" v-if="!displayingAlternateSource"/>
-                      <trailerlist-button :item="item" v-if="!displayingAlternateSource"/>
-                      <favourite-button :item="item" v-if="!displayingAlternateSource"/>
-                      <wishlist-button :item="item" v-if="!displayingAlternateSource"/>
-                      <watched-button :item="item" v-if="!displayingAlternateSource"/>
-                      <edit-button :item="item"/>
-                      <refresh-button :item="item" v-if="!displayingAlternateSource"/>
-                      <rescrape-button :item="item" v-if="!displayingAlternateSource"/>
-                      <b-tooltip :label="$t('Delete generated preview')" position="is-top" v-if="!displayingAlternateSource && item.has_preview">
-                        <a class="button is-danger is-outlined is-small" @click="deletePreview()">
-                          <b-icon pack="mdi" icon="video-off" size="is-small"/>
-                        </a>
-                      </b-tooltip>
-                      <link-stashdb-button :item="item" objectType="scene" />
-                    </div>
-                  </div>
-                </div>
-                <div class="image-row is-flex is-pulled-right" v-if="alternateSources.length != 0">
-                  <div v-for="(altsrc, idx) in alternateSourcesWithTitles" :key="idx" class="altsrc-image-wrapper" @click="showExtRefScene(altsrc)">
-                    <b-tooltip type="is-light" :label="altsrc.title" :delay="100" append-to-body>
-                      <vue-load-image>
-                        <img slot="image" :src="getImageURL(altsrc.site_icon)" alt="Image" width="28px" />                        
-                        <b-icon slot="error" pack="mdi" icon="link" size="is-small" />
-                      </vue-load-image>
-                    </b-tooltip>
-                  </div>
-                </div>
+            <header class="details-header">
+              <h2 class="details-title">
+                <span v-if="item.title">{{ item.title }}</span>
+                <span v-else class="missing">(no title)</span>
+              </h2>
+              <div class="meta-chips">
+                <a class="meta-chip is-link" :href="safeHref(item.scene_url)" target="_blank" rel="noreferrer">
+                  <b-icon pack="mdi" icon="web" size="is-small" aria-hidden="true"/><span>{{ item.site }}</span>
+                </a>
+                <a v-if="item.members_url != ''" class="meta-chip is-link" :href="safeHref(item.members_url)" target="_blank" rel="noreferrer">
+                  <b-icon pack="mdi" icon="link-lock" size="is-small" aria-hidden="true"/><span>{{$t('Members')}}</span>
+                </a>
+                <span class="meta-chip">
+                  <b-icon pack="mdi" icon="calendar-outline" size="is-small" aria-hidden="true"/><span>{{ format(parseISO(item.release_date), "yyyy-MM-dd") }}</span>
+                </span>
+                <span v-if="item.duration" class="meta-chip">
+                  <b-icon pack="mdi" icon="clock-outline" size="is-small" aria-hidden="true"/><span>{{ item.duration }} min</span>
+                </span>
+              </div>
+            </header>
+
+            <div class="details-toolbar">
+              <b-field v-if="!displayingAlternateSource" class="rating-block">
+                <star-rating :key="item.id" v-model="item.star_rating" :rating="item.star_rating" @rating-selected="setRating"
+                             :increment="0.5" :star-size="20" :show-rating="false" />
+                <b-tooltip :label="$t('Reset Rating')" position="is-right" :delay="250">
+                  <b-icon pack="mdi" icon="autorenew" size="is-small" @click.native="setRating(0)" class="rating-reset"/>
+                </b-tooltip>
+              </b-field>
+              <b-field v-if="displayingAlternateSource" class="rating-block">
+                <strong>Linked scene, Not an XBVR Scene</strong>
+              </b-field>
+              <div class="action-row">
+                <a class="button is-primary is-outlined is-small" @click="searchAlternateSourceScene()" title="Search for a different scene" v-if="displayingAlternateSource">
+                  <b-icon pack="mdi" icon="movie-search-outline" size="is-small"/>
+                </a>
+                <a class="button is-primary is-outlined is-small" @click="scrapeScene()" title="Scrape and create an XBVR scene (not a link)" v-if="displayingAlternateSource">
+                  <b-icon pack="mdi" icon="plus" size="is-medium"/>
+                </a>
+                <a class="button is-primary is-outlined is-small" @click="refreshExtRef()" title="Removes the scene.  Rescrape to refresh the scene data and relink" v-if="displayingAlternateSource">
+                  <b-icon pack="mdi" icon="refresh" size="is-small"/>
+                </a>
+                <a class="button is-danger is-outlined is-small" @click="flagExtRefDeleted()" title="Unlinks the scene. It cannot be relinked to any scene. This cannot be undone" v-if="displayingAlternateSource">
+                  <b-icon pack="mdi" icon="delete" size="is-small"/>
+                </a>
+                <hidden-button :item="item" v-if="!displayingAlternateSource"/>
+                <watchlist-button :item="item" v-if="!displayingAlternateSource"/>
+                <trailerlist-button :item="item" v-if="!displayingAlternateSource"/>
+                <favourite-button :item="item" v-if="!displayingAlternateSource"/>
+                <wishlist-button :item="item" v-if="!displayingAlternateSource"/>
+                <watched-button :item="item" v-if="!displayingAlternateSource"/>
+                <edit-button :item="item"/>
+                <refresh-button :item="item" v-if="!displayingAlternateSource"/>
+                <rescrape-button :item="item" v-if="!displayingAlternateSource"/>
+                <b-tooltip :label="$t('Delete generated preview')" position="is-top" v-if="!displayingAlternateSource && item.has_preview">
+                  <a class="button is-danger is-outlined is-small" @click="deletePreview()">
+                    <b-icon pack="mdi" icon="video-off" size="is-small"/>
+                  </a>
+                </b-tooltip>
+                <link-stashdb-button :item="item" objectType="scene" />
               </div>
             </div>
 
-            <div class="image-row" v-if="activeTab != 1 && !displayingAlternateSource">
+            <div class="image-row altsrc-row" v-if="alternateSources.length != 0">
+              <div v-for="(altsrc, idx) in alternateSourcesWithTitles" :key="idx" class="altsrc-image-wrapper" @click="showExtRefScene(altsrc)">
+                <b-tooltip type="is-light" :label="altsrc.title" :delay="100" append-to-body>
+                  <vue-load-image>
+                    <img slot="image" :src="getImageURL(altsrc.site_icon)" alt="Image" width="28px" />
+                    <b-icon slot="error" pack="mdi" icon="link" size="is-small" />
+                  </vue-load-image>
+                </b-tooltip>
+              </div>
+            </div>
+
+            <div class="image-row cast-strip" v-if="activeTab != 1 && !displayingAlternateSource">
               <div v-for="(image, idx) in castimages" :key="idx" class="image-wrapper">
                 <b-tooltip  type="is-light" :label="image.actor_label"  :delay=100>
                   <vue-load-image>
@@ -165,7 +160,7 @@
               </div>
             </div>
 
-            <div class="block-tags block" v-if="activeTab != 1">
+            <div class="block-tags block chips" v-if="activeTab != 1">
               <b-taglist>
                 <span v-for="(c, idx) in item.cast" :key="'cast' + idx" >
                   <a class="tag is-warning is-small" @click='showCastScenes([c.name])' :style="showOpenInNewWindow ? 'margin-right: 0;': 'margin-right: .5em;'" >{{ c.name }} ({{ c.avail_count }}/{{ c.count }})</a>
@@ -396,10 +391,14 @@
       </div>
     </div>
     <button class="modal-close is-large" aria-label="close" @click="close()"></button>
-    <a class="prev" @click="prevScene" v-if="$store.getters['sceneList/prevScene'](item) !== null && !displayingAlternateSource"
-       title="Keyboard shortcut: O">&#10094;</a>
-    <a class="next" @click="nextScene" v-if="$store.getters['sceneList/nextScene'](item) !== null && !displayingAlternateSource"
-       title="Keyboard shortcut: P">&#10095;</a>
+    <button type="button" class="scene-nav prev" @click="prevScene" v-if="$store.getters['sceneList/prevScene'](item) !== null && !displayingAlternateSource"
+            title="Keyboard shortcut: O" aria-label="Previous scene">
+      <b-icon pack="mdi" icon="chevron-left" size="is-medium" aria-hidden="true"/>
+    </button>
+    <button type="button" class="scene-nav next" @click="nextScene" v-if="$store.getters['sceneList/nextScene'](item) !== null && !displayingAlternateSource"
+            title="Keyboard shortcut: P" aria-label="Next scene">
+      <b-icon pack="mdi" icon="chevron-right" size="is-medium" aria-hidden="true"/>
+    </button>
   </div>
 </template>
 
@@ -409,6 +408,7 @@ import { encodeJsonBase64 } from '../../util/base64'
 import { getImageURL as getImageURLUtil, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
 import { safeHref } from '../../util/url'
 import videojs from 'video.js'
+import 'videojs-hotkeys'
 import 'videojs-vr/dist/videojs-vr.min.js'
 import { format, formatDistance, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
@@ -1236,22 +1236,348 @@ watch:{
 </script>
 
 <style lang="less" scoped>
-.bbox {
-  flex: 1 0 calc(25%);
+/* ------------------------------------------------------------------
+   Scene details overlay — two-pane media/info layout
+   ------------------------------------------------------------------ */
+
+.details-card {
+  width: min(1500px, 92vw);
+}
+
+@media (max-width: 768px) {
+  .details-card {
+    width: 98vw;
+  }
+}
+
+.details-body {
+  padding: 1.25rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Media pane — dark chrome in both themes
+   ------------------------------------------------------------------ */
+
+.media-pane {
+  background: var(--xbvr-media-bg, #0d1017);
+  border-radius: var(--xbvr-radius-lg, 16px);
+  padding: 0.75rem 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+}
+
+.media-tabs :deep(.tabs ul) {
+  border-bottom: none;
+  justify-content: center;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 auto 0.6rem;
+  padding: 4px;
+  background: var(--xbvr-media-tabbar, rgba(255, 255, 255, 0.07));
+  border-radius: 999px;
+}
+
+.media-tabs :deep(.tabs a) {
+  border-bottom: none;
+  border-radius: 999px;
+  padding: 0.3em 1.2em;
+  color: var(--xbvr-media-muted, rgba(230, 233, 242, 0.6));
+  font-weight: 600;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.media-tabs :deep(.tabs a:hover) {
+  color: var(--xbvr-text, #fff);
+  border-bottom: none;
+}
+
+.media-tabs :deep(.tabs li.is-active a) {
+  background: var(--xbvr-media-tab-active-bg, rgba(255, 255, 255, 0.14));
+  color: var(--xbvr-media-tab-active-text, #fff);
+}
+
+.media-pane :deep(.carousel-item .image) {
+  border-radius: var(--xbvr-radius-sm, 8px);
+}
+
+.media-pane .video-js {
+  margin: 0 auto;
+  border-radius: var(--xbvr-radius-sm, 8px);
+  overflow: hidden;
+}
+
+/* seek-step buttons under the player */
+.skip-row :deep(.tag) {
+  border-radius: 999px;
+  background: var(--xbvr-media-chip-bg, rgba(255, 255, 255, 0.08));
+  border-color: var(--xbvr-media-chip-border, rgba(255, 255, 255, 0.18));
+  color: var(--xbvr-media-chip-text, #cdd6ea);
+  font-weight: 600;
+  box-shadow: none;
+  transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.skip-row :deep(.tag:hover) {
+  background: var(--xbvr-media-tabbar, rgba(255, 255, 255, 0.16));
+  color: var(--xbvr-text, #fff);
+  border-color: var(--xbvr-border-strong, rgba(255, 255, 255, 0.3));
+}
+
+/* ------------------------------------------------------------------
+   Info pane
+   ------------------------------------------------------------------ */
+
+.details-header {
+  margin-bottom: 0.9rem;
+}
+
+.details-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--xbvr-text, #1c2333);
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  margin-bottom: 0.55rem;
+}
+
+.missing {
+  opacity: 0.6;
+}
+
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: 999px;
+  padding: 0.25em 0.7em;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.meta-chip.is-link:hover {
+  color: var(--xbvr-primary-strong, #4338ca);
+  border-color: var(--xbvr-primary, #4f46e5);
+  background: var(--xbvr-primary-soft, #eef0fe);
+}
+
+/* rating + action toolbar */
+.details-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.9rem;
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+}
+
+.rating-block {
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0;
+  margin-bottom: 0 !important;
+}
+
+.rating-reset {
+  padding-left: 0.6em;
+  color: var(--xbvr-text-faint, #98a1b6);
+  cursor: pointer;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.rating-reset:hover {
+  color: var(--xbvr-text, #1c2333);
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.action-row :deep(.button.is-small) {
+  border-radius: 8px;
+}
+
+/* alternate source icons */
+.altsrc-row {
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+/* cast portraits */
+.cast-strip {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.image-row {
+  display: flex;
+}
+
+.image-wrapper {
+  position: relative;
+}
+
+.thumbnail {
+  height: 96px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: pointer;
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  transition: transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.thumbnail:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--xbvr-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.10));
+}
+
+/* tag chips */
+.chips :deep(.tag) {
+  border-radius: 999px;
+}
+
+.block-tags {
+  max-height: 200px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.block-tags::-webkit-scrollbar {
+  display: none;
+}
+
+.block-tab-content {
+  flex: 1 1 auto;
+}
+
+/* files tab rows */
+.block-tab-content :deep(.media) {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius-sm, 8px);
+  background: var(--xbvr-surface, #ffffff);
+  transition: border-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.block-tab-content :deep(.media:hover) {
+  border-color: var(--xbvr-border-strong, #cdd2dc);
+  background: var(--xbvr-hover-bg, #fafbfd);
+}
+
+.block-tab-content :deep(.media + .media) {
+  border-top: 1px solid var(--xbvr-border, #e3e6ec);
+  margin-top: 0.5rem;
+  padding-top: 0.6rem;
+}
+
+.vue-star-rating {
   line-height: 0;
+}
+
+.scene-id {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--xbvr-text-faint, #98a1b6);
+}
+
+/* close + prev/next — circular glass controls over the overlay */
+.modal-close {
+  background: var(--xbvr-chip-bg, rgba(20, 24, 36, 0.55));
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-close::before,
+.modal-close::after {
+  background-color: #fff;
+}
+
+.scene-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: var(--xbvr-chip-bg, rgba(20, 24, 36, 0.55));
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.scene-nav:hover {
+  background: rgba(20, 24, 36, 0.8);
+}
+
+.scene-nav.prev {
+  left: 14px;
+}
+
+.scene-nav.prev:hover {
+  transform: translateY(-50%) translateX(-2px);
+}
+
+.scene-nav.next {
+  right: 14px;
+}
+
+.scene-nav.next:hover {
+  transform: translateY(-50%) translateX(2px);
 }
 
 .is-1by1 {
   padding-top: calc(100% - 40px - 1em) !important;
-}
-
-.video-js {
-  margin: 0 auto;
 }
 
 :deep(.video-js .vjs-big-play-button) {
@@ -1260,83 +1586,9 @@ watch:{
   transform: translate(-50%, -50%) !important;
 }
 
-.modal-card {
-  width: 85%;
-}
-
-@media (max-width: 768px) {
-  .modal-card {
-    width: 98%;
-  }
-}
-
-.missing {
-  opacity: 0.6;
-}
-
-.block-tab-content {
-  flex: 1 1 auto;
-}
-
-.block-info {
-}
-
-.block-tags {
-  max-height: 200px;
-  overflow: scroll;
-  scrollbar-width: none;
-}
-
-.block-tags::-webkit-scrollbar {
-  display: none;
-}
-
-.block-opts {
-}
-
-.vue-star-rating {
-    line-height: 0;
-}
-
-.scene-id {
-  position: absolute;
-  right:10px;
-  bottom: 5px;
-  font-size: 11px;
-  color: #b0b0b0;
-}
-
-.prev, .next {
-  cursor: pointer;
-  position: absolute;
-  top: 50%;
-  width: auto;
-  padding: 16px;
-  margin-top: -50px;
-  color: white;
-  font-weight: bold;
-  font-size: 24px;
-  border-radius: 0 3px 3px 0;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.next {
-  right: 0;
-  border-radius: 3px 0 0 3px;
-}
-
-.prev {
-  left: 0;
-  border-radius: 3px 0 0 3px;
-}
-
-span.is-active img {
-  border: 2px;
-}
-
 .pathDetails {
-  color: #b0b0b0;
+  color: var(--xbvr-text-faint, #98a1b6);
+  overflow-wrap: anywhere;
 }
 
 .heatmapFunscript {
@@ -1346,15 +1598,17 @@ span.is-active img {
 }
 
 .heatmapFunscript img {
-  border: 1px #888 solid;
+  border: 1px solid var(--xbvr-border-strong, #cdd2dc);
+  border-radius: 999px;
   width: 100%;
   height: 20px;
   margin: 0;
   padding: 0;
 }
+
 .videosize {
-  color: rgb(60, 60, 60);
-  font-weight: 550;
+  color: var(--xbvr-text-muted, #64708a);
+  font-weight: 600;
 }
 
 :deep(.carousel .carousel-indicator) {
@@ -1365,23 +1619,24 @@ span.is-active img {
   margin-right: auto;
   overflow: auto;
 }
+
 :deep(.carousel .carousel-indicator .indicator-item:not(.is-active)) {
-  opacity: 0.5;
+  opacity: 0.45;
 }
+
+:deep(.carousel .carousel-indicator .indicator-item img) {
+  border-radius: 6px;
+}
+
+:deep(.carousel .carousel-indicator .indicator-item.is-active img) {
+  outline: 2px solid var(--xbvr-primary, #4f46e5);
+  outline-offset: 1px;
+}
+
 .is-divider {
-  margin: .8rem 0;
+  margin: 0.8rem 0;
 }
-.image-row {
-  display: flex;
-}
-.image-wrapper {
-  position: relative;
-}
-.thumbnail {
-  height: 100px;
-  margin-right: .5em;
-  object-fit: cover;
-}
+
 .tooltip {
   position: absolute;
   z-index: 1;
@@ -1389,19 +1644,36 @@ span.is-active img {
   right: 100%;
   width: 400px;
   height: 400px;
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  background-color: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16));
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 10px;
   transform: translateX(10px);
 }
+
 .tooltip img {
   max-width: 100%;
   max-height: 100%;
+  border-radius: 8px;
 }
+
 .altsrc-image-wrapper {
   display: inline-block;
-  margin-left: 5px;  
-}</style>
+  margin-left: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.altsrc-image-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.altsrc-image-wrapper img {
+  border-radius: 6px;
+}
+</style>

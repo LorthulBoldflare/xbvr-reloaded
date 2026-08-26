@@ -66,9 +66,19 @@ export default {
 
 <style>
   .navbar-pad {
-    margin-top: 1em;
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+    min-height: calc(100vh - 3.75rem);
+  }
+  /* cap page width on very wide screens + consistent side padding */
+  .container {
+    max-width: 1800px;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
   .modal-background {
-    background-color: rgba(0, 0, 0, .40) !important;
+    background-color: rgba(16, 20, 32, .45) !important;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
   }
 </style>

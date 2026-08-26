@@ -1,18 +1,25 @@
 <template>
   <div>
     <div class="content">
-      <h3>{{$t("Import/Export database data")}}</h3>
-      <b-tabs v-model="activeTab" size="medium" type="is-boxed" style="margin-left: 0px" id="importexporttab">
+      <header class="options-page-head">
+        <h1 class="options-title">{{$t("Import/Export database data")}}</h1>
+        <p class="options-desc">{{ $t('Move scenes, actors and settings between XBVR instances as bundles.') }}</p>
+      </header>
+      <b-tabs v-model="activeTab" size="medium" type="is-boxed" id="importexporttab" class="options-tabs">
             <b-tab-item label="Import" icon="upload"/>
             <b-tab-item label="Export" icon="download"/>
         </b-tabs>
-      <b-tabs v-model="activeSubTab" size="medium" type="is-boxed" style="margin-left: 0px" id="importexporttab">
+      <b-tabs v-model="activeSubTab" size="medium" type="is-boxed" id="importexporttab" class="options-tabs sub-tabs">
             <b-tab-item label="Scene Data"/>
             <b-tab-item label="Actor Data"/>
             <b-tab-item label="Settings/Misc Data"/>
         </b-tabs>
-      <h4 v-if="activeSubTab==0">{{ isImport ? "Import Scene Data" : "Export Scene Data"}}</h4>
-      <b-field grouped v-if="activeSubTab == 0">
+      <div class="settings-card" v-if="activeSubTab == 0">
+      <div class="settings-card-title">
+        <b-icon pack="mdi" icon="movie-open-outline" size="is-small"/>
+        {{ isImport ? "Import Scene Data" : "Export Scene Data"}}
+      </div>
+      <b-field grouped>
           <b-tooltip
             label="Select which studios are considered"
             size="is-large" type="is-primary is-light" multilined :delay="1000" >
@@ -39,8 +46,8 @@
           <b-tooltip
             label="Only includes scenes matching the Saved Search criteria."
             size="is-large" type="is-primary is-light" multilined :delay="1000">
-            <b-field style="margin-top:5px">
-              <span style="margin-right:1em"><p>Filter by Saved Search:</p></span>
+            <b-field class="saved-search-field">
+              <span class="saved-search-label"><p>Filter by Saved Search:</p></span>
               <b-select placeholder="Saved Search" size="is-small" expanded v-model="currentPlaylist">
                   <option v-for="(obj, idx) in this.$store.state.sceneList.playlists" :value="obj.id" :key="idx">
                     {{ obj.name }}
@@ -49,7 +56,7 @@
             </b-field>
           </b-tooltip>
         </b-field>
-      <div class="block" style="margin-top:20px" v-if="activeSubTab == 0">
+      <div class="block includes-block" v-if="activeSubTab == 0">
         <b-field>
           <b-tooltip
             label="Include the main scene data, eg title, site, cast, tags, filenames, images, favorites, star ratings, etc"
@@ -85,11 +92,14 @@
             <b-switch v-model="includeFileLinks"><p>Include Matched Files</p></b-switch>
           </b-tooltip>
         </b-field>
-        <b-button type="is-info is-small" style="margin-bottom: 1em;"  @click="toggleSceneIncludes()">Toggle Includes</b-button>
+        <b-button type="is-info is-small" class="toggle-btn" @click="toggleSceneIncludes()">Toggle Includes</b-button>
       </div>
-      <hr />
-      <div v-if="activeSubTab==1">
-        <h4>{{ isImport ? "Import Actor Data" : "Export Actor Data"}}</h4>
+      </div>
+      <div class="settings-card" v-if="activeSubTab==1">
+        <div class="settings-card-title">
+          <b-icon pack="mdi" icon="account-multiple-outline" size="is-small"/>
+          {{ isImport ? "Import Actor Data" : "Export Actor Data"}}
+        </div>
         <b-field>
           <b-tooltip
             label="Includes Actors (note new actors are not created, New/Existing will apply to the fields on an existing actor record.)"
@@ -111,10 +121,13 @@
             <b-switch v-model="inclActorActions">Include Actor Edits</b-switch>
           </b-tooltip>
         </b-field>
-        <b-button type="is-info is-small" style="margin-bottom: 1em;"  @click="toggleActorIncludes()">Toggle Includes</b-button>
+        <b-button type="is-info is-small" class="toggle-btn" @click="toggleActorIncludes()">Toggle Includes</b-button>
       </div>
-      <h4 v-if="activeSubTab==2">{{ isImport ? "Import Settings" : "Export Settings"}}</h4>
-      <div class="block" v-if="activeSubTab == 2">
+      <div class="settings-card" v-if="activeSubTab == 2">
+        <div class="settings-card-title">
+          <b-icon pack="mdi" icon="cog-transfer-outline" size="is-small"/>
+          {{ isImport ? "Import Settings" : "Export Settings"}}
+        </div>
         <b-field>
           <b-tooltip
             label="Includes your Tag Groups"
@@ -174,9 +187,13 @@
             <b-switch v-model="includeConfig">Include Config Settings</b-switch>
           </b-tooltip>
         </b-field>
-        <b-button type="is-info is-small" style="margin-bottom: 1em;"  @click="toggleSettingsIncludes()">Toggle Includes</b-button>
+        <b-button type="is-info is-small" class="toggle-btn" @click="toggleSettingsIncludes()">Toggle Includes</b-button>
       </div>
-      <hr />
+      <div class="settings-card">
+        <div class="settings-card-title">
+          <b-icon pack="mdi" icon="package-variant" size="is-small"/>
+          {{ isImport ? $t('Bundle source') : $t('Bundle destination') }}
+        </div>
       <b-field v-if="isImport">
         <b-tooltip
           label="Select if import source is a file or url. Large bundle files should be imported via a url."
@@ -193,7 +210,7 @@
         <b-tooltip
           :label="isImport ? 'Password the bundle credentials were encrypted with. Always required.' : 'Encrypts credential settings (API tokens, scraper cookies, passwords) in the bundle. Always required.'"
           size="is-large" type="is-primary is-light" multilined :delay="300">
-          <b-input type="password" v-model="bundlePassword" :placeholder="$t('Bundle password (required)')" password-reveal style="min-width: 16em"></b-input>
+          <b-input type="password" v-model="bundlePassword" :placeholder="$t('Bundle password (required)')" password-reveal class="bundle-password"></b-input>
         </b-tooltip>
         <b-tooltip v-if="isImport && fileBundleSource"
             label="Select a file to import."
@@ -225,7 +242,7 @@
             <b-button type="is-primary"  @click="backupContent" icon-left="download" :disabled="passwordRequired">Export
             </b-button>
           </b-tooltip>
-        <b-tooltip style="margin-left: 10px"            
+        <b-tooltip class="test-upload"
             :label="$t('Occasionaly test uploading your export bundles. Browser memory constraints may cause problems restoring large exports. Use this function to test if your browser can load an export.')"
             size="is-large" type="is-primary is-light" multilined :delay="1000">
           <b-field class="file is-primary" :class="{'has-name': !!file}">
@@ -244,6 +261,7 @@
       <b-message v-if="passwordRequired" type="is-danger" size="is-small">
         A bundle password is <strong>required</strong>. On export it encrypts the credential settings (API tokens, cookies, passwords); on import it decrypts them. Neither runs without it.
       </b-message>
+      </div>
     </div>
   </div>
 </template>
@@ -445,6 +463,103 @@ export default {
 }
 
 </script>
+
+<style scoped>
+.options-page-head {
+  margin-bottom: 1.25rem;
+}
+
+.options-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.15rem;
+}
+
+.options-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.options-tabs {
+  margin-bottom: 1rem;
+}
+
+.options-tabs :deep(ul[role="tablist"]) {
+  margin-left: 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed a) {
+  border-radius: var(--xbvr-radius-sm, 8px) var(--xbvr-radius-sm, 8px) 0 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed li.is-active a) {
+  background: var(--xbvr-surface, #ffffff);
+  border-color: var(--xbvr-border, #e3e6ec);
+  border-bottom-color: transparent;
+  color: var(--xbvr-primary, #4f46e5);
+}
+
+.sub-tabs {
+  margin-bottom: 1rem;
+}
+
+.settings-card {
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.settings-card-title {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.9rem;
+}
+
+.settings-card-title .icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+.includes-block {
+  margin-top: 1rem;
+}
+
+.toggle-btn {
+  margin-bottom: 0.25rem;
+}
+
+.saved-search-field {
+  display: flex;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.saved-search-label {
+  margin-right: 1em;
+  color: var(--xbvr-text-muted, #64708a);
+  white-space: nowrap;
+}
+
+.bundle-password {
+  min-width: 16em;
+  max-width: 420px;
+}
+
+.test-upload {
+  margin-left: 0.6rem;
+}
+</style>
 
 <style>
 #importexporttab ul[role="tablist"] {

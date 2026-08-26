@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gallery-editor">
     <div class="field">
       <div class="control">
         <input 
@@ -16,21 +16,19 @@
     </div>
 
     <!-- Lock Control -->
-    <div style="margin-bottom: 0.25rem; padding: 0;">
-      <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1; padding: 0;">
-        <span style="font-size: 0.6rem; color: #b5b5b5; line-height: 1; margin: 0;">
-          Drag images to reorder
-        </span>
-        <b-button 
-          type="is-light" 
-          size="is-small" 
-          @click="toggleLock"
-          :class="{ 'is-info': !isLocked, 'is-warning': isLocked }"
-          icon-left="lock"
-          style="font-size: 0.6rem; padding: 0.25rem 0.5rem; line-height: 1; margin: 0;">
-          {{ isLocked ? 'Unlock' : 'Lock' }} Delete
-        </b-button>
-      </div>
+    <div class="lock-bar">
+      <span class="dnd-hint">
+        Drag images to reorder
+      </span>
+      <b-button 
+        type="is-light" 
+        size="is-small" 
+        @click="toggleLock"
+        :class="{ 'is-info': !isLocked, 'is-warning': isLocked }"
+        icon-left="lock"
+        class="lock-btn">
+        {{ isLocked ? 'Unlock' : 'Lock' }} Delete
+      </b-button>
     </div>
 
     <draggable :list="internalList" @end="onDragEnd" class="image-grid">
@@ -176,6 +174,33 @@ export default {
 </script>
 
 <style scoped>
+.gallery-editor .input {
+  border-radius: var(--xbvr-radius, 12px);
+}
+
+/* lock bar above the grid */
+.lock-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.dnd-hint {
+  font-size: 0.7rem;
+  color: var(--xbvr-text-faint, #7d88a1);
+  line-height: 1;
+}
+
+.lock-btn {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  line-height: 1;
+  height: auto;
+  border-radius: 999px;
+}
+
 .image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 178px));
@@ -196,6 +221,17 @@ export default {
   min-width: 120px;
   max-width: 178px;
   aspect-ratio: 16/9;
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius-sm, 8px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  transition: border-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.image-item:hover {
+  border-color: var(--xbvr-border-strong, #cdd2dc);
+  box-shadow: var(--xbvr-shadow, 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04));
 }
 
 .gallery-image {
@@ -207,12 +243,12 @@ export default {
 
 .image-controls {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.4rem;
+  right: 0.4rem;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.35rem;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--xbvr-med, 220ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .image-item:hover .image-controls {
@@ -223,5 +259,6 @@ export default {
   height: 2rem;
   width: 2rem;
   padding: 0;
+  border-radius: 8px;
 }
 </style> 

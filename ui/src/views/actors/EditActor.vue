@@ -7,7 +7,7 @@
 
     <div class="modal-background"></div>
 
-    <div class="modal-card">
+    <div class="modal-card edit-actor-card">
       <header class="modal-card-head">
         <p class="modal-card-title">{{ $t('Edit actor details') }} - {{ actor.name }}</p>
         <button class="delete" @click="close" aria-label="close"></button>
@@ -17,8 +17,8 @@
         <b-tabs position="is-centered" :animated="false">
 
           <b-tab-item :label="$t('Information')">
-            <b-field grouped group-multiline style="margin-bottom: 2em;">
-              <b-field :label="$t('Nationality')" label-position="on-border" class="field-extra">
+            <b-field grouped group-multiline class="field-group">
+              <b-field :label="$t('Nationality')" class="field-extra">
                 <b-taginput v-model="countries" autocomplete :data="filteredCountries" @typing="getFilteredCountries" maxtags="1" :open-on-focus=true :has-counter="false">
                   <template slot-scope="props">{{ props.option }}</template>
                   <template slot="empty">{{ $t('No matching country') }}</template>
@@ -30,56 +30,56 @@
                   </template>
                 </b-taginput>
               </b-field>              
-              <b-field :label="$t('Ethnicity')" label-position="on-border">
+              <b-field :label="$t('Ethnicity')">
                 <b-input type="text" v-model="actor.ethnicity" @blur="blur('ethnicity')"/>
               </b-field>
                <b-datepicker v-model="birthdate" icon="calendar-today" @blur="blur('birth_date')">
                  <b-button :label="$t('Clear')" type="is-danger" icon-left="close" outlined @click="birthdate = null" />
                </b-datepicker>
             </b-field>
-            <b-field grouped group-multiline style="margin-bottom: 2em;">
-              <b-field :label="$t('Eye Color')" label-position="on-border">
+            <b-field grouped group-multiline class="field-group">
+              <b-field :label="$t('Eye Color')">
                 <b-input type="text" v-model="actor.eye_color" @blur="blur('eye_color')"/>
               </b-field>
-              <b-field :label="$t('Hair Color')" label-position="on-border">
+              <b-field :label="$t('Hair Color')">
                 <b-input type="text" v-model="actor.hair_color" @blur="blur('hair_color')"/>
               </b-field>
             </b-field>
-            <b-field grouped group-multiline style="margin-bottom: 2em;">
-              <b-field v-if="useImperialEntry" :label="$t('Weight in lbs')" label-position="on-border">
+            <b-field grouped group-multiline class="field-group">
+              <b-field v-if="useImperialEntry" :label="$t('Weight in lbs')">
                 <b-input type="number" v-model.number="actor.lbs" :placeholder="$t('Enter Weight in lbs')"  @blur="blur('weight')"/>                 
               </b-field>
-              <b-field v-if="!useImperialEntry" :label="$t('Weight')" label-position="on-border">
+              <b-field v-if="!useImperialEntry" :label="$t('Weight')">
                 <b-input type="number" v-model.number="actor.weight" :placeholder="$t('Enter Weight in kg')"  @blur="blur('weight')"/>                 
               </b-field>
               <b-field>
-              <b-field v-if="useImperialEntry" :label="$t('Height feet/inches')" label-position="on-border">
-                <b-input type="number" v-model.number="actor.feet" min="0" max="10" placeholder="Height in feet" @blur="blur('height')" style="width: 5em;"/>
-                <b-input type="number" v-model.number="actor.inches" min="0" max="12" placeholder="Height in inches" @blur="blur('height')" style="width: 5em;"/>
+              <b-field v-if="useImperialEntry" :label="$t('Height feet/inches')">
+                <b-input type="number" v-model.number="actor.feet" min="0" max="10" placeholder="Height in feet" @blur="blur('height')" class="input-narrow"/>
+                <b-input type="number" v-model.number="actor.inches" min="0" max="12" placeholder="Height in inches" @blur="blur('height')" class="input-narrow"/>
               </b-field>
               </b-field>
-              <b-field v-if="!useImperialEntry" :label="$t('Height')" label-position="on-border">
+              <b-field v-if="!useImperialEntry" :label="$t('Height')">
                 <b-input type="number" v-model.number="actor.height"  placeholder="Height in cm" @blur="blur('height')"/>
               </b-field>
             </b-field>
-            <b-field grouped group-multiline style="margin-bottom: 2em;">
-              <b-field :label="$t('Measurements')" label-position="on-border">
+            <b-field grouped group-multiline class="field-group">
+              <b-field :label="$t('Measurements')">
                 <b-input type="text" v-model="actor.measurements" placeholder="eg 36C-24-36" pattern="(^(\d{2})?([A-Za-z]{0,2})-(\d{2})?-(\d{2}$)?)|^[A-Z]{0,2}$" validation-message="use the format 99A-99-99"
                   @blur="blur('measurements')"/>
               </b-field>
-              <b-field :label="$t('Breast Type')" label-position="on-border">
+              <b-field :label="$t('Breast Type')">
                 <b-input type="text" v-model="actor.breast_type" placeholder="eg Fake, Natural" @blur="blur('breast_type')"/>
               </b-field>
             </b-field>
-            <b-field grouped group-multiline style="margin-bottom: 2em;">
-              <b-field :label="$t('Active From')" label-position="on-border">
+            <b-field grouped group-multiline class="field-group">
+              <b-field :label="$t('Active From')">
                 <b-input type="number" v-model.number="actor.start_year" :max="new Date().getFullYear()" pattern="^[1-2]\d{1,3}$|^0$|^$"  validation-message="Up to the current year" @blur="blur('start_year')"/>
               </b-field>
-              <b-field :label="$t('Active To')" label-position="on-border">
+              <b-field :label="$t('Active To')">
                 <b-input type="number" v-model.number="actor.end_year" :max="new Date().getFullYear()" pattern="^[1-2]\d{1,3}$|^0$|^$"  validation-message="Up to the current year" @blur="blur('end_year')"/>
               </b-field>
             </b-field>
-            <b-field :label="$t('Biography')" label-position="on-border">
+            <b-field :label="$t('Biography')">
               <b-input type="textarea" v-model="actor.biography" @blur="blur('biography')"/>
             </b-field>
           </b-tab-item>
@@ -108,7 +108,7 @@
 
       </section>
 
-      <footer class="modal-card-foot">
+      <footer class="modal-card-foot footer-actions">
         <b-field>
           <b-button type="is-primary" @click="save">{{ $t('Save Details') }}</b-button>
           <b-button v-if="actor.scenes.length == 0 && !actor.name.startsWith('aka:')" type="is-danger" outlined @click="deleteactor">{{ $t('Delete Actor') }}</b-button>
@@ -371,11 +371,47 @@ export default {
 </script>
 
 <style scoped>
-.modal-card {
-  width: 65%;
+.edit-actor-card {
+  width: min(1100px, 65%);
+}
+
+@media (max-width: 1024px) {
+  .edit-actor-card {
+    width: 92vw;
+  }
 }
 
 .tab-item {
   height: 40vh;
+}
+
+.field-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--xbvr-border, #e3e6ec);
+}
+
+.field-group:last-of-type {
+  border-bottom: none;
+}
+
+/* labels above inputs, muted like the filter sidebar labels */
+.field-group :deep(.label),
+.modal-card-body :deep(.field > .label) {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.input-narrow {
+  width: 6em;
+}
+
+.footer-actions {
+  justify-content: flex-start;
+}
+
+.footer-actions :deep(.button) {
+  border-radius: var(--xbvr-radius-sm, 8px);
 }
 </style>

@@ -46,16 +46,65 @@ func isPlayerClient(r *http.Request) bool {
 }
 
 // loginPage is deliberately non-descript: no branding, just the form.
+// Styled to match the main UI's design tokens, with light/dark support.
 const loginPage = `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Login</title>
+<style>
+  :root {
+    --bg: #f4f5f8; --surface: #ffffff; --border: #cdd2dc;
+    --text: #1c2333; --muted: #64708a; --primary: #4f46e5; --primary-strong: #4338ca;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1017; --surface: #171c28; --border: #3a4358;
+      --text: #e6e9f2; --muted: #9aa5bd; --primary: #818cf8; --primary-strong: #a5b0fc;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  form {
+    display: flex; flex-direction: column; gap: 0.8rem;
+    width: min(340px, calc(100vw - 2rem));
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.10);
+  }
+  input {
+    width: 100%; padding: 0.6rem 0.75rem; font: inherit;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  input::placeholder { color: var(--muted); }
+  input:focus-visible {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28);
+  }
+  button {
+    margin-top: 0.25rem; padding: 0.6rem 0.75rem; font: inherit; font-weight: 600;
+    color: #fff; background: var(--primary); border: none; border-radius: 8px; cursor: pointer;
+  }
+  button:hover { background: var(--primary-strong); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28); }
+  @media (prefers-reduced-motion: no-preference) {
+    input, button { transition: border-color 140ms, box-shadow 140ms, background-color 140ms; }
+  }
+</style>
 </head>
 <body>
 <form method="POST" action="/login">
-<input type="text" name="username" autocomplete="username" placeholder="Username">
-<input type="password" name="password" autocomplete="current-password" placeholder="Password">
+<input type="text" name="username" autocomplete="username" placeholder="Username" required autofocus>
+<input type="password" name="password" autocomplete="current-password" placeholder="Password" required>
 <button type="submit">Login</button>
 </form>
 </body>

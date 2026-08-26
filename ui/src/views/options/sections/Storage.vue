@@ -1,14 +1,20 @@
 <template>
   <div class="content">
-    <div class="columns">
-      <div class="column">
-        <h3 class="title">{{$t('Storage')}}</h3>
+    <header class="options-page-head options-head-row">
+      <div>
+        <h1 class="options-title">{{$t('Storage')}}</h1>
+        <p class="options-desc">{{ $t('Folders and services XBVR scans for video content.') }}</p>
       </div>
-      <div class="column buttons" align="right">
+      <div class="options-head-actions">
         <a class="button is-primary" v-on:click="taskRescan">{{ $t('Rescan all folders') }}</a>
       </div>
-    </div>
-    <div v-if="items.length > 0">
+    </header>
+
+    <div class="settings-card table-card" v-if="items.length > 0">
+      <div class="settings-card-title">
+        <b-icon pack="mdi" icon="folder-multiple-outline" size="is-small"/>
+        {{ $t('Storage paths') }}
+      </div>
       <b-table :data="items"
                ref="table" default-sort="is_available" default-sort-direction="desc">
         <b-table-column field="path" :label="$t('Path')" sortable v-slot="props">
@@ -38,7 +44,7 @@
         </b-table-column>
         <b-table-column field="actions" v-slot="props">
           <b-field grouped>
-            <button class="button is-small is-outlined" v-on:click='rescanFolder(props.row)' style="margin-right:1em" :title="$t('rescan folder')">
+            <button class="button is-small is-outlined" v-on:click='rescanFolder(props.row)' :title="$t('rescan folder')">
               <b-icon pack="mdi" icon="folder-refresh-outline"></b-icon>
             </button>
             <button class="button is-danger is-small is-outlined" v-on:click='removeFolder(props.row)' :title="$t('remove folder')">
@@ -58,68 +64,69 @@
         </template>
       </b-table>
     </div>
-    <div v-else>
-      <section class="hero">
-        <div class="hero-body">
-          <div class="container has-text-centered">
-            <h1 class="title">
-              <span class="icon">
-                <b-icon pack="mdi" icon="folder-outline" size="is-large"></b-icon>
-              </span>
-            </h1>
-            <h2 class="subtitle">
-              {{ $t('Add folders with VR videos') }}
-            </h2>
-          </div>
-        </div>
-      </section>
+    <div class="settings-card empty-card" v-else>
+      <div class="empty-state">
+        <span class="icon empty-icon">
+          <b-icon pack="mdi" icon="folder-outline" size="is-large"></b-icon>
+        </span>
+        <p class="empty-text">{{ $t('Add folders with VR videos') }}</p>
+      </div>
     </div>
-
-    <hr/>
 
     <div class="columns">
       <div class="column">
-        <h3 class="title">{{ $t('Add local folder') }}</h3>
-        <div class="field">
-          <label class="label">{{ $t('Path to folder with content') }}</label>
-          <div class="control">
-            <input class="input" type="text" v-model='newVolumePath'>
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <b-icon pack="mdi" icon="folder-plus-outline" size="is-small"/>
+            {{ $t('Add local folder') }}
           </div>
-        </div>
-        <div class="control">
-          <button class="button is-link" v-on:click='addFolder'>{{ $t('Add new folder') }}</button>
+          <div class="field narrow-field">
+            <label class="label">{{ $t('Path to folder with content') }}</label>
+            <div class="control">
+              <input class="input" type="text" v-model='newVolumePath'>
+            </div>
+          </div>
+          <div class="control">
+            <button class="button is-link" v-on:click='addFolder'>{{ $t('Add new folder') }}</button>
+          </div>
         </div>
       </div>
       <div class="column">
-        <h3 class="title">{{ $t('Add cloud storage') }}</h3>
-        <b-field grouped>
-          <b-field :label="$t('Service')">
-            <b-select placeholder="Select one" v-model="serviceSelected">
-              <option v-for="option in serviceOpts" :value="option.id" :key="option.id">
-                {{ option.name }}
-              </option>
-            </b-select>
+        <div class="settings-card">
+          <div class="settings-card-title">
+            <b-icon pack="mdi" icon="cloud-plus-outline" size="is-small"/>
+            {{ $t('Add cloud storage') }}
+          </div>
+          <b-field grouped>
+            <b-field :label="$t('Service')">
+              <b-select placeholder="Select one" v-model="serviceSelected">
+                <option v-for="option in serviceOpts" :value="option.id" :key="option.id">
+                  {{ option.name }}
+                </option>
+              </b-select>
+            </b-field>
+            <b-field :label="$t('Token')" expanded>
+              <b-input v-model='serviceToken' type='password' password-reveal/>
+            </b-field>
           </b-field>
-          <b-field :label="$t('Token')" expanded>
-            <b-input v-model='serviceToken' type='password' password-reveal/>
-          </b-field>
-        </b-field>
-        <div class="control">
-          <button class="button is-link" v-on:click='addCloudStorage'
-                  :disabled="serviceSelected === null || serviceToken === ''">{{ $t('Add service') }}
-          </button>
+          <div class="control">
+            <button class="button is-link" v-on:click='addCloudStorage'
+                    :disabled="serviceSelected === null || serviceToken === ''">{{ $t('Add service') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <hr/>
-
-    <div>
-      <h3 class="title">{{ $t('Webhooks') }}</h3>
+    <div class="settings-card">
+      <div class="settings-card-title">
+        <b-icon pack="mdi" icon="webhook" size="is-small"/>
+        {{ $t('Webhooks') }}
+      </div>
       <div class="columns">
-        <div class="column" v-for="wh in webhookDefs" :key="wh.key">
-          <h4 class="subtitle">{{ $t(wh.title) }}</h4>
-          <p>{{ $t(wh.description) }}</p>
+        <div class="column webhook-col" v-for="wh in webhookDefs" :key="wh.key">
+          <h4 class="webhook-title">{{ $t(wh.title) }}</h4>
+          <p class="webhook-desc">{{ $t(wh.description) }}</p>
           <b-field :label="$t('HTTP Method')">
             <b-select v-model="webhooks[wh.key].method">
               <option value="GET">GET</option>
@@ -141,20 +148,19 @@
       </div>
     </div>
 
-    <hr/>
-
-  <div>
-    <h3 class="title">{{ $t('Options') }}</h3>
+  <div class="settings-card">
+    <div class="settings-card-title">
+      <b-icon pack="mdi" icon="tune" size="is-small"/>
+      {{ $t('Options') }}
+    </div>
     <b-field>
       <b-switch v-model="match_ohash" type="is-default">
         Match StashDB Hashes
       </b-switch>
     </b-field>
 
-    <hr/>
-
     <b-field label="Video File Extensions">
-      <b-tooltip label="Only add video file extensions!" position="is-top" style="width: 100%;">
+      <b-tooltip label="Only add video file extensions!" position="is-top" class="full-width-tooltip">
         <b-taginput
             ref="videoExtInput"
             v-model="video_ext"
@@ -378,3 +384,115 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.options-page-head {
+  margin-bottom: 1.25rem;
+}
+
+.options-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.options-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.15rem;
+}
+
+.options-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.settings-card {
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.settings-card-title {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.9rem;
+}
+
+.settings-card-title .icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+.table-card {
+  padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.table-card :deep(.table) {
+  border-radius: var(--xbvr-radius-sm, 8px);
+  background: transparent;
+}
+
+.table-card :deep(.table tbody tr) {
+  transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.table-card :deep(.table tbody tr:hover) {
+  background: var(--xbvr-hover-bg, #fafbfd);
+}
+
+.narrow-field {
+  max-width: 420px;
+}
+
+.empty-card {
+  padding: 2.5rem 1.25rem;
+}
+
+.empty-state {
+  text-align: center;
+}
+
+.empty-icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+.empty-text {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+.webhook-title {
+  font-weight: 700;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.25rem;
+}
+
+.webhook-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.full-width-tooltip {
+  width: 100%;
+}
+
+.columns .settings-card {
+  height: 100%;
+}
+</style>

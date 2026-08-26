@@ -1,14 +1,15 @@
 <template>
-  <div class="card is-shadowless">
+  <div class="card scene-card">
     <div class="card-image">
       <div class="bbox"
            v-bind:style='{backgroundImage: `url("${getImageURL(item.cover_url)}")`, backgroundSize: this.sceneCardScale, backgroundPosition: "center", backgroundRepeat: "no-repeat", opacity:item.is_available ? 1.0 : this.isAvailOpactiy, aspectRatio: this.sceneCardAspectRatio}'
            @click="showDetails(item)"
            @mouseover="preview = true"
            @mouseleave="preview = false">
-        <video v-if="preview && item.has_preview" :src="`/api/dms/preview/${item.scene_id}`" autoplay loop></video>
+        <video v-if="preview && item.has_preview" :src="`/api/dms/preview/${item.scene_id}`"
+               autoplay muted loop playsinline></video>
         <div class="overlay align-bottom-left">
-          <div style="padding: 5px">
+          <div class="badge-row">
             <b-tag v-if="item.is_watched && !this.$store.state.optionsWeb.web.sceneWatched">
               <b-icon pack="mdi" icon="eye" size="is-small"/>
             </b-tag>
@@ -62,7 +63,7 @@
       <edit-button :item="item" v-if="this.$store.state.optionsWeb.web.sceneEdit" />
       <link-stashdb-button :item="item" v-if="!this.stashLinkExists" objectType="scene"/>
 
-      <span class="is-pulled-right" style="font-size:11px;text-align:right;">
+      <span class="is-pulled-right card-meta">
         <a v-if="item.members_url != ''" :href="safeHref(item.members_url)" target="_blank" title="Members Link" rel="noreferrer"><b-icon pack="mdi" icon="link-lock" custom-size="mdi-18px" style="height:0.7rem"/></a>
         <a :href="safeHref(item.scene_url)" :class="{'has-text-white has-background-primary-dark': item.is_subscribed }" target="_blank" rel="noreferrer" style="padding:2px">{{item.site}}</a><br/>
         <span v-if="item.release_date !== '0001-01-01T00:00:00Z'">
@@ -256,19 +257,46 @@ export default {
 </script>
 
 <style scoped>
+  .scene-card {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .scene-card:hover {
+    transform: none;
+    border-color: transparent;
+  }
+
   .button {
     margin-right: 3px;
   }
 
+  .card-image {
+    border-radius: var(--xbvr-radius, 12px);
+    overflow: hidden;
+    box-shadow: var(--xbvr-shadow, 0 1px 3px rgba(16, 24, 40, 0.08));
+    transition: box-shadow var(--xbvr-med, 220ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      transform var(--xbvr-med, 220ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+  }
+
+  .scene-card:hover .card-image {
+    box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16));
+    transform: translateY(-3px);
+  }
+
   .bbox {
     flex: 1 0 calc(25%);
-    background: #f0f0f0;
+    position: relative;
+    background: var(--xbvr-surface-sunken, #eef0f4);
+    border-radius: var(--xbvr-radius, 12px);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     padding: 0;
     line-height: 0;
+    cursor: pointer;
   }
 
   .bbox:not(:hover) > video {
@@ -276,10 +304,14 @@ export default {
   }
 
   video {
-    object-fit: cover;
+    /* fill the thumbnail's width, keep the video's natural aspect,
+       and center vertically — overflow is cropped by the card frame */
     position: absolute;
+    left: 0;
+    top: 50%;
     width: 100%;
-    height: 100%;
+    height: auto;
+    transform: translateY(-50%);
   }
 
   .overlay {
@@ -311,16 +343,42 @@ export default {
     padding-bottom: 100%;
   }
 
-  .tag {
-    margin-left: 0.2em;
+  /* Glassmorphic pill badges over the cover */
+  .badge-row {
+    padding: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .badge-row .tag {
+    margin-left: 0;
+    border-radius: 999px;
+    background: var(--xbvr-badge-bg, rgba(255, 255, 255, 0.82));
+    color: var(--xbvr-badge-text, #1c2333);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  .badge-row .tag.is-warning {
+    background: rgba(232, 161, 58, 0.92);
+    color: #1c2333;
   }
 
   .scene_title {
-    font-size: 12px;
-    text-align: right;
-    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--xbvr-text, #1c2333);
+    margin-top: 6px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow-wrap: break-word;
   }
 
 .heatmapFunscript {
@@ -328,16 +386,41 @@ export default {
 }
 
 .heatmapFunscript img {
-  border: 1px #888 solid;
+  border: 1px solid var(--xbvr-border-strong, #cdd2dc);
   width: 100%;
   height: 15px;
-  border-radius: 0.25rem;
+  border-radius: 999px;
 }
 
 .altsrc-image-wrapper {
   display: inline-block;
   margin-right: 5px;
   margin-top: 3px;
+}
+
+.altsrc-image-wrapper .thumbnail {
+  border-radius: 4px;
+}
+
+.card-meta {
+  font-size: 0.7rem;
+  line-height: 1.5;
+  text-align: right;
+  color: var(--xbvr-text-muted, #64708a);
+}
+
+.card-meta a {
+  color: var(--xbvr-text-muted, #64708a);
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 1px 4px;
+  transition: background-color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.card-meta a:hover {
+  background: var(--xbvr-primary-soft, #eef0fe);
+  color: var(--xbvr-primary-strong, #4338ca);
 }
 
 </style>

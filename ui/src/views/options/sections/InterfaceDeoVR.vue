@@ -1,24 +1,30 @@
 <template>
-  <div class="container">
+  <div>
     <b-loading :is-full-page="false" :active.sync="isLoading"></b-loading>
-    <b-tabs v-model="activeTab" size="medium" type="is-boxed" style="margin-left: 0px" id="playertab">
+    <header class="options-page-head">
+      <h1 class="options-title">{{ $t('Players') }}</h1>
+      <p class="options-desc">{{ $t('Configure the DeoVR and Heresphere player interfaces.') }}</p>
+    </header>
+    <b-tabs v-model="activeTab" size="medium" type="is-boxed" id="playertab" class="options-tabs">
       <b-tab-item label="Shared Settings"/>
       <b-tab-item label="DeoVR"/>
       <b-tab-item label="Heresphere"/>
     </b-tabs>
     <div class="content" v-if="activeTab == 0">
-      <h3>Shared Player Options</h3>
-      <hr/>
       <div class="columns">
         <div class="column">
-          <section>
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="play-circle-outline" size="is-small"/>
+              {{ $t('Shared Player Options') }}
+            </div>
             <b-field label="Player integration">
               <b-switch v-model="enabled">
                 Enabled
               </b-switch>
             </b-field>
-            <hr/>
             <div v-if="enabled">
+              <hr class="card-divider"/>
               <b-field label="Authentication">
                 <b-switch v-model="authEnabled">
                   Enabled
@@ -26,26 +32,26 @@
               </b-field>
               <div class="block">
                 <b-field grouped>
-                  <b-field label="Username">
-                    <b-input v-model="username" :disabled="authEnabled === false" style="width:200px"></b-input>
+                  <b-field label="Username" class="cred-field">
+                    <b-input v-model="username" :disabled="authEnabled === false"></b-input>
                   </b-field>
-                  <b-field label="Password">
-                    <b-input v-model="password" :disabled="authEnabled === false" style="width:200px" type="password"></b-input>
+                  <b-field label="Password" class="cred-field">
+                    <b-input v-model="password" :disabled="authEnabled === false" type="password"></b-input>
                   </b-field>
                 </b-field>
               </div>
-              <hr/>
+              <hr class="card-divider"/>
               <div class="block">
                 <b-field label="Funscript heatmaps">
                   <b-switch v-model="renderHeatmaps">
                     Enabled
                   </b-switch>
                 </b-field>
-                <p>
+                <p class="muted">
                   If you are using funscripts, you can add a heatmap to the thumbnails of scripted scenes in the Player interface.
                 </p>
               </div>
-              <hr/>
+              <hr class="card-divider"/>
               <div class="block">
                 <b-field label="Watch time tracking">
                   <b-switch v-model="watchTimeTrackingEnabled">
@@ -53,7 +59,7 @@
                   </b-switch>
                 </b-field>
               </div>
-              <hr/>
+              <hr class="card-divider"/>
               <div class="block">
                 <b-tooltip label="Specify fields if you wish to control the sequence of the scene's video files" multilined :delay="750" >
                   <b-field label="Video File Sorting">
@@ -140,42 +146,55 @@
           </section>
         </div>
         <div class="column content">
-          <p>
-            {{ $t("Player interface is available at following URLs:") }}
-          </p>
-          <div>
-            <h4 v-for="(addr, idx) in boundIp" :key="'ip' + idx">{{ addr }}</h4>
+          <div class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="link-variant" size="is-small"/>
+              {{ $t('Player URLs') }}
+            </div>
+            <p class="muted">
+              {{ $t("Player interface is available at following URLs:") }}
+            </p>
+            <div class="endpoint-list">
+              <code v-for="(addr, idx) in boundIp" :key="'ip' + idx">{{ addr }}</code>
+            </div>
+            <hr class="card-divider"/>
+            <p class="muted">
+              NOTE: make sure DeoVR is using <strong>http://</strong> not <strong>https://</strong>.<br/>
+              To toggle used protocol, click on it in DeoVR's URL bar.
+            </p>
           </div>
-          <hr/>
-          <p>
-            NOTE: make sure DeoVR is using <strong>http://</strong> not <strong>https://</strong>.<br/>
-            To toggle used protocol, click on it in DeoVR's URL bar.
-          </p>
         </div>
       </div>
     </div>
     <div class="content" v-if="activeTab == 1">
-      <h3>DeoVR interface</h3>
-      <hr/>
-      <div class="block">
+      <div class="settings-card">
+        <div class="settings-card-title">
+          <b-icon pack="mdi" icon="virtual-reality" size="is-small"/>
+          {{ $t('DeoVR interface') }}
+        </div>
+        <div class="block">
           <b-field label="Remote mode">
             <b-switch v-model="remoteEnabled" :disabled="watchTimeTrackingEnabled === false">
               Enabled
             </b-switch>
           </b-field>
-          <p>
+          <p class="muted">
             Requires: Watch time tracking
           </p>
-          <p>
+          <p class="muted">
             To use remote mode, which enables more precise watch time tracking, you need to turn it on in DeoVR
             settings too - see <a href="https://deovr.com/doc#remote-control" target="_blank" rel="noreferrer">
             instructions in DeoVR documentation</a>.
           </p>
         </div>
+      </div>
     </div>
     <div class="content" v-if="activeTab == 2">
-      <h3>Heresphere interface</h3>
-      <hr/>
+      <div class="settings-card">
+        <div class="settings-card-title">
+          <b-icon pack="mdi" icon="sphere" size="is-small"/>
+          {{ $t('Heresphere interface') }}
+        </div>
           <b-tooltip
             label="WANRING: File deletion from Heresphere is PERMANENT! ALL files associated with a scene will be deleted."
             size="is-large" type="is-danger" multilined :delay="250" >
@@ -254,11 +273,12 @@
               </b-tooltip>
             </div>
           </div>
-      </div>
-      <b-field>
-        <b-button type="is-primary" @click="save">Save and apply changes</b-button>
-      </b-field>
+        </div>
     </div>
+    <b-field class="save-row">
+      <b-button type="is-primary" @click="save">Save and apply changes</b-button>
+    </b-field>
+  </div>
 </template>
 
 <script>
@@ -527,3 +547,96 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.options-page-head {
+  margin-bottom: 1.25rem;
+}
+
+.options-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.15rem;
+}
+
+.options-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.options-tabs {
+  margin-bottom: 1rem;
+}
+
+.options-tabs :deep(ul[role="tablist"]) {
+  margin-left: 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed a) {
+  border-radius: var(--xbvr-radius-sm, 8px) var(--xbvr-radius-sm, 8px) 0 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed li.is-active a) {
+  background: var(--xbvr-surface, #ffffff);
+  border-color: var(--xbvr-border, #e3e6ec);
+  border-bottom-color: transparent;
+  color: var(--xbvr-primary, #4f46e5);
+}
+
+.settings-card {
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.settings-card-title {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.9rem;
+}
+
+.settings-card-title .icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+.card-divider {
+  background-color: var(--xbvr-border, #e3e6ec);
+  margin: 0.85rem 0;
+}
+
+.muted {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+}
+
+.cred-field {
+  max-width: 240px;
+}
+
+.endpoint-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.save-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+</style>

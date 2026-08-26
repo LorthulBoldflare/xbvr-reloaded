@@ -1,32 +1,40 @@
 <template>
-  <div>
-    <div class="is-divider" data-content="Saved searches" style="margin-top:0.8em;"></div>
+  <div class="filters-panel">
+    <section class="filter-section">
+      <h3 class="filter-heading">
+        <b-icon pack="mdi" icon="bookmark-multiple-outline" size="is-small" aria-hidden="true"/>
+        <span>{{ $t('Saved searches') }}</span>
+      </h3>
+      <SavedSearch mode="actors"/>
+    </section>
 
-     <SavedSearch mode="actors"/>
-
-    <div class="is-divider" data-content="Properties"></div>
-
-    <div class="columns is-multiline is-gapless">
-      <div class="column is-half">
+    <section class="filter-section">
+      <h3 class="filter-heading">
+        <b-icon pack="mdi" icon="playlist-check" size="is-small" aria-hidden="true"/>
+        <span>{{ $t('Properties') }}</span>
+      </h3>
+      <div class="prop-grid">
         <b-checkbox-button v-model="lists" native-value="watchlist" type="is-primary">
           <b-icon pack="mdi" icon="calendar-check"/>
           <span>{{ $t('Watchlist') }}</span>
         </b-checkbox-button>
-      </div>
-      <div class="column is-half">
         <b-checkbox-button v-model="lists" native-value="favourite" type="is-danger">
           <b-icon pack="mdi" icon="heart"/>
           <span>{{ $t('Favourite') }}</span>
         </b-checkbox-button>
       </div>
-    </div>
+    </section>
 
-    <div class="is-divider" data-content="Sorting"></div>
+    <section class="filter-section">
+      <h3 class="filter-heading">
+        <b-icon pack="mdi" icon="sort" size="is-small" aria-hidden="true"/>
+        <span>{{ $t('Sorting') }}</span>
+      </h3>
 
-    <b-field :label="$t('Sort by')" label-position="on-border" :addons="true" class="field-extra">
-      <div class="control is-expanded">
+      <div class="filter-field">
+        <label class="filter-label" for="filter-sort">{{ $t('Sort by') }}</label>
         <div class="select is-fullwidth">
-          <select v-model="sort">
+          <select id="filter-sort" v-model="sort">
             <option value="name_asc">↑ {{ $t("Name") }}</option>
             <option value="name_desc">↓ {{ $t("Name") }}</option>
             <option value="birthday_desc">↓ {{ $t("Birthdate") }}</option>
@@ -42,24 +50,29 @@
             <option value="scene_added_desc">↓ {{ $t("Scene Added Date") }}</option>
             <option value="file_added_desc">↓ {{ $t("File Added Date") }}</option>
             <option value="scene_available_desc">↓ {{ $t("Available Scene Count") }}</option>
-            <option value="scene_count_desc">↓ {{ $t("Scene Count") }}</option>            
+            <option value="scene_count_desc">↓ {{ $t("Scene Count") }}</option>
             <option value="random">↯ {{ $t("Random") }}</option>
           </select>
         </div>
       </div>
-    </b-field>
+    </section>
 
-    <div class="is-divider" data-content="Actor Filters"></div>
+    <section class="filter-section" v-if="Object.keys(filters).length !== 0">
+      <h3 class="filter-heading">
+        <b-icon pack="mdi" icon="filter-outline" size="is-small" aria-hidden="true"/>
+        <span>{{ $t('Actor Filters') }}</span>
+      </h3>
+      <p class="filter-hint">{{ $t('Click a chip to cycle: include → must have → exclude') }}</p>
 
-    <div v-if="Object.keys(filters).length !== 0">
-      <b-field :label="$t('Cast')" label-position="on-border" class="field-extra">
+      <div class="filter-field">
+        <label class="filter-label">{{ $t('Cast') }}</label>
         <b-taginput v-model="cast" autocomplete :data="filteredCast" @typing="getFilteredCast">
           <template slot-scope="props">{{ props.option }}</template>
           <template slot="empty">{{ $t("No matching cast") }}</template>
           <template #selected="props">
               <b-tag v-for="(tag, index) in props.tags"
                 :type="tag.charAt(0)=='!' ? 'is-danger': (tag.charAt(0)=='&' ? 'is-success' : '')"
-                :key="tag+index" :tabstop="false" closable  @close="cast=cast.filter(e => e !== tag)" @click="toggle2Way(tag,index,'cast')">              
+                :key="tag+index" :tabstop="false" closable  @close="cast=cast.filter(e => e !== tag)" @click="toggle2Way(tag,index,'cast')">
                 <b-tooltip position="is-right" :delay="200"
                   :label="tag.charAt(0)=='!' ? 'Exclude ' + removeConditionPrefix(tag) : tag.charAt(0)=='&' ? 'Must Have ' + removeConditionPrefix(tag) : 'Include ' + removeConditionPrefix(tag)">
                   <b-icon pack="mdi" v-if="tag.charAt(0)=='!'" icon="minus-circle-outline" size="is-small" class="tagicon"></b-icon>
@@ -69,9 +82,10 @@
               </b-tag>
           </template>
         </b-taginput>
-      </b-field>
+      </div>
 
-      <b-field :label="$t('Site')" label-position="on-border" class="field-extra">
+      <div class="filter-field">
+        <label class="filter-label">{{ $t('Site') }}</label>
         <b-taginput v-model="sites" autocomplete :data="filteredSites" @typing="getFilteredSites">
           <template slot-scope="props">{{ props.option }}</template>
           <template slot="empty">{{ $t("No matching sites") }}No matching sites</template>
@@ -87,81 +101,93 @@
             </b-tag>
           </template>
         </b-taginput>
-      </b-field>
+      </div>
 
-      <b-tooltip position="is-top" :label="$t('Allows searching a variety of attributes such as: Possible Aka actors, Cup Size, Eye/Hair Color, Has Tattoo, Has Piercing, Breast Type, Nationailty, Ethnicity, Aka, Has Images')" multilined :delay="1000" style="width:100%">
-        <b-field :label="$t('Attributes')" label-position="on-border" class="field-extra">
-          <b-taginput v-model="attributes" autocomplete :data="filteredAttributes" @typing="getFilteredAttributes">
-            <template slot-scope="props">{{ props.option }}</template>
-            <template slot="empty">{{ $t("No matching attributes") }}</template>
-            <template #selected="props">
-              <b-tag v-for="(tag, index) in props.tags"
-                :type="tag.charAt(0)=='!' ? 'is-danger': (tag.charAt(0)=='&' ? 'is-success' : '')"
-                :key="tag+index" :tabstop="false" closable  @close="attributes=attributes.filter(e => e !== tag)" @click="toggle3way(tag,index,'attributes')"> 
-                  <b-icon pack="mdi" v-if="tag.charAt(0)=='!'" icon="minus-circle-outline" size="is-small" class="tagicon"></b-icon>
-                  <b-icon pack="mdi" v-if="tag.charAt(0)=='&'" icon="plus-circle-outline" size="is-small" class="tagicon"></b-icon>
-                  {{removeConditionPrefix(tag)}}
-              </b-tag>
-            </template>          
-          </b-taginput>
-        </b-field>
-      </b-tooltip>
+      <div class="filter-field">
+        <b-tooltip position="is-top" :label="$t('Allows searching a variety of attributes such as: Possible Aka actors, Cup Size, Eye/Hair Color, Has Tattoo, Has Piercing, Breast Type, Nationailty, Ethnicity, Aka, Has Images')" multilined :delay="1000" class="tooltip-block">
+          <label class="filter-label">
+            <span>{{ $t('Attributes') }}</span>
+            <b-icon pack="mdi" icon="help-circle-outline" size="is-small" aria-hidden="true"/>
+          </label>
+        </b-tooltip>
+        <b-taginput v-model="attributes" autocomplete :data="filteredAttributes" @typing="getFilteredAttributes">
+          <template slot-scope="props">{{ props.option }}</template>
+          <template slot="empty">{{ $t("No matching attributes") }}</template>
+          <template #selected="props">
+            <b-tag v-for="(tag, index) in props.tags"
+              :type="tag.charAt(0)=='!' ? 'is-danger': (tag.charAt(0)=='&' ? 'is-success' : '')"
+              :key="tag+index" :tabstop="false" closable  @close="attributes=attributes.filter(e => e !== tag)" @click="toggle3way(tag,index,'attributes')">
+                <b-icon pack="mdi" v-if="tag.charAt(0)=='!'" icon="minus-circle-outline" size="is-small" class="tagicon"></b-icon>
+                <b-icon pack="mdi" v-if="tag.charAt(0)=='&'" icon="plus-circle-outline" size="is-small" class="tagicon"></b-icon>
+                {{removeConditionPrefix(tag)}}
+            </b-tag>
+          </template>
+        </b-taginput>
+      </div>
 
-      <table width="100%">
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Age") }}:</small></strong></td>
-          <td ><b-slider :min="18" :max="100" :step="1" :tooltip="true" v-model="ages" lazy class="slider"></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Height") }}:</small></strong></td>
-          <td><b-slider :min="120" :max="220" :step="1" :tooltip="true" v-model="heights" lazy class="slider"></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Weight") }}:</small></strong></td>
-          <td><b-slider :min="25" :max="150" :step="1" :tooltip="true" v-model="weights" lazy class="slider"></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Scenes") }}:</small></strong></td>
-          <td><b-slider :min="0" :max="150" :step="1" :tooltip="true" v-model="scenecounts" lazy class="slider" ></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Available") }}:</small></strong></td>
-          <td><b-slider :min="0" :max="150" :step="1" :tooltip="true" v-model="avails" lazy class="slider" ></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Rating") }}:</small></strong></td>
-          <td><b-slider :min="0" :max="5" :step=".5" :tooltip="true" v-model="ratings" lazy class="slider" ></b-slider></td>
-        </tr>
-        <tr>
-          <td class="slider-title"><strong><small>{{ $t("Scene Rating") }}:</small></strong></td>
-          <td><b-slider :min="0" :max="5" :step=".25" :tooltip="true" v-model="sceneratings" lazy class="slider" ></b-slider></td>
-        </tr>   
-      </table>
-    </div>
-    <div class="is-divider" data-content="Actor Also Known As groups"></div>
-    <b-field>
-      <b-tooltip position="is-right" :label="$t('New Aka Group. Select 2 or more actors in the Cast filter')" multilined :delay="200">
-        <button class="button is-small is-outlined" @click="createAkaGroup" :disabled="disableNewAkaGroup">
-          <b-icon pack="mdi" icon="account-multiple-plus-outline"></b-icon>
-        </button>
-      </b-tooltip>
-      <b-tooltip position="is-right" :label="$t('Select the Aka Group to delete in the Cast Filter')" multilined :delay="200">
-        <button class="button is-small is-outlined" @click="deleteAkaGroup" :disabled="disableDeleteAkaGroup">
-          <b-icon pack="mdi" icon="delete-outline"></b-icon>
-        </button>
-      </b-tooltip>
-      <b-tooltip position="is-bottom" :label="$t('Add Cast to Aka Group. Select the Aka group and Actors to add in the Cast Filter')" multilined :delay="200">
-        <button class="button is-small is-outlined" @click="addToAkaGroup" :disabled="disableAddToAkaGroup">
-          <b-icon pack="mdi" icon="account-plus-outline"></b-icon>
-        </button>
-      </b-tooltip>
-      <b-tooltip position="is-bottom" :label="$t('Remove Cast from Aka Group. Select the Aka group and Actors to remove in the Cast Filter')" multilined :delay="200">
-        <button class="button is-small is-outlined" @click="removeFromAkaGroup" :disabled="disableRemoveFromAkaGroup">
-          <b-icon pack="mdi" icon="account-minus-outline"></b-icon>
-        </button>
-      </b-tooltip>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Age") }}</label>
+        <b-slider :min="18" :max="100" :step="1" :tooltip="true" v-model="ages" lazy class="slider"></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Height") }}</label>
+        <b-slider :min="120" :max="220" :step="1" :tooltip="true" v-model="heights" lazy class="slider"></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Weight") }}</label>
+        <b-slider :min="25" :max="150" :step="1" :tooltip="true" v-model="weights" lazy class="slider"></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Scenes") }}</label>
+        <b-slider :min="0" :max="150" :step="1" :tooltip="true" v-model="scenecounts" lazy class="slider" ></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Available") }}</label>
+        <b-slider :min="0" :max="150" :step="1" :tooltip="true" v-model="avails" lazy class="slider" ></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Rating") }}</label>
+        <b-slider :min="0" :max="5" :step=".5" :tooltip="true" v-model="ratings" lazy class="slider" ></b-slider>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ $t("Scene Rating") }}</label>
+        <b-slider :min="0" :max="5" :step=".25" :tooltip="true" v-model="sceneratings" lazy class="slider" ></b-slider>
+      </div>
+    </section>
 
-    </b-field>
+    <section class="filter-section">
+      <button type="button" class="filter-heading is-collapsible" @click="showAka = !showAka" :aria-expanded="showAka">
+        <b-icon pack="mdi" icon="account-multiple-outline" size="is-small" aria-hidden="true"/>
+        <span>{{ $t('Actor Also Known As groups') }}</span>
+        <b-icon pack="mdi" icon="chevron-down" size="is-small" class="heading-chevron" :class="{ open: showAka }" aria-hidden="true"/>
+      </button>
+      <div v-show="showAka" class="btn-grid">
+        <b-tooltip position="is-right" :label="$t('New Aka Group. Select 2 or more actors in the Cast filter')" multilined :delay="200">
+          <button class="button is-small is-outlined" @click="createAkaGroup" :disabled="disableNewAkaGroup">
+            <b-icon pack="mdi" icon="account-multiple-plus-outline"></b-icon>
+            <span>{{ $t('New') }}</span>
+          </button>
+        </b-tooltip>
+        <b-tooltip position="is-right" :label="$t('Select the Aka Group to delete in the Cast Filter')" multilined :delay="200">
+          <button class="button is-small is-outlined" @click="deleteAkaGroup" :disabled="disableDeleteAkaGroup">
+            <b-icon pack="mdi" icon="delete-outline"></b-icon>
+            <span>{{ $t('Delete') }}</span>
+          </button>
+        </b-tooltip>
+        <b-tooltip position="is-bottom" :label="$t('Add Cast to Aka Group. Select the Aka group and Actors to add in the Cast Filter')" multilined :delay="200">
+          <button class="button is-small is-outlined" @click="addToAkaGroup" :disabled="disableAddToAkaGroup">
+            <b-icon pack="mdi" icon="account-plus-outline"></b-icon>
+            <span>{{ $t('Add cast') }}</span>
+          </button>
+        </b-tooltip>
+        <b-tooltip position="is-bottom" :label="$t('Remove Cast from Aka Group. Select the Aka group and Actors to remove in the Cast Filter')" multilined :delay="200">
+          <button class="button is-small is-outlined" @click="removeFromAkaGroup" :disabled="disableRemoveFromAkaGroup">
+            <b-icon pack="mdi" icon="account-minus-outline"></b-icon>
+            <span>{{ $t('Remove cast') }}</span>
+          </button>
+        </b-tooltip>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -183,6 +209,7 @@ export default {
       filteredSites: [],
       filteredTags: [],
       filteredAttributes: [],
+      showAka: false,
     }
   },
   methods: {
@@ -538,27 +565,115 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "~bulma-extensions/bulma-divider/dist/css/bulma-divider.min.css";
-
-.is-gapless div.control {
-  margin: 0.1rem;
+.filters-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding-top: 0.25rem;
 }
 
-.is-divider {
-  margin: 1.5rem 0;
+.filter-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.45rem;
+  border: none;
+  border-bottom: 1px solid var(--xbvr-border, #e3e6ec);
+  background: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  text-align: left;
 }
 
-.field-extra {
-  margin-bottom: 1.1em !important;
+button.filter-heading {
+  cursor: pointer;
+  transition: color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+button.filter-heading:hover {
+  color: var(--xbvr-text, #1c2333);
+}
+
+.heading-chevron {
+  margin-left: auto;
+  transition: transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.heading-chevron.open {
+  transform: rotate(180deg);
+}
+
+.filter-hint {
+  font-size: 0.72rem;
+  color: var(--xbvr-text-faint, #7d88a1);
+  margin: -0.25rem 0 0.7rem;
+}
+
+.filter-field {
+  margin-bottom: 0.8rem;
+}
+
+.filter-field:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+}
+
+/* property toggles: 2×1 grid, full-width buttons */
+.prop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.prop-grid :deep(.b-checkbox.button) {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0;
+  box-shadow: none;
+}
+
+/* group-management buttons: icon + label, 2 per row */
+.btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.btn-grid :deep(.b-tooltip) {
+  width: 100%;
+}
+
+.btn-grid .button {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.tooltip-block {
+  display: block;
+  width: 100%;
 }
 
 .tagicon {
   margin-right: -0.2em !important;
 }
-.slider-title {
-  width: 80px;
-}
+
 .slider {
-  margin-right: "3em";
+  margin-bottom: 0.25rem;
 }
 </style>

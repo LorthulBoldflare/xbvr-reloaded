@@ -50,8 +50,8 @@ export default {
         return
       }
       const show = document.body.scrollTop > 20 || document.documentElement.scrollTop > 20
-      toTop.style.display = show ? 'block' : 'none'
-      toggleBtn.style.display = show ? 'block' : 'none'
+      toTop.style.display = show ? 'flex' : 'none'
+      toggleBtn.style.display = show ? 'flex' : 'none'
     }
     this._scrollToTop = () => {
       const c = document.documentElement.scrollTop || document.body.scrollTop
@@ -107,14 +107,26 @@ export default {
   }
   #toTop, #toggleInfiniteScroll {
     display: none;
-    background-color: #f0f0f0;
-    color: #4a4a4a;
-    padding: 15px;
-    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background-color: var(--xbvr-surface, #ffffff);
+    color: var(--xbvr-text-muted, #64708a);
+    border: 1px solid var(--xbvr-border, #e3e6ec);
+    border-radius: 999px;
     font-size: 18px;
     margin-right: 8px;
+    box-shadow: var(--xbvr-shadow-md, 0 4px 12px rgba(16, 24, 40, 0.10));
+    transition: box-shadow var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      transform var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1)),
+      color var(--xbvr-fast, 140ms) var(--xbvr-ease, cubic-bezier(0.2, 0, 0, 1));
   }
   #toTop:hover, #toggleInfiniteScroll:hover {
-    background-color: #BDBDBD;
+    background-color: var(--xbvr-surface, #ffffff);
+    color: var(--xbvr-primary, #4f46e5);
+    transform: translateY(-2px);
+    box-shadow: var(--xbvr-shadow-lg, 0 16px 40px rgba(16, 24, 40, 0.16));
   }
 </style>

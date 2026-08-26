@@ -1,30 +1,38 @@
 <template>
   <div class="modal is-active">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card create-card">
       <header class="modal-card-head">
         <p class="modal-card-title">{{ $t("Create Custom Scene") }}</p>
         <button class="delete" @click="close" aria-label="close"></button>
       </header>
-      <section class="modal-card-body">
-        <div>
-          <h6 class="title is-6">{{ file.filename }}</h6>
-          <small>
-            <span class="pathDetails">{{ file.path }}</span>
-            <br/>
-            {{ prettyBytes(file.size) }}, {{ file.video_width }}x{{ file.video_height }},
-            {{ format(parseISO(file.created_time), "yyyy-MM-dd") }}
-          </small>
-          <b-field :label="$t('Scene Id')" label-position="on-border" grouped>
-            <b-tooltip label="If blank a Scene Id will be generated but cannot be changed later"  :delay="500" >
-              <b-input v-model="sceneId" placeholder="Can be empty" ref="sceneIdInput"></b-input>
+      <section class="modal-card-body create-body">
+        <header class="create-header">
+          <h2 class="create-title">{{ file.filename }}</h2>
+          <p class="pathDetails">{{ file.path }}</p>
+          <div class="meta-chips">
+            <span class="meta-chip">{{ prettyBytes(file.size) }}</span>
+            <span class="meta-chip">{{ file.video_width }}x{{ file.video_height }}</span>
+            <span class="meta-chip">{{ format(parseISO(file.created_time), "yyyy-MM-dd") }}</span>
+          </div>
+        </header>
+        <div class="form-field">
+          <label class="form-label" for="create-scene-id">{{ $t('Scene Id') }}</label>
+          <b-field grouped>
+            <b-tooltip label="If blank a Scene Id will be generated but cannot be changed later"  :delay="500" class="is-fullwidth">
+              <b-input id="create-scene-id" v-model="sceneId" placeholder="Can be empty" ref="sceneIdInput"></b-input>
             </b-tooltip>
           </b-field>
-          <b-field :label="$t('Title')" label-position="on-border">            
-            <b-input v-model='title' ></b-input>            
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="create-scene-title">{{ $t('Title') }}</label>
+          <b-field>
+            <b-input id="create-scene-title" v-model='title'></b-input>
           </b-field>
-          <b-button class="button is-primary" style="margin-right:1em" v-on:click="addScene(false)">{{$t('Create')}}</b-button>            
-          <b-button class="button is-primary" v-on:click="addScene(true)">{{$t('Create and Edit')}} </b-button>            
+        </div>
+        <div class="action-row">
+          <b-button class="button is-primary" v-on:click="addScene(false)">{{$t('Create')}}</b-button>
+          <b-button class="button is-primary is-outlined" v-on:click="addScene(true)">{{$t('Create and Edit')}} </b-button>
         </div>
       </section>
     </div>
@@ -97,25 +105,94 @@ export default {
 }
 </script>
 
-<style scoped>
-h6.title.is-6 {
+<style lang="less" scoped>
+/* ------------------------------------------------------------------
+   Create-scene overlay — same modal language as scenes/Details.vue
+   ------------------------------------------------------------------ */
+
+.create-card {
+  position: relative;
+  margin: 3rem auto;
+  width: min(640px, 94vw);
+}
+
+.create-body {
+  padding: 1.25rem;
+}
+
+.create-header {
+  margin-bottom: 1rem;
+}
+
+.create-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--xbvr-text, #1c2333);
+  overflow-wrap: anywhere;
+  margin-bottom: 0.25rem;
+}
+
+.pathDetails {
+  font-size: 0.78rem;
+  color: var(--xbvr-text-faint, #7d88a1);
+  overflow-wrap: anywhere;
+  margin-bottom: 0.55rem;
+}
+
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  background: var(--xbvr-surface-sunken, #eef0f4);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: 999px;
+  padding: 0.25em 0.7em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* labeled form fields */
+.form-field {
+  margin-bottom: 0.9rem;
+}
+
+.form-field .field {
   margin-bottom: 0;
 }
 
-h6 + small {
-  margin-bottom: 1.5rem;
-  display: inline-block;
-  font-size: small;
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.3rem;
+  cursor: pointer;
 }
 
-h6 + small > .pathDetails {
-  color: #B0B0B0;
+.form-field :deep(.b-tooltip) {
+  width: 100%;
 }
 
-.modal-card {
-  position: absolute;
-  top: 4em;
-  width: 80%;
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
 }
 
+.action-row .button {
+  margin: 0;
+}
 </style>

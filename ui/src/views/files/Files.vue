@@ -1,14 +1,12 @@
 <template>
-  <div>
+  <div class="files-page">
     <div class="container is-fluid">
-      <div>
-        <Filters/>
-      </div>
-      <div class="columns">
-        <div class="column">
-          <List/>
-        </div>
-      </div>
+      <header class="page-header">
+        <h1 class="page-title">{{$t('Files')}}</h1>
+        <span class="page-count">{{$store.state.files.items.length}} {{$t('files')}}</span>
+      </header>
+      <Filters/>
+      <List/>
     </div>
     <Player v-if="showPlayerOverlay"/>
     <SceneMatch v-if="showMatchOverlay"/>
@@ -39,3 +37,31 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.files-page {
+  padding-bottom: 2rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--xbvr-text, #1c2333);
+}
+
+.page-count {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--xbvr-text-muted, #64708a);
+  white-space: nowrap;
+}
+</style>

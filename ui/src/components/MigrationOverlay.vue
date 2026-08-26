@@ -196,7 +196,18 @@ export default {
 
 <style scoped>
 .modal-card {
-  max-width: 600px;
+  max-width: 520px;
+  width: 92vw;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem 1rem;
+}
+
+.modal-card .title {
+  color: var(--xbvr-text, #1c2333);
+}
+
+.modal-card .subtitle {
+  color: var(--xbvr-text-muted, #64708a);
 }
 
 .migration-progress {
@@ -207,7 +218,7 @@ export default {
   text-align: center;
   font-weight: 600;
   font-size: 1rem;
-  color: #363636;
+  color: var(--xbvr-text, #1c2333);
   margin-bottom: 0.75rem;
 }
 
@@ -220,19 +231,26 @@ export default {
 }
 
 .progress-count {
-  color: #7a7a7a;
+  color: var(--xbvr-text-muted, #64708a);
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .eta-text {
-  color: #3273dc;
+  color: var(--xbvr-primary, #4f46e5);
   font-weight: 600;
   font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .help-notice {
   font-size: 0.95rem;
   font-weight: 500;
-  color: #3273dc;
+  color: var(--xbvr-primary, #4f46e5);
 }
 </style>

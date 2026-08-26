@@ -1,0 +1,1299 @@
+/* ==========================================================================
+   XBVR Design System — modern theme layer over Bulma/Buefy
+   Loaded after buefy.css so these rules win on equal specificity.
+   All colors flow through --xbvr-* tokens so dark mode is a token swap.
+   ========================================================================== */
+
+:root {
+  /* Palette — light */
+  --xbvr-bg: #f4f5f8;
+  --xbvr-surface: #ffffff;
+  --xbvr-surface-sunken: #eef0f4;
+  --xbvr-border: #e3e6ec;
+  --xbvr-border-strong: #cdd2dc;
+
+  --xbvr-text: #1c2333;
+  --xbvr-text-muted: #64708a;
+  --xbvr-text-faint: #6f7a8f;
+
+  --xbvr-primary: #4f46e5;
+  --xbvr-primary-strong: #4338ca;
+  --xbvr-primary-soft: #eef0fe;
+  --xbvr-on-primary: #ffffff;
+  --xbvr-info: #3e8ed0;
+  --xbvr-success: #2ea86f;
+  --xbvr-warning: #e8a13a;
+  --xbvr-danger: #e5484d;
+
+  /* Chrome */
+  --xbvr-navbar-bg: rgba(255, 255, 255, 0.82);
+  --xbvr-overlay-bg: rgba(16, 20, 32, 0.45);
+  --xbvr-loading-bg: rgba(244, 245, 248, 0.7);
+  --xbvr-hover-bg: #fafbfd;
+  --xbvr-chip-bg: rgba(20, 24, 36, 0.55);
+
+  /* Media pane (scene details) — follows the active theme */
+  --xbvr-media-bg: #eef0f4;
+  --xbvr-media-muted: #64708a;
+  --xbvr-media-tabbar: rgba(16, 24, 40, 0.06);
+  --xbvr-media-tab-active-bg: #ffffff;
+  --xbvr-media-tab-active-text: #4338ca;
+  --xbvr-media-chip-bg: rgba(255, 255, 255, 0.65);
+  --xbvr-media-chip-text: #1c2333;
+  --xbvr-media-chip-border: rgba(16, 24, 40, 0.12);
+
+  /* Badges floating over cover art */
+  --xbvr-badge-bg: rgba(255, 255, 255, 0.82);
+  --xbvr-badge-text: #1c2333;
+
+  /* Radii */
+  --xbvr-radius-sm: 8px;
+  --xbvr-radius: 12px;
+  --xbvr-radius-lg: 16px;
+
+  /* Elevation */
+  --xbvr-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --xbvr-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --xbvr-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.10), 0 2px 4px rgba(16, 24, 40, 0.05);
+  --xbvr-shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.16), 0 4px 10px rgba(16, 24, 40, 0.08);
+
+  /* Focus */
+  --xbvr-focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.28);
+
+  /* Motion */
+  --xbvr-ease: cubic-bezier(0.2, 0, 0, 1);
+  --xbvr-fast: 140ms;
+  --xbvr-med: 220ms;
+
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --xbvr-bg: #0d1017;
+  --xbvr-surface: #171c28;
+  --xbvr-surface-sunken: #10141e;
+  --xbvr-border: #262e3f;
+  --xbvr-border-strong: #3a4358;
+
+  --xbvr-text: #e6e9f2;
+  --xbvr-text-muted: #9aa5bd;
+  --xbvr-text-faint: #7d88a1;
+
+  --xbvr-primary: #818cf8;
+  --xbvr-primary-strong: #a5b0fc;
+  --xbvr-primary-soft: rgba(129, 140, 248, 0.14);
+  --xbvr-on-primary: #12152a;
+  --xbvr-info: #62a9e0;
+  --xbvr-success: #4cc38a;
+  --xbvr-warning: #f0b35c;
+  --xbvr-danger: #f16a6e;
+
+  --xbvr-navbar-bg: rgba(13, 16, 23, 0.78);
+  --xbvr-overlay-bg: rgba(4, 6, 10, 0.6);
+  --xbvr-loading-bg: rgba(13, 16, 23, 0.72);
+  --xbvr-hover-bg: #1d2432;
+  --xbvr-chip-bg: rgba(8, 10, 16, 0.6);
+
+  --xbvr-media-bg: #0d1017;
+  --xbvr-media-muted: rgba(230, 233, 242, 0.6);
+  --xbvr-media-tabbar: rgba(255, 255, 255, 0.07);
+  --xbvr-media-tab-active-bg: rgba(255, 255, 255, 0.14);
+  --xbvr-media-tab-active-text: #ffffff;
+  --xbvr-media-chip-bg: rgba(255, 255, 255, 0.08);
+  --xbvr-media-chip-text: #cdd6ea;
+  --xbvr-media-chip-border: rgba(255, 255, 255, 0.18);
+
+  --xbvr-badge-bg: rgba(8, 10, 16, 0.6);
+  --xbvr-badge-text: #ffffff;
+
+  --xbvr-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --xbvr-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --xbvr-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.35);
+  --xbvr-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.4);
+
+  --xbvr-focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.35);
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--xbvr-bg);
+  color: var(--xbvr-text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv05", "tnum" 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--xbvr-med) var(--xbvr-ease),
+    color var(--xbvr-med) var(--xbvr-ease);
+}
+
+strong,
+.title,
+.subtitle,
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  color: var(--xbvr-text);
+}
+
+.content strong {
+  color: var(--xbvr-text);
+}
+
+a {
+  color: var(--xbvr-primary);
+  transition: color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+a:hover {
+  color: var(--xbvr-primary-strong);
+}
+
+hr {
+  background-color: var(--xbvr-border);
+  height: 1px;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Numeric data reads better with tabular figures */
+.tag,
+.pagination-link,
+.table td,
+.table th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Slim, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--xbvr-border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--xbvr-border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Focus — visible, consistent, keyboard-only
+   -------------------------------------------------------------------------- */
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--xbvr-focus-ring);
+  border-radius: var(--xbvr-radius-sm);
+}
+
+.button:focus-visible,
+.navbar-item:focus-visible,
+a:focus-visible,
+.tag:focus-visible,
+.select select:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible {
+  box-shadow: var(--xbvr-focus-ring);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.button {
+  border-radius: var(--xbvr-radius-sm);
+  font-weight: 600;
+  border-color: var(--xbvr-border-strong);
+  background-color: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: var(--xbvr-shadow-sm);
+  transition: background-color var(--xbvr-fast) var(--xbvr-ease),
+    border-color var(--xbvr-fast) var(--xbvr-ease),
+    color var(--xbvr-fast) var(--xbvr-ease),
+    box-shadow var(--xbvr-fast) var(--xbvr-ease),
+    transform var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.button:hover {
+  border-color: var(--xbvr-text-faint);
+  background-color: var(--xbvr-hover-bg);
+  color: var(--xbvr-text);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button.is-primary,
+.button.is-link {
+  background-color: var(--xbvr-primary);
+  border-color: transparent;
+  color: var(--xbvr-on-primary);
+}
+
+.button.is-primary:hover,
+.button.is-link:hover {
+  background-color: var(--xbvr-primary-strong);
+  color: var(--xbvr-on-primary);
+}
+
+.button.is-info {
+  background-color: var(--xbvr-info);
+  border-color: transparent;
+}
+
+.button.is-success {
+  background-color: var(--xbvr-success);
+  border-color: transparent;
+}
+
+.button.is-warning {
+  background-color: var(--xbvr-warning);
+  border-color: transparent;
+  /* dark text reads on amber in both themes */
+  color: #1c2333;
+}
+
+.button.is-warning:hover {
+  color: #1c2333;
+}
+
+.button.is-danger {
+  background-color: var(--xbvr-danger);
+  border-color: transparent;
+}
+
+.button.is-outlined {
+  box-shadow: none;
+  background: transparent;
+}
+
+.button.is-primary.is-outlined,
+.button.is-link.is-outlined {
+  color: var(--xbvr-primary);
+  border-color: var(--xbvr-primary);
+}
+
+.button.is-primary.is-outlined:hover,
+.button.is-link.is-outlined:hover {
+  background: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+.button.is-dark.is-outlined {
+  color: var(--xbvr-text-muted);
+  border-color: var(--xbvr-border-strong);
+}
+
+.button.is-dark.is-outlined:hover {
+  background: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+}
+
+.button.is-light {
+  background-color: var(--xbvr-surface-sunken);
+  border-color: var(--xbvr-border-strong);
+  color: var(--xbvr-text);
+}
+
+.button.is-light:hover {
+  background-color: var(--xbvr-hover-bg);
+  color: var(--xbvr-text);
+}
+
+.button[disabled] {
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+/* Radio-button groups (Buefy b-radio-button) */
+.field.has-addons .button,
+.b-radio.button {
+  box-shadow: none;
+}
+
+.b-radio.button.is-selected {
+  background-color: var(--xbvr-primary);
+  border-color: var(--xbvr-primary);
+  color: var(--xbvr-on-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+
+.input,
+.textarea,
+.select select {
+  border-radius: var(--xbvr-radius-sm);
+  border-color: var(--xbvr-border-strong);
+  background-color: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: none;
+  transition: border-color var(--xbvr-fast) var(--xbvr-ease),
+    box-shadow var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.input:hover,
+.textarea:hover,
+.select select:hover {
+  border-color: var(--xbvr-text-faint);
+}
+
+.input:focus,
+.textarea:focus,
+.select select:focus {
+  border-color: var(--xbvr-primary);
+  box-shadow: var(--xbvr-focus-ring);
+}
+
+.input[disabled],
+.textarea[disabled],
+.select select[disabled],
+fieldset[disabled] .input,
+fieldset[disabled] .textarea,
+fieldset[disabled] .select select,
+.taginput [disabled].taginput-container {
+  background-color: var(--xbvr-surface-sunken);
+  border-color: var(--xbvr-border);
+  color: var(--xbvr-text-faint);
+  box-shadow: none;
+}
+
+.input[disabled]::placeholder,
+.textarea[disabled]::placeholder {
+  color: var(--xbvr-text-faint);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--xbvr-text-faint);
+}
+
+/* empty selects show placeholder-style text (Buefy hardcodes a dim grey) */
+.select.is-empty select {
+  color: var(--xbvr-text-faint);
+}
+
+/* Taginput (Buefy filter fields) — the container is the visual input.
+   Bulma groups .taginput .taginput-container.is-focusable with .input etc.,
+   so match that specificity (0-3-0) to win. */
+.taginput .taginput-container.is-focusable {
+  border-radius: var(--xbvr-radius-sm);
+  border-color: var(--xbvr-border-strong);
+  background-color: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: none;
+  transition: border-color var(--xbvr-fast) var(--xbvr-ease),
+    box-shadow var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.taginput .taginput-container.is-focusable:hover {
+  border-color: var(--xbvr-text-faint);
+}
+
+.taginput .taginput-container.is-focusable:focus,
+.taginput .taginput-container.is-focusable:focus-within,
+.taginput .taginput-container.is-focusable.is-focus {
+  border-color: var(--xbvr-primary);
+  box-shadow: var(--xbvr-focus-ring);
+}
+
+.taginput .taginput-container .input {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--xbvr-text);
+}
+
+.taginput .taginput-container .tag {
+  background-color: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+.taginput .taginput-container .tag .delete::before,
+.taginput .taginput-container .tag .delete::after {
+  background-color: var(--xbvr-primary-strong);
+}
+
+.autocomplete .dropdown-item .has-text-grey,
+.dropdown-item .has-text-grey {
+  color: var(--xbvr-text-faint) !important;
+}
+
+.label {
+  color: var(--xbvr-text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
+}
+
+/* Switches & checkboxes (Buefy) */
+.switch .check {
+  background: var(--xbvr-surface-sunken);
+  border-color: var(--xbvr-border-strong);
+}
+
+.switch input[type="checkbox"]:checked + .check {
+  background: var(--xbvr-primary);
+}
+
+.switch:hover input[type="checkbox"] + .check,
+.b-checkbox.checkbox:hover input[type="checkbox"] + .check {
+  border-color: var(--xbvr-primary);
+}
+
+.b-checkbox.checkbox .check {
+  border-color: var(--xbvr-border-strong);
+  background: var(--xbvr-surface);
+}
+
+.b-checkbox.checkbox input[type="checkbox"]:checked + .check {
+  background: var(--xbvr-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/70% no-repeat;
+  border-color: var(--xbvr-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Cards & surfaces
+   -------------------------------------------------------------------------- */
+
+.card {
+  border-radius: var(--xbvr-radius);
+  border: 1px solid var(--xbvr-border);
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: var(--xbvr-shadow);
+  overflow: hidden;
+  transition: box-shadow var(--xbvr-med) var(--xbvr-ease),
+    transform var(--xbvr-med) var(--xbvr-ease),
+    border-color var(--xbvr-med) var(--xbvr-ease);
+}
+
+.card:hover {
+  box-shadow: var(--xbvr-shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--xbvr-border-strong);
+}
+
+.card-header {
+  box-shadow: none;
+  border-bottom: 1px solid var(--xbvr-border);
+}
+
+.card-header-title {
+  color: var(--xbvr-text);
+}
+
+.box {
+  border-radius: var(--xbvr-radius);
+  border: 1px solid var(--xbvr-border);
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: var(--xbvr-shadow);
+}
+
+.media .title,
+.media .subtitle,
+.media-content,
+.media-content strong {
+  color: var(--xbvr-text);
+}
+
+/* --------------------------------------------------------------------------
+   Tags
+   -------------------------------------------------------------------------- */
+
+.tag:not(body) {
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background-color: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text-muted);
+}
+
+.tag.is-primary:not(body) {
+  background-color: var(--xbvr-primary);
+  color: var(--xbvr-on-primary);
+}
+
+.tag.is-info.is-light:not(body) {
+  background-color: rgba(62, 142, 208, 0.14);
+  color: var(--xbvr-info);
+}
+
+.tag.is-primary.is-light:not(body) {
+  background-color: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Navbar (structure restyled in Navbar.vue; global polish here)
+   -------------------------------------------------------------------------- */
+
+.navbar,
+.navbar.is-light,
+.navbar.is-white {
+  background: var(--xbvr-navbar-bg);
+  color: var(--xbvr-text);
+  backdrop-filter: saturate(1.6) blur(12px);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid var(--xbvr-border);
+  box-shadow: var(--xbvr-shadow-sm);
+  min-height: 3.75rem;
+}
+
+.navbar-burger {
+  color: var(--xbvr-text-muted);
+}
+
+.navbar.is-light .navbar-item,
+.navbar.is-white .navbar-item {
+  color: var(--xbvr-text-muted);
+}
+
+.navbar-item,
+.navbar-link {
+  color: var(--xbvr-text-muted);
+  font-weight: 500;
+  border-radius: var(--xbvr-radius-sm);
+  transition: color var(--xbvr-fast) var(--xbvr-ease),
+    background-color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.navbar-item:hover,
+.navbar-link:hover,
+a.navbar-item:hover,
+a.navbar-link:hover {
+  background-color: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+}
+
+a.navbar-item.router-link-active {
+  color: var(--xbvr-primary);
+  background-color: var(--xbvr-primary-soft);
+}
+
+/* Buefy fixed-top navbar adds this padding; keep in sync with min-height */
+html.has-navbar-fixed-top,
+body.has-navbar-fixed-top {
+  padding-top: 3.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Menus, tabs, pagination
+   -------------------------------------------------------------------------- */
+
+.menu-label {
+  color: var(--xbvr-text-faint);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menu-list a {
+  border-radius: var(--xbvr-radius-sm);
+  color: var(--xbvr-text-muted);
+  font-weight: 500;
+  transition: background-color var(--xbvr-fast) var(--xbvr-ease),
+    color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.menu-list a:hover {
+  background-color: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+}
+
+.menu-list a.is-active {
+  background-color: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+  font-weight: 600;
+}
+
+.tabs a {
+  color: var(--xbvr-text-muted);
+  border-bottom-color: var(--xbvr-border);
+  transition: color var(--xbvr-fast) var(--xbvr-ease),
+    border-color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.tabs a:hover {
+  color: var(--xbvr-text);
+  border-bottom-color: var(--xbvr-border-strong);
+}
+
+.tabs ul {
+  border-bottom-color: var(--xbvr-border);
+}
+
+.tabs li.is-active a {
+  border-bottom-color: var(--xbvr-primary);
+  color: var(--xbvr-primary);
+}
+
+.pagination-link,
+.pagination-previous,
+.pagination-next {
+  border-radius: var(--xbvr-radius-sm);
+  border-color: var(--xbvr-border-strong);
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text-muted);
+}
+
+.pagination-link:hover,
+.pagination-previous:hover,
+.pagination-next:hover {
+  border-color: var(--xbvr-text-faint);
+  color: var(--xbvr-text);
+}
+
+.pagination-link.is-current {
+  background-color: var(--xbvr-primary);
+  border-color: var(--xbvr-primary);
+  color: var(--xbvr-on-primary);
+}
+
+.pagination-link[disabled],
+.pagination-previous[disabled],
+.pagination-next[disabled],
+.pagination-link.is-disabled,
+.pagination-previous.is-disabled,
+.pagination-next.is-disabled {
+  background-color: var(--xbvr-surface-sunken);
+  border-color: var(--xbvr-border);
+  color: var(--xbvr-text-faint);
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+   Dropdowns, autocomplete, tooltips
+   -------------------------------------------------------------------------- */
+
+.dropdown-content {
+  border-radius: var(--xbvr-radius);
+  border: 1px solid var(--xbvr-border);
+  background: var(--xbvr-surface);
+  box-shadow: var(--xbvr-shadow-lg);
+  padding: 6px;
+}
+
+.dropdown-item {
+  border-radius: var(--xbvr-radius-sm);
+  color: var(--xbvr-text);
+  transition: background-color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+a.dropdown-item,
+button.dropdown-item,
+.dropdown .dropdown-menu .has-link a {
+  color: var(--xbvr-text);
+}
+
+.dropdown-item:hover,
+a.dropdown-item:hover,
+.dropdown .dropdown-menu .has-link a:hover {
+  background-color: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+}
+
+.dropdown-item.is-active,
+a.dropdown-item.is-active {
+  background-color: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+.autocomplete .dropdown-item.is-hovered {
+  background: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+.autocomplete .dropdown-item {
+  color: var(--xbvr-text);
+}
+
+.b-tooltip:after {
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: var(--xbvr-shadow-md);
+}
+
+/* --------------------------------------------------------------------------
+   Modals, dialogs, overlays
+   -------------------------------------------------------------------------- */
+
+.modal-card {
+  border-radius: var(--xbvr-radius-lg);
+  background: var(--xbvr-surface);
+  box-shadow: var(--xbvr-shadow-lg);
+  overflow: hidden;
+}
+
+.modal-card-head {
+  background: var(--xbvr-surface);
+  border-bottom: 1px solid var(--xbvr-border);
+}
+
+.modal-card-title {
+  color: var(--xbvr-text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.modal-card-body {
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+}
+
+.modal-card-foot {
+  background: var(--xbvr-surface);
+  border-top: 1px solid var(--xbvr-border);
+}
+
+.dialog .modal-card-head {
+  border-bottom: none;
+}
+
+.modal-content,
+.modal-card {
+  overscroll-behavior: contain;
+}
+
+.modal-background {
+  background-color: var(--xbvr-overlay-bg);
+}
+
+/* --------------------------------------------------------------------------
+   Notifications, toasts, snackbars, messages
+   -------------------------------------------------------------------------- */
+
+.notification {
+  border-radius: var(--xbvr-radius);
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  box-shadow: var(--xbvr-shadow-md);
+}
+
+.toast,
+.snackbar {
+  border-radius: var(--xbvr-radius) !important;
+  box-shadow: var(--xbvr-shadow-lg) !important;
+  font-weight: 500;
+}
+
+.message {
+  border-radius: var(--xbvr-radius);
+  background: var(--xbvr-surface);
+}
+
+.message-body {
+  border-radius: 0 var(--xbvr-radius) var(--xbvr-radius) 0;
+  border-color: var(--xbvr-border);
+  color: var(--xbvr-text);
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+
+.table {
+  background-color: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  border-radius: var(--xbvr-radius);
+}
+
+.table th {
+  color: var(--xbvr-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-color: var(--xbvr-border);
+}
+
+.table td {
+  border-color: var(--xbvr-border);
+  color: var(--xbvr-text);
+}
+
+.table tr:hover {
+  background-color: var(--xbvr-hover-bg);
+}
+
+.table.is-striped tbody tr:not(.is-selected):nth-child(even) {
+  background-color: var(--xbvr-surface-sunken);
+}
+
+/* Bulma's .content table rules outrank plain .table rules — re-theme them */
+.content table {
+  background: transparent;
+}
+
+.content table th {
+  color: var(--xbvr-text-muted);
+}
+
+.content table td {
+  color: var(--xbvr-text);
+}
+
+.content table td,
+.content table th {
+  border-color: var(--xbvr-border);
+}
+
+/* Bulma's thead/tfoot variants have higher specificity than plain cells */
+.table thead th,
+.table thead td,
+.content table thead th,
+.content table thead td {
+  color: var(--xbvr-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-color: var(--xbvr-border);
+}
+
+.table tfoot th,
+.table tfoot td,
+.content table tfoot th,
+.content table tfoot td {
+  color: var(--xbvr-text);
+  font-weight: 700;
+  border-color: var(--xbvr-border);
+}
+
+/* Carousel arrows (Buefy gallery) — theme-aware chips instead of white discs */
+.carousel-arrow .icon {
+  background: var(--xbvr-media-chip-bg);
+  color: var(--xbvr-media-chip-text);
+  border: 1px solid var(--xbvr-media-chip-border);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background-color var(--xbvr-fast) var(--xbvr-ease),
+    color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.carousel-arrow:hover .icon,
+.carousel-arrow .icon:hover {
+  background: var(--xbvr-media-tab-active-bg);
+  color: var(--xbvr-media-tab-active-text);
+}
+
+/* Warning tags stay readable but go soft-tinted in dark mode */
+html[data-theme="dark"] .tag.is-warning:not(body) {
+  background-color: rgba(240, 179, 92, 0.18);
+  color: var(--xbvr-warning);
+}
+
+/* --------------------------------------------------------------------------
+   Dividers (bulma-divider)
+   -------------------------------------------------------------------------- */
+
+.is-divider::after {
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text-faint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.is-divider {
+  border-top-color: var(--xbvr-border);
+}
+
+/* --------------------------------------------------------------------------
+   Loading overlay
+   -------------------------------------------------------------------------- */
+
+.loading-overlay .loading-background {
+  background: var(--xbvr-loading-bg);
+  backdrop-filter: blur(2px);
+}
+
+.loading-overlay .loading-icon:after {
+  border-color: var(--xbvr-primary);
+  border-right-color: transparent;
+  border-top-color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Progress & slider
+   -------------------------------------------------------------------------- */
+
+.progress {
+  border-radius: 999px;
+  height: 0.6rem;
+}
+
+.progress::-webkit-progress-bar {
+  background: var(--xbvr-surface-sunken);
+}
+
+.progress.is-primary::-webkit-progress-value,
+.progress::-webkit-progress-value {
+  background-color: var(--xbvr-primary);
+  border-radius: 999px;
+}
+
+/* --------------------------------------------------------------------------
+   Headings
+   -------------------------------------------------------------------------- */
+
+.title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.subtitle {
+  color: var(--xbvr-text-muted);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Extended Buefy component coverage
+   -------------------------------------------------------------------------- */
+
+/* Datepicker / timepicker */
+.datepicker .dropdown-content,
+.timepicker .dropdown-content {
+  background: var(--xbvr-surface);
+}
+
+.datepicker .datepicker-header {
+  border-bottom-color: var(--xbvr-border);
+}
+
+.datepicker .datepicker-header select,
+.datepicker .datepicker-header .select select {
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  border-color: var(--xbvr-border-strong);
+}
+
+.datepicker .datepicker-cell,
+.datepicker .datepicker-header .pagination-previous,
+.datepicker .datepicker-header .pagination-next {
+  color: var(--xbvr-text);
+}
+
+.datepicker .datepicker-cell {
+  border-radius: var(--xbvr-radius-sm);
+}
+
+.datepicker .datepicker-cell.is-unselectable {
+  color: var(--xbvr-text-faint);
+}
+
+.datepicker .datepicker-cell.is-today {
+  border-color: var(--xbvr-primary);
+}
+
+.datepicker .datepicker-cell.is-selected,
+.datepicker .datepicker-cell.is-selected:hover {
+  background: var(--xbvr-primary);
+  color: var(--xbvr-on-primary);
+}
+
+.datepicker .datepicker-cell:hover:not(.is-selected):not(.is-unselectable) {
+  background: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+}
+
+.timepicker .timepicker-footer .button {
+  color: var(--xbvr-primary);
+}
+
+/* Slider */
+.b-slider .b-slider-track {
+  background: var(--xbvr-surface-sunken);
+  border-radius: 999px;
+}
+
+.b-slider .b-slider-fill {
+  background: var(--xbvr-primary) !important;
+  border-radius: 999px;
+}
+
+.b-slider .b-slider-thumb-wrapper .b-slider-thumb {
+  background: var(--xbvr-surface);
+  border: 2px solid var(--xbvr-primary);
+  box-shadow: var(--xbvr-shadow-sm);
+}
+
+.b-slider .b-slider-tick-label {
+  color: var(--xbvr-text-muted);
+  font-size: 0.75rem;
+}
+
+/* Steps */
+.steps .step-item .step-marker {
+  background: var(--xbvr-surface);
+  border-color: var(--xbvr-border-strong);
+  color: var(--xbvr-text-muted);
+}
+
+.steps .step-item.is-active .step-marker {
+  background: var(--xbvr-primary);
+  border-color: var(--xbvr-primary);
+  color: var(--xbvr-on-primary);
+}
+
+.steps .step-item .step-title {
+  color: var(--xbvr-text-muted);
+}
+
+.steps .step-item.is-active .step-title {
+  color: var(--xbvr-primary-strong);
+}
+
+/* Radio labels */
+.b-radio.radio,
+.b-checkbox.checkbox {
+  color: var(--xbvr-text);
+}
+
+.b-radio.radio input[type="radio"] + .check {
+  border-color: var(--xbvr-border-strong);
+  background: var(--xbvr-surface);
+}
+
+.b-radio.radio input[type="radio"]:checked + .check {
+  border-color: var(--xbvr-primary);
+}
+
+.b-radio.radio input[type="radio"]:checked + .check::before {
+  background: var(--xbvr-primary);
+}
+
+/* Numberinput */
+.b-numberinput .button {
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text-muted);
+}
+
+/* Upload drop area */
+.upload .upload-draggable {
+  border-color: var(--xbvr-border-strong);
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text-muted);
+  border-radius: var(--xbvr-radius);
+  transition: border-color var(--xbvr-fast) var(--xbvr-ease),
+    background-color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.upload .upload-draggable:hover,
+.upload .upload-draggable.is-hovered {
+  border-color: var(--xbvr-primary);
+  background: var(--xbvr-primary-soft);
+}
+
+/* Messages & notifications — soft variants */
+.message .message-header {
+  border-radius: var(--xbvr-radius) var(--xbvr-radius) 0 0;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .message.is-info .message-body {
+  background: rgba(62, 142, 208, 0.12);
+  border-color: rgba(62, 142, 208, 0.35);
+  color: #bcd9f2;
+}
+
+html[data-theme="dark"] .message.is-warning .message-body {
+  background: rgba(240, 179, 92, 0.10);
+  border-color: rgba(240, 179, 92, 0.35);
+  color: #f4d9ac;
+}
+
+html[data-theme="dark"] .message.is-danger .message-body {
+  background: rgba(229, 72, 77, 0.12);
+  border-color: rgba(229, 72, 77, 0.35);
+  color: #f5b7b9;
+}
+
+html[data-theme="dark"] .message.is-success .message-body {
+  background: rgba(46, 168, 111, 0.12);
+  border-color: rgba(46, 168, 111, 0.35);
+  color: #a9e5c8;
+}
+
+html[data-theme="dark"] .notification.is-info {
+  background: rgba(62, 142, 208, 0.16);
+  color: #bcd9f2;
+}
+
+html[data-theme="dark"] .notification.is-warning {
+  background: rgba(240, 179, 92, 0.14);
+  color: #f4d9ac;
+}
+
+html[data-theme="dark"] .notification.is-danger {
+  background: rgba(229, 72, 77, 0.16);
+  color: #f5b7b9;
+}
+
+html[data-theme="dark"] .notification.is-success {
+  background: rgba(46, 168, 111, 0.16);
+  color: #a9e5c8;
+}
+
+html[data-theme="dark"] .notification.is-primary {
+  background: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+/* Tag accent variants — soft tints in dark mode */
+html[data-theme="dark"] .tag.is-info:not(body) {
+  background: rgba(62, 142, 208, 0.18);
+  color: #7fbde8;
+}
+
+html[data-theme="dark"] .tag.is-success:not(body) {
+  background: rgba(46, 168, 111, 0.18);
+  color: #5fd0a0;
+}
+
+html[data-theme="dark"] .tag.is-danger:not(body) {
+  background: rgba(229, 72, 77, 0.18);
+  color: #f08a8e;
+}
+
+html[data-theme="dark"] .tag.is-dark:not(body) {
+  background: #262e3f;
+  color: #c7cfdf;
+}
+
+/* Light tooltips */
+.b-tooltip.is-light:after {
+  background: var(--xbvr-surface);
+  color: var(--xbvr-text);
+  border: 1px solid var(--xbvr-border);
+}
+
+.b-tooltip.is-light:before {
+  border-top-color: var(--xbvr-border-strong);
+}
+
+/* Tables — selection & details */
+.table tr.is-selected,
+.table.is-hoverable tbody tr.is-selected:hover {
+  background: var(--xbvr-primary-soft);
+  color: var(--xbvr-primary-strong);
+}
+
+.b-table .table td,
+.b-table .table th {
+  vertical-align: middle;
+}
+
+.b-table .table .checkbox-cell {
+  vertical-align: middle;
+}
+
+/* code / pre */
+code {
+  background: var(--xbvr-surface-sunken);
+  color: var(--xbvr-primary-strong);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+
+pre {
+  background: var(--xbvr-surface-sunken);
+  color: var(--xbvr-text);
+  border: 1px solid var(--xbvr-border);
+  border-radius: var(--xbvr-radius-sm);
+}
+
+/* Checkbox-button group (property toggles etc.) */
+.b-checkbox.button {
+  box-shadow: none;
+}
+
+.b-checkbox.button .check {
+  display: none;
+}
+
+/* Card header toggle arrows */
+.card-header-icon {
+  color: var(--xbvr-text-muted);
+  transition: transform var(--xbvr-fast) var(--xbvr-ease),
+    color var(--xbvr-fast) var(--xbvr-ease);
+}
+
+.card-header-icon:hover {
+  color: var(--xbvr-text);
+}
+
+/* Pagination ellipsis */
+.pagination-ellipsis {
+  color: var(--xbvr-text-faint);
+}
+
+/* Buefy snackbar/toast action buttons */
+.snackbar .button,
+.toast .button {
+  font-weight: 700;
+}
+
+/* Dialog confirm buttons keep theme buttons; nothing extra needed */
+
+/* Autocomplete clear button inside inputs */
+.autocomplete .icon.is-right.is-clickable {
+  color: var(--xbvr-text-faint);
+}
+
+.autocomplete .icon.is-right.is-clickable:hover {
+  color: var(--xbvr-text);
+}
+
+/* --------------------------------------------------------------------------
+   Motion safety
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

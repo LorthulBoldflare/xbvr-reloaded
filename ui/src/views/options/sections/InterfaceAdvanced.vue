@@ -1,10 +1,12 @@
 <template>
-  <div class="container">
+  <div>
     <b-loading :is-full-page="false" :active.sync="isLoading" />
     <div class="content">
-      <h3>{{ $t('Advanced') }}</h3>
-      <hr />
-      <b-tabs v-model="activeTab" size="medium" type="is-boxed" style="margin-left: 0px" id="importexporttab">
+      <header class="options-page-head">
+        <h1 class="options-title">{{ $t('Advanced') }}</h1>
+        <p class="options-desc">{{ $t('Low-level toggles and integrations for power users.') }}</p>
+      </header>
+      <b-tabs v-model="activeTab" size="medium" type="is-boxed" id="importexporttab" class="options-tabs">
             <b-tab-item label="Scene Details"/>
             <b-tab-item label="Actor Settings"/>
             <b-tab-item label="Create Custom Site"/>
@@ -16,7 +18,11 @@
       <!-- Screen Details Tab -->
       <div class="columns" v-if="activeTab == 0">
         <div class="column">
-          <section>
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="monitor-eye" size="is-small"/>
+              {{ $t('Scene Details') }}
+            </div>
             <b-field>
               <b-switch v-model="showInternalSceneId" type="is-default">
                 show Internal Scene Id
@@ -54,12 +60,18 @@
       <!-- Actor Related Settings -->
       <div class="columns" v-if="activeTab == 1">
         <div class="column">
-          <section>
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="account-star-outline" size="is-small"/>
+              {{ $t('Actor Settings') }}
+            </div>
+            <b-field>
               <b-tooltip :label="$t('Allows the entry of Actor Height/Weight in Imperial measurements')" :delay="500" type="is-warning">
                 <b-switch v-model="useImperialEntry" type="is-default">
                   {{ $t('Entry Height/Weight in Imperial Measurements') }}
                 </b-switch>
               </b-tooltip>
+            </b-field>
             <b-field>
               <b-tooltip :label="$t('Scrape Actor details from sites after running a Scene Scrape, otherwise run manually')" :delay="500" type="is-warning">
                 <b-switch v-model="scrapeActorAfterScene" type="is-default">
@@ -67,7 +79,7 @@
                 </b-switch>
               </b-tooltip>
             </b-field>
-            <b-field :label="$t('Stashdb Api Key')" label-position="on-border">
+            <b-field :label="$t('Stashdb Api Key')" label-position="on-border" class="narrow-field">
               <b-input v-model="stashApiKey" placeholder="Visit https://discord.com/invite/2TsNFKt to sign up to Stashdb" type="password"></b-input>
             </b-field>
             <b-field>
@@ -88,17 +100,21 @@
       <!-- Custom Sites Tab -->
       <div class="columns" v-if="activeTab == 2">
         <div class="column">
-          <section>
-            <b-field :label="$t('Scraper Url')" label-position="on-border">
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="plus-box-outline" size="is-small"/>
+              {{ $t('Create Custom Site') }}
+            </div>
+            <b-field :label="$t('Scraper Url')" label-position="on-border" class="narrow-field">
               <b-input v-model="scraperUrl" :placeholder="$t('Enter the Url to Studio Scene List')" @input="validateScraperFields()"></b-input>
             </b-field>
-            <b-field :label="$t('Name')" label-position="on-border">
+            <b-field :label="$t('Name')" label-position="on-border" class="narrow-field">
               <b-input v-model="scraperName" :placeholder="$t('Enter Studio Name')" @input="validateScraperFields()"></b-input>
             </b-field>
-            <b-field :label="$t('Company')" label-position="on-border">
+            <b-field :label="$t('Company')" label-position="on-border" class="narrow-field">
               <b-input v-model="scraperCompany" :placeholder="$t('Optional: defaults to Name')"></b-input>
             </b-field>
-            <b-field :label="$t('Avatar Url')" label-position="on-border">
+            <b-field :label="$t('Avatar Url')" label-position="on-border" class="narrow-field">
               <b-input v-model="scraperAvatar" :placeholder="$t('Optional')"></b-input>
             </b-field>
             <b-field :label="$t('Main Site')" label-position="on-border" :addons="true" class="field-extra">
@@ -124,7 +140,11 @@
 
       <div class="columns" v-if="activeTab == 3">
         <div class="column">
-          <section>
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="link-variant" size="is-small"/>
+              {{ $t('Alternate Sites') }}
+            </div>
             <b-field>
               <b-tooltip :label="$t('Scenes from Alternate Sites will be matched after Scene Scraping')" :delay="500">
                 <b-switch v-model="linkScenesAfterSceneScraping" type="is-default">
@@ -165,10 +185,10 @@
                   </b-datepicker>
                 </b-field>
               </b-tooltip>
-            <b-field>
-              <b-button type="is-primary" @click="clearAltSrcKeepEdits" style="margin-right: 1em;">Clear scene links - keep edits</b-button>
-              <b-button type="is-primary" @click="clearAltSrc" style="margin-right: 1em;">Clear scene links</b-button>
-              <b-button type="is-primary" @click="relinkAltSrc" style="margin-right: 1em;">Re-link scenes</b-button>
+            <b-field class="button-row">
+              <b-button type="is-primary" @click="clearAltSrcKeepEdits">Clear scene links - keep edits</b-button>
+              <b-button type="is-primary" @click="clearAltSrc">Clear scene links</b-button>
+              <b-button type="is-primary" @click="relinkAltSrc">Re-link scenes</b-button>
             </b-field>
             <b-field>
               <b-button type="is-primary" @click="save">Save</b-button>
@@ -180,8 +200,12 @@
       <!-- Proxy for scraper-->
       <div class="columns" v-if="activeTab == 4">
         <div class="column">
-          <section>
-            <b-field :label="$t('Proxy')" label-position="on-border">
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="security-network" size="is-small"/>
+              {{ $t('Proxy') }}
+            </div>
+            <b-field :label="$t('Proxy')" label-position="on-border" class="narrow-field">
               <b-input v-model="scraperProxy" :placeholder="$t('Optional: http proxy')"></b-input>
             </b-field>
             <b-field>
@@ -194,11 +218,15 @@
       <!-- Headers/Cookies tab -->
       <div class="columns" v-if="activeTab == 5">
         <div class="column">
-          <section>            
+          <section class="settings-card">
+            <div class="settings-card-title">
+              <b-icon pack="mdi" icon="cookie-cog-outline" size="is-small"/>
+              {{ $t('Cookies/Headers') }}
+            </div>
             <b-field>
-              <b-field>
+              <b-field class="button-row">
                 <b-tooltip label="Select a file to import config for a scraper or trailers"
-                  type="is-primary is-light" :delay="1000" style="margin-left: 1em;" >
+                  type="is-primary is-light" :delay="1000" >
                   <b-field class="file is-primary" :class="{'has-name': !!file}">
                     <b-upload v-model="file" class="file-label" icon-left="upload" size="is-small">
                         <span class="file-cta">
@@ -211,8 +239,8 @@
                     </b-upload>
                   </b-field>
                 </b-tooltip>
-                <b-button v-if="showConfigField" type="is-primary" style="margin-left: 1em;" @click="saveCollectorConfig">Save</b-button>
-                <b-button v-if="showConfigField" type="is-primary" style="margin-left: 1em;" @click="deleteCollectorConfig" icon-right="delete"></b-button>
+                <b-button v-if="showConfigField" type="is-primary" @click="saveCollectorConfig">Save</b-button>
+                <b-button v-if="showConfigField" type="is-primary" @click="deleteCollectorConfig" icon-right="delete"></b-button>
               </b-field>
               <b-autocomplete v-model="kvName" ref="autocompleteconfig" :data="filteredCollectorConfigList" :open-on-focus="true" :clearable="true" 
                 placeholder="e.g. domainname-scraper or domainname-trailers " 
@@ -225,7 +253,7 @@
               </b-autocomplete>
             </b-field>
             <b-field v-if="showConfigField">
-              <p><b>Headers</b><b-button style="margin-left: 1em;" @click="addHeaderRow" size="is-small"><b-icon pack="mdi" icon="plus" size="is-small"></b-icon></b-button></p>              
+              <p class="kv-label"><b>Headers</b><b-button class="kv-add" @click="addHeaderRow" size="is-small"><b-icon pack="mdi" icon="plus" size="is-small"></b-icon></b-button></p>
             </b-field>
             <b-table v-if="showConfigField" :data="headers" >
               <b-table-column field="key" :label="$t('Key')" width="200" v-slot="props">
@@ -240,7 +268,7 @@
             </b-table>
 
             <b-field v-if="showConfigField" >
-              <p><b>Cookies</b><b-button style="margin-left: 1em;"@click="addCookieRow" size="is-small"><b-icon pack="mdi" icon="plus" size="is-small"></b-icon></b-button></p>              
+              <p class="kv-label"><b>Cookies</b><b-button class="kv-add" @click="addCookieRow" size="is-small"><b-icon pack="mdi" icon="plus" size="is-small"></b-icon></b-button></p>
             </b-field>
             <b-table v-if="showConfigField" :data="cookies" >
               <b-table-column field="name" :label="$t('Key')" width="200" v-slot="props">
@@ -623,5 +651,83 @@ export default {
 </script>
 
 <style scoped>
+.options-page-head {
+  margin-bottom: 1.25rem;
+}
 
+.options-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xbvr-text, #1c2333);
+  margin-bottom: 0.15rem;
+}
+
+.options-desc {
+  color: var(--xbvr-text-muted, #64708a);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.options-tabs {
+  margin-bottom: 1rem;
+}
+
+.options-tabs :deep(ul[role="tablist"]) {
+  margin-left: 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed a) {
+  border-radius: var(--xbvr-radius-sm, 8px) var(--xbvr-radius-sm, 8px) 0 0;
+}
+
+.options-tabs :deep(.tabs.is-boxed li.is-active a) {
+  background: var(--xbvr-surface, #ffffff);
+  border-color: var(--xbvr-border, #e3e6ec);
+  border-bottom-color: transparent;
+  color: var(--xbvr-primary, #4f46e5);
+}
+
+.settings-card {
+  background: var(--xbvr-surface, #ffffff);
+  border: 1px solid var(--xbvr-border, #e3e6ec);
+  border-radius: var(--xbvr-radius, 12px);
+  box-shadow: var(--xbvr-shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.settings-card-title {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xbvr-text-muted, #64708a);
+  margin-bottom: 0.9rem;
+}
+
+.settings-card-title .icon {
+  color: var(--xbvr-text-faint, #7d88a1);
+}
+
+.button-row > *:not(:last-child) {
+  margin-right: 0.6rem;
+}
+
+.narrow-field {
+  max-width: 420px;
+}
+
+.kv-label {
+  display: flex;
+  align-items: center;
+  color: var(--xbvr-text, #1c2333);
+}
+
+.kv-add {
+  margin-left: 0.6rem;
+}
 </style>
