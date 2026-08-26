@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/xbapps/xbvr/pkg/authlog"
 	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
@@ -172,19 +175,13 @@ func isDeoAuthEnabled() bool {
 // ignore Set-Cookie are unaffected. HttpOnly is deliberate: no client-side
 // code reads the cookie, and the stable non-expiring token must not be
 // exfiltratable via XSS. No Secure attribute — XBVR serves plain HTTP.
-func setPlayerSessionCookie(resp *restful.Response) {
-	token := config.PlayerSessionToken()
-	if token == "" {
+func setPlayerSessionCookie(component string, resp *restful.Response) {
+	cookie := config.PlayerSessionCookie()
+	if cookie == nil {
 		return
 	}
-	http.SetCookie(resp.ResponseWriter, &http.Cookie{
-		Name:     config.PlayerSessionCookieName,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   30 * 24 * 60 * 60, // 30 days
-	})
+	http.SetCookie(resp.ResponseWriter, cookie)
+	authlog.Event(component, "minted session cookie %s=%s", config.PlayerSessionCookieName, cookie.Value)
 }
 
 func getProto(req *restful.Request) string {
@@ -213,6 +210,15 @@ func setDeoPlayerHost(req *restful.Request) {
 }
 
 func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
+	// Buffer the raw body for the auth log and restore it for downstream
+	// consumers (BodyParameter reads the form body).
+	var rawBody []byte
+	if req.Request.Body != nil && req.Request.Body != http.NoBody {
+		rawBody, _ = io.ReadAll(req.Request.Body)
+		req.Request.Body = io.NopCloser(bytes.NewReader(rawBody))
+	}
+	authlog.Request("deovr", req.Request, rawBody)
+
 	if isDeoAuthEnabled() {
 		authState := "0"
 
@@ -227,6 +233,9 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 				authState = "-1"
 			}
 		}
+
+		result := map[string]string{"0": "no-credentials", "1": "success", "-1": "failed"}[authState]
+		authlog.Event("deovr", "auth user=%q result=%s", username, result)
 
 		if authState != "1" {
 			msg := "Login Required"
@@ -245,8 +254,10 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 			resp.WriteHeaderAndEntity(http.StatusOK, unauthLib)
 			return
 		}
+	} else {
+		authlog.Event("deovr", "auth disabled, allowing request")
 	}
-	setPlayerSessionCookie(resp)
+	setPlayerSessionCookie("deovr", resp)
 	chain.ProcessFilter(req, resp)
 }
 

@@ -24,6 +24,7 @@ import (
 	"willnorris.com/go/imageproxy"
 
 	"github.com/xbapps/xbvr/pkg/api"
+	"github.com/xbapps/xbvr/pkg/authlog"
 	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/migrations"
@@ -48,10 +49,22 @@ func authHandle(pattern string, authEnabled bool, authSecret auth.SecretProvider
 		// login) is accepted as an alternative to Basic Auth, so the headset
 		// browser reaches the Web UI without a second login.
 		http.HandleFunc(pattern, func(res http.ResponseWriter, req *http.Request) {
+			authlog.Request("ui", req, nil)
 			if hasValidPlayerSession(req) {
+				authlog.Event("ui", "auth method=cookie result=accepted")
 				http.StripPrefix(pattern, handler).ServeHTTP(res, req)
 				return
 			}
+			// The player credential pair (DeoVR/HereSphere) is accepted as an
+			// alternative to the UI credentials, and mints the session cookie
+			// so the Basic prompt does not reappear for every asset.
+			if user, password, ok := req.BasicAuth(); ok && checkPlayerBasicAuth(user, password) {
+				authlog.Event("ui", "auth method=basic user=%q result=success (player credentials)", user)
+				setPlayerSessionCookie("ui", res)
+				http.StripPrefix(pattern, handler).ServeHTTP(res, req)
+				return
+			}
+			authlog.Event("ui", "auth delegating to basic auth")
 			basicWrapped(res, req)
 		})
 	} else {
@@ -89,7 +102,15 @@ func StartServer(version, commit, branch, date string) {
 	// API endpoints
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/").To(func(req *restful.Request, resp *restful.Response) {
-		resp.AddHeader("Location", "/ui/")
+		// Known VR players get the player login page; everyone else goes
+		// straight to the Web UI.
+		target := "/ui/"
+		if isPlayerClient(req.Request) {
+			target = "/login"
+		}
+		authlog.Event("root", "GET / from %s (ua=%q, x-requested-with=%q) -> %s",
+			req.Request.RemoteAddr, req.Request.UserAgent(), req.Request.Header.Get("X-Requested-With"), target)
+		resp.AddHeader("Location", target)
 		resp.WriteHeader(http.StatusFound)
 	}))
 
@@ -149,6 +170,10 @@ func StartServer(version, commit, branch, date string) {
 
 	// Static files
 	authHandle("/ui/", common.IsUIAuthEnabled(), common.GetUISecret, http.FileServer(ui.GetFileSystem(common.EnvConfig.Debug)))
+
+	// Player login page (issues the xbvr_player_session cookie). Standalone
+	// handler: reachable without prior auth, restricted to known VR players.
+	http.HandleFunc("/login", loginHandler)
 
 	// Imageproxy
 	r := mux.NewRouter()
@@ -216,13 +241,28 @@ func StartServer(version, commit, branch, date string) {
 		// cross-origin (e.g. DNS-rebinding) page cannot authenticate. A valid
 		// player-session cookie (attached by the browser to the same-origin
 		// handshake) is accepted as an alternative credential.
-		if common.IsUIAuthEnabled() && !hasValidPlayerSession(req) {
-			user, password, ok := req.BasicAuth()
-			if !ok || user != common.EnvConfig.UIUsername || !checkUIPassword(password) {
-				w.Header().Set("WWW-Authenticate", `Basic realm="default"`)
-				http.Error(w, "401: Unauthorized", http.StatusUnauthorized)
-				return
+		authlog.Request("ws", req, nil)
+		if common.IsUIAuthEnabled() {
+			if hasValidPlayerSession(req) {
+				authlog.Event("ws", "auth method=cookie result=accepted")
+			} else {
+				user, password, ok := req.BasicAuth()
+				uiOK := ok && user == common.EnvConfig.UIUsername && checkUIPassword(password)
+				playerOK := !uiOK && checkPlayerBasicAuth(user, password)
+				if !uiOK && !playerOK {
+					authlog.Event("ws", "auth method=basic result=failed (401)")
+					w.Header().Set("WWW-Authenticate", `Basic realm="default"`)
+					http.Error(w, "401: Unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if playerOK {
+					authlog.Event("ws", "auth method=basic user=%q result=success (player credentials)", user)
+				} else {
+					authlog.Event("ws", "auth method=basic user=%q result=success", user)
+				}
 			}
+		} else {
+			authlog.Event("ws", "auth disabled, allowing handshake")
 		}
 		// CSWSH note: a websocket initiated by a standard web page (Origin
 		// header present) should originate from the XBVR UI itself, i.e. the
@@ -233,7 +273,10 @@ func StartServer(version, commit, branch, date string) {
 		if !wsOriginAllowed(req) {
 			log.Warnf("websocket request with non-matching Origin %q (Host %q) — allowing (non-standard browser)",
 				req.Header.Get("Origin"), req.Host)
+			authlog.Event("ws", "origin mismatch on handshake (allowed): Origin %q vs Host %q",
+				req.Header.Get("Origin"), req.Host)
 		}
+		authlog.Event("ws", "handshake accepted, proxying (stream payload not captured)")
 		// The origin has been validated above; remove it so the WAMP server's
 		// own same-host check (which sees the loopback backend address, not
 		// the UI host) does not reject the forwarded request.

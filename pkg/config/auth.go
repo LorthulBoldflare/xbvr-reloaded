@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"net/http"
 )
 
 // PlayerSessionCookieName carries the stable credential-derived token
@@ -35,4 +36,25 @@ func PlayerSessionToken() string {
 	mac := hmac.New(sha256.New, []byte(Config.Interfaces.DeoVR.Password))
 	mac.Write([]byte("xbvr-player-ui:" + Config.Interfaces.DeoVR.Username))
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// PlayerSessionCookie builds the session cookie carrying PlayerSessionToken,
+// or nil when player auth is disabled. Shared by the player API filters and
+// the Web UI surfaces so the cookie is identical regardless of minting site.
+// HttpOnly is deliberate: no client-side code reads the cookie, and the
+// stable non-expiring token must not be exfiltratable via XSS. No Secure
+// attribute — XBVR serves plain HTTP.
+func PlayerSessionCookie() *http.Cookie {
+	token := PlayerSessionToken()
+	if token == "" {
+		return nil
+	}
+	return &http.Cookie{
+		Name:     PlayerSessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   30 * 24 * 60 * 60, // 30 days
+	}
 }

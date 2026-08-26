@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +13,13 @@ import (
 
 	"github.com/xbapps/xbvr/pkg/config"
 )
+
+// TestMain keeps authlog output from tests out of the real
+// $HOME/xbvr_auth.log.
+func TestMain(m *testing.M) {
+	os.Setenv("XBVR_AUTH_LOG", filepath.Join(os.TempDir(), "xbvr_auth_api_test.log"))
+	os.Exit(m.Run())
+}
 
 const playerTestPassword = "player-pass"
 

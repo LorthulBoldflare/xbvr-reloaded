@@ -24,6 +24,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 
+	"github.com/xbapps/xbvr/pkg/authlog"
 	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/scrape"
@@ -133,6 +134,8 @@ func getHeresphereRequestBody(req *restful.Request) []byte {
 func HeresphereAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
 	requestBody, _ := io.ReadAll(req.Request.Body)
 	req.Request = req.Request.WithContext(context.WithValue(req.Request.Context(), heresphereRequestBodyKey, requestBody))
+	authlog.Request("heresphere", req.Request, requestBody)
+
 	if isDeoAuthEnabled() {
 		authState := 0
 		var requestData HereSphereAuthRequest
@@ -147,6 +150,9 @@ func HeresphereAuthFilter(req *restful.Request, resp *restful.Response, chain *r
 				}
 			}
 		}
+
+		result := map[int]string{0: "no-credentials", 1: "success", -1: "failed"}[authState]
+		authlog.Event("heresphere", "auth user=%q result=%s", requestData.Username, result)
 
 		if authState != 1 {
 			msg := "Login Required"
@@ -165,8 +171,10 @@ func HeresphereAuthFilter(req *restful.Request, resp *restful.Response, chain *r
 			resp.WriteHeaderAndEntity(http.StatusOK, unauthLib)
 			return
 		}
+	} else {
+		authlog.Event("heresphere", "auth disabled, allowing request")
 	}
-	setPlayerSessionCookie(resp)
+	setPlayerSessionCookie("heresphere", resp)
 	chain.ProcessFilter(req, resp)
 }
 
