@@ -83,6 +83,7 @@ export default {
       vm.$store.dispatch('optionsWeb/load')
       vm.$store.dispatch('sceneList/load', { offset: 0 })
       vm.$store.dispatch('optionsAdvanced/load')
+      vm.$store.dispatch('optionsStorage/load')
     })
   },
   beforeRouteUpdate (to, from, next) {

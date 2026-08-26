@@ -5,6 +5,20 @@
     <div class="columns is-multiline is-full">
       <div class="column">
         <strong>{{total}} results</strong>
+        <b-field grouped style="display:inline-flex; margin-left:1em; vertical-align:middle;">
+          <b-button size="is-small" icon-pack="mdi" icon-left="import"
+                    :disabled="!webhookConfigured('trigger_external_import')"
+                    :title="webhookConfigured('trigger_external_import') ? $t('Trigger External Import') : $t('Configure in Options → Storage → Webhooks')"
+                    @click="triggerWebhook('trigger-import')">
+            {{$t("Import")}}
+          </b-button>
+          <b-button size="is-small" icon-pack="mdi" icon-left="refresh"
+                    :disabled="!webhookConfigured('refresh_external_import')"
+                    :title="webhookConfigured('refresh_external_import') ? $t('Refresh External Import') : $t('Configure in Options → Storage → Webhooks')"
+                    @click="triggerWebhook('refresh-import')">
+            {{$t("Refresh")}}
+          </b-button>
+        </b-field>
       </div>
       <div class="column">
         <div class="columns is-gapless">
@@ -130,6 +144,17 @@ export default {
     },
   },
   methods: {
+    webhookConfigured (key) {
+      const webhooks = this.$store.state.optionsStorage.options.webhooks
+      return !!(webhooks && webhooks[key] && webhooks[key].url)
+    },
+    async triggerWebhook (name) {
+      await api.get('/task/webhook/' + name)
+      this.$buefy.toast.open({
+        message: this.$t('Webhook triggered'),
+        type: 'is-success'
+      })
+    },
     reloadList () {
       this.$router.push({
         name: 'scenes',

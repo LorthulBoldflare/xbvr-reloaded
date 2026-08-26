@@ -1,5 +1,10 @@
 import api from '../api'
 
+const defaultWebhooks = () => ({
+  trigger_external_import: { method: 'GET', url: '', headers: '' },
+  refresh_external_import: { method: 'GET', url: '', headers: '' }
+})
+
 const state = {
   items: [],
   options: {
@@ -7,7 +12,8 @@ const state = {
     forbidden_video_ext: [],
     video_ext: [],
     default_video_ext: [],
-  },  
+    webhooks: defaultWebhooks(),
+  },
 }
 
 const mutations = {
@@ -25,11 +31,12 @@ const actions = {
       state.options.forbidden_video_ext = data.forbidden_video_ext
       state.options.video_ext = data.video_ext
       state.options.default_video_ext = data.default_video_ext
+      state.options.webhooks = { ...defaultWebhooks(), ...(data.webhooks || {}) }
     })
   },
-  async save ({ state }, enabled) { 
-    api.put('/options/storage', { json: { ...state.options } })      
-  },  
+  async save ({ state }, enabled) {
+    api.put('/options/storage', { json: { ...state.options } })
+  },
 }
 
 export default {

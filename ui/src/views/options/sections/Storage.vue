@@ -114,6 +114,35 @@
 
     <hr/>
 
+    <div>
+      <h3 class="title">{{ $t('Webhooks') }}</h3>
+      <div class="columns">
+        <div class="column" v-for="wh in webhookDefs" :key="wh.key">
+          <h4 class="subtitle">{{ $t(wh.title) }}</h4>
+          <p>{{ $t(wh.description) }}</p>
+          <b-field :label="$t('HTTP Method')">
+            <b-select v-model="webhooks[wh.key].method">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+            </b-select>
+          </b-field>
+          <b-field :label="$t('URL')">
+            <b-input v-model="webhooks[wh.key].url" placeholder="https://example.com/hook"/>
+          </b-field>
+          <b-field :label="$t('Headers')">
+            <b-input type="textarea" v-model="webhooks[wh.key].headers"
+                     :placeholder="$t('One header per line, e.g.') + '\nAuthorization: Bearer token'"/>
+          </b-field>
+        </div>
+      </div>
+      <div class="control">
+        <button class="button is-link" v-on:click="saveWebhooks">{{ $t('Save webhooks') }}</button>
+      </div>
+    </div>
+
+    <hr/>
+
   <div>
     <h3 class="title">{{ $t('Options') }}</h3>
     <b-field>
@@ -159,6 +188,18 @@ export default {
       serviceToken: '',
       serviceSelected: null,
       newVolumePath: '',
+      webhookDefs: [
+        {
+          key: 'trigger_external_import',
+          title: 'Trigger External Import',
+          description: 'This can call an external tool to import scenes from another service.'
+        },
+        {
+          key: 'refresh_external_import',
+          title: 'Refresh External Import',
+          description: 'This can call an external tool to refresh imports - this can be used if the tool provides a more lightweight import option if there is preexisting state.'
+        }
+      ],
       prettyBytes,
       parseISO,
       formatDistanceToNow,
@@ -206,6 +247,9 @@ export default {
       api.get(`/task/rescan/${folder.id}`)
     },
     saveExtensions () {
+      this.$store.dispatch('optionsStorage/save')
+    },
+    saveWebhooks () {
       this.$store.dispatch('optionsStorage/save')
     },
     OnExtAdded(tag) {
@@ -327,6 +371,9 @@ export default {
     },
     default_video_ext: {
       get () {return this.$store.state.optionsStorage.options.default_video_ext}
+    },
+    webhooks () {
+      return this.$store.state.optionsStorage.options.webhooks
     },
   }
 }

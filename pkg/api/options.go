@@ -206,15 +206,17 @@ type RequestSCustomSiteCreate struct {
 }
 
 type GetStorageResponse struct {
-	Volumes           []models.Volume `json:"volumes"`
-	MatchOhash        bool            `json:"match_ohash"`
-	VideoExt          []string        `json:"video_ext"`
-	ForbiddenVideoExt []string        `json:"forbidden_video_ext"`
-	DefaultVideoExt   []string        `json:"default_video_ext"`
+	Volumes           []models.Volume       `json:"volumes"`
+	MatchOhash        bool                  `json:"match_ohash"`
+	VideoExt          []string              `json:"video_ext"`
+	ForbiddenVideoExt []string              `json:"forbidden_video_ext"`
+	DefaultVideoExt   []string              `json:"default_video_ext"`
+	Webhooks          config.WebhooksConfig `json:"webhooks"`
 }
 type RequestSaveOptionsStorage struct {
-	MatchOhash bool     `json:"match_ohash"`
-	VideoExt   []string `json:"video_ext"`
+	MatchOhash bool                  `json:"match_ohash"`
+	VideoExt   []string              `json:"video_ext"`
+	Webhooks   config.WebhooksConfig `json:"webhooks"`
 }
 
 type RequestSaveCollectorConfig struct {
@@ -686,6 +688,7 @@ func (i ConfigResource) listStorage(req *restful.Request, resp *restful.Response
 	}
 	out.ForbiddenVideoExt = config.ForbiddenVideoExtensions
 	out.DefaultVideoExt = config.DefaultVideoExtensions
+	out.Webhooks = config.Config.Webhooks
 	resp.WriteHeaderAndEntity(http.StatusOK, out)
 }
 
@@ -1254,9 +1257,25 @@ func (i ConfigResource) saveOptionsStorage(req *restful.Request, resp *restful.R
 		allowedExt = config.DefaultVideoExtensions
 	}
 	config.Config.Storage.VideoExt = allowedExt
+
+	config.Config.Webhooks.TriggerExternalImport = normalizeWebhook(r.Webhooks.TriggerExternalImport)
+	config.Config.Webhooks.RefreshExternalImport = normalizeWebhook(r.Webhooks.RefreshExternalImport)
 	config.SaveConfig()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, r)
+}
+
+// normalizeWebhook trims the URL and restricts the method to GET/POST/PUT,
+// falling back to GET for anything else.
+func normalizeWebhook(w config.WebhookConfig) config.WebhookConfig {
+	w.URL = strings.TrimSpace(w.URL)
+	switch strings.ToUpper(strings.TrimSpace(w.Method)) {
+	case "GET", "POST", "PUT":
+		w.Method = strings.ToUpper(strings.TrimSpace(w.Method))
+	default:
+		w.Method = "GET"
+	}
+	return w
 }
 
 func (i ConfigResource) getCollectorConfigs(req *restful.Request, resp *restful.Response) {

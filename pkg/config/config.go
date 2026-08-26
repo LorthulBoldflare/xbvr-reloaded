@@ -10,6 +10,17 @@ import (
 	"github.com/xbapps/xbvr/pkg/models"
 )
 
+type WebhookConfig struct {
+	Method  string `default:"GET" json:"method"`
+	URL     string `default:"" json:"url"`
+	Headers string `default:"" json:"headers"`
+}
+
+type WebhooksConfig struct {
+	TriggerExternalImport WebhookConfig `json:"trigger_external_import"`
+	RefreshExternalImport WebhookConfig `json:"refresh_external_import"`
+}
+
 type CronSchedule struct {
 	Enabled         bool `default:"true" json:"enabled"`
 	HourInterval    int  `json:"hourInterval"`
@@ -179,6 +190,7 @@ type ObjectConfig struct {
 		MatchOhash bool     `default:"false" json:"match_ohash"`
 		VideoExt   []string `json:"video_ext"`
 	} `json:"storage"`
+	Webhooks WebhooksConfig `json:"webhooks"`
 	ScraperSettings struct {
 		TMWVRNet struct {
 			TmwMembersDomain string `default:"members.tmwvrnet.com" json:"tmwMembersDomain"`

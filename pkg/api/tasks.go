@@ -3,13 +3,17 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	restfulspec "github.com/emicklei/go-restful-openapi/v2"
 	"github.com/emicklei/go-restful/v3"
+	"github.com/go-resty/resty/v2"
 	"github.com/xbapps/xbvr/pkg/common"
+	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/tasks"
 )
@@ -111,6 +115,10 @@ func (i TaskResource) WebService() *restful.WebService {
 
 	ws.Route(ws.GET("/relink_alt_aource_scenes").To(i.relink_alt_aource_scenes).
 		Metadata(restfulspec.KeyOpenAPITags, tags))
+
+	ws.Route(ws.GET("/webhook/{webhook-name}").To(i.triggerWebhook).
+		Param(ws.PathParameter("webhook-name", "Webhook to trigger - possible choices are `trigger-import` and `refresh-import`").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, tags))
 	return ws
 }
 
@@ -128,6 +136,65 @@ func (i TaskResource) rescan(req *restful.Request, resp *restful.Response) {
 
 func (i TaskResource) sceneRrefresh(req *restful.Request, resp *restful.Response) {
 	go tasks.RefreshSceneStatuses()
+}
+
+// triggerWebhook executes one of the configured webhooks (Options -> Storage
+// -> Webhooks) server-side, so the browser is not subject to CORS and
+// configured headers are not exposed at trigger time.
+func (i TaskResource) triggerWebhook(req *restful.Request, resp *restful.Response) {
+	tlog := log.WithField("task", "webhook")
+
+	var webhook config.WebhookConfig
+	switch req.PathParameter("webhook-name") {
+	case "trigger-import":
+		webhook = config.Config.Webhooks.TriggerExternalImport
+	case "refresh-import":
+		webhook = config.Config.Webhooks.RefreshExternalImport
+	default:
+		APIError(req, resp, http.StatusBadRequest, errors.New("unknown webhook"))
+		return
+	}
+
+	if webhook.URL == "" {
+		APIError(req, resp, http.StatusBadRequest, errors.New("webhook URL is not configured"))
+		return
+	}
+
+	// Parse headers: one `Key: Value` per line, blank and malformed lines skipped
+	headers := map[string]string{}
+	for _, line := range strings.Split(webhook.Headers, "\n") {
+		key, value, found := strings.Cut(strings.TrimSpace(line), ":")
+		if !found || strings.TrimSpace(key) == "" {
+			continue
+		}
+		headers[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+
+	r := resty.New().SetTimeout(60*time.Second).R().SetHeaders(headers)
+
+	var whResp *resty.Response
+	var err error
+	switch webhook.Method {
+	case "POST":
+		whResp, err = r.Post(webhook.URL)
+	case "PUT":
+		whResp, err = r.Put(webhook.URL)
+	default:
+		whResp, err = r.Get(webhook.URL)
+	}
+	if err != nil {
+		tlog.Error("Webhook request failed: ", err)
+		APIError(req, resp, http.StatusBadGateway, err)
+		return
+	}
+	if whResp.IsError() {
+		tlog.Error("Webhook responded with status ", whResp.StatusCode())
+		APIError(req, resp, http.StatusBadGateway, fmt.Errorf("webhook responded with status %d", whResp.StatusCode()))
+		return
+	}
+
+	tlog.Info("Webhook triggered, got status ", whResp.StatusCode())
+	resp.WriteHeader(http.StatusOK)
 }
 
 func (i TaskResource) cleanTags(req *restful.Request, resp *restful.Response) {
