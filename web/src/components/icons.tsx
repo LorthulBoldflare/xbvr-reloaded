@@ -102,3 +102,88 @@ export const PlusIcon = ({ className = d }: IconProps) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 )
+
+export const FilmIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <rect x="2" y="2" width="20" height="20" rx="2.5" />
+    <path d="M7 2v20M17 2v20M2 9h5M2 15h5M17 9h5M17 15h5" />
+  </svg>
+)
+
+export const UsersIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+)
+
+export const SlidersIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+    <path d="M1 14h6M9 8h6M17 16h6" />
+  </svg>
+)
+
+export const SearchIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+  </svg>
+)
+
+export const HeartIcon = ({ className = d, filled = false }: IconProps & { filled?: boolean }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
+    strokeWidth="2"
+    className={className}
+    aria-hidden
+  >
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+)
+
+export const BookmarkIcon = ({ className = d, filled = false }: IconProps & { filled?: boolean }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
+    strokeWidth="2"
+    className={className}
+    aria-hidden
+  >
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+)
+
+export const ChevronsLeftIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+  </svg>
+)
+
+export const ChevronsRightIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+  </svg>
+)
+
+export const CloudOffIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+)
+
+export const StorageOffIcon = ({ className = d }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M21 12c0 1.66-4 3-9 3-1.06 0-2.07-.06-3-.17" />
+    <path d="M3 5v6c0 1.66 4 3 9 3" opacity="0.4" />
+    <path d="M3 12v7c0 1.66 4 3 9 3 1.06 0 2.07-.06 3-.17" />
+    <line x1="17" y1="17" x2="23" y2="23" />
+    <line x1="23" y1="17" x2="17" y2="23" />
+  </svg>
+)

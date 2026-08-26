@@ -53,17 +53,19 @@ export function OptionsPage() {
   const active = GROUPS.flatMap((g) => g.sections).find((s) => s.id === section) ?? GROUPS[0].sections[0]
 
   return (
-    <div className="flex gap-6">
-      <aside className="sticky top-14 w-44 shrink-0 self-start">
+    <div className="flex gap-8">
+      <aside className="sticky top-5 w-44 shrink-0 self-start">
         {GROUPS.map((g) => (
-          <div key={g.name} className="mb-4">
-            <div className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-muted">{g.name}</div>
+          <div key={g.name} className="mb-5">
+            <div className="mb-1.5 px-2.5 text-[10px] font-bold uppercase tracking-widest text-muted">{g.name}</div>
             {g.sections.map((s) => (
               <Link
                 key={s.id}
                 to={`/options/${s.id}`}
-                className={`block rounded-lg px-2 py-1.5 text-sm ${
-                  s.id === active.id ? 'bg-accent-soft font-semibold text-accent-strong' : 'text-muted hover:bg-surface-2 hover:text-fg'
+                className={`block rounded-xl px-2.5 py-1.5 text-sm transition-colors ${
+                  s.id === active.id
+                    ? 'bg-accent-soft font-semibold text-accent-strong shadow-[inset_2px_0_0_0_var(--accent)]'
+                    : 'text-muted hover:bg-surface-2 hover:text-fg'
                 }`}
               >
                 {s.label}
@@ -72,7 +74,7 @@ export function OptionsPage() {
           </div>
         ))}
       </aside>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 max-w-5xl flex-1">
         <active.component />
       </div>
     </div>

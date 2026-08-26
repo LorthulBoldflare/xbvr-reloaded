@@ -3,37 +3,33 @@ import type { File } from '../api/types'
 import { formatDate, prettyBytes } from '../lib/format'
 import { FileIcon } from './icons'
 
-// Card for an unmatched file inside the scene grid — same shape/hover as
-// SceneCard, but no scene metadata and no preview video.
+// Card for an unmatched file inside the scene grid — same tile shape/hover
+// as SceneCard, but no scene metadata and no preview video.
 export function FileCard({ file }: { file: File }) {
   const navigate = useNavigate()
   return (
     <div className="group">
       <div
-        className="relative flex aspect-video cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-surface-3 ring-accent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-xl group-hover:ring-2"
+        className="relative aspect-video cursor-pointer overflow-hidden rounded-xl bg-surface-2 ring-warn transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_10px_36px_rgba(0,0,0,0.45)] group-hover:ring-2"
         onClick={() => navigate(`/files/${file.id}`)}
         title={`${file.path}/${file.filename}`}
       >
-        <FileIcon className="h-12 w-12 text-muted" />
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-warn/90 px-2 py-0.5 text-[10px] font-bold uppercase text-black">
-          unmatched
-        </span>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap justify-end gap-1 p-1.5 text-[10px]">
-          <span className="rounded-full bg-black/55 px-1.5 py-0.5 font-semibold text-white backdrop-blur-sm">
-            {prettyBytes(file.size)}
-          </span>
-          {file.video_width > 0 && (
-            <span className="rounded-full bg-black/55 px-1.5 py-0.5 font-semibold text-white backdrop-blur-sm">
-              {file.video_width}×{file.video_height}
-            </span>
-          )}
+        <FileIcon className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 text-muted" />
+        <div className="scrim pointer-events-none absolute inset-x-0 bottom-0 flex flex-col justify-end p-2.5 pt-8">
+          <div className="line-clamp-2 break-all text-[12px] font-medium leading-snug text-white drop-shadow">
+            {file.filename}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-white/75">
+            <span className="rounded bg-warn px-1 text-[10px] font-bold uppercase text-black">unmatched</span>
+            <span>{prettyBytes(file.size)}</span>
+            {file.video_width > 0 && (
+              <span>
+                {file.video_width}×{file.video_height}
+              </span>
+            )}
+            <span>{formatDate(file.created_time)}</span>
+          </div>
         </div>
-      </div>
-      <div className="pt-1.5">
-        <div className="line-clamp-2 min-h-[2.6em] break-all text-[13px] font-semibold leading-snug">
-          {file.filename}
-        </div>
-        <div className="text-right text-[11px] text-muted">{formatDate(file.created_time)}</div>
       </div>
     </div>
   )

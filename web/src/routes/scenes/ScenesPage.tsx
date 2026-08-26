@@ -18,8 +18,6 @@ import { FiltersPopoverContent } from './FiltersPopover'
 
 const PAGE_SIZE = 80
 
-type View = 'downloaded' | 'browse'
-
 function newestVideoTime(s: Scene): number {
   let max = 0
   for (const f of s.file ?? []) {
@@ -38,8 +36,6 @@ export function ScenesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, setFilters, patch } = useSceneFilterStore()
   const [autoLoad, setAutoLoad] = useState(true)
-
-  const view = (searchParams.get('view') === 'browse' ? 'browse' : 'downloaded') as View
 
   // ---- URL → store (on mount / external nav), store → URL (on change)
   const lastQ = useRef<string | null>(null)
@@ -68,7 +64,10 @@ export function ScenesPage() {
 
   useEffect(() => {
     if (!didInit.current) return
-    const encoded = encodeJsonBase64(filters)
+    // Read the store imperatively: in the commit where the URL→store effect
+    // just applied an incoming deep link, the render-scoped `filters` closure
+    // is still stale (defaults) and would clobber the URL.
+    const encoded = encodeJsonBase64(useSceneFilterStore.getState().filters)
     if (encoded !== searchParams.get('q')) {
       lastQ.current = encoded
       setSearchParams(
@@ -88,19 +87,6 @@ export function ScenesPage() {
     const sid = searchParams.get('scene_id')
     if (sid) navigate(`/scenes/${sid}`, { replace: true })
   }, [searchParams, navigate])
-
-  const setView = (v: View) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (v === 'downloaded') next.delete('view')
-        else next.set('view', v)
-        return next
-      },
-      { replace: true }
-    )
-    setFilters(applyDlState(filters, v === 'downloaded' ? 'available' : 'any'))
-  }
 
   // ---- Data
   const listQuery = useInfiniteQuery({
@@ -207,26 +193,6 @@ export function ScenesPage() {
 
   return (
     <div>
-      {/* Tabs */}
-      <div className="mb-3 flex items-center gap-1 border-b border-line">
-        {(
-          [
-            { v: 'downloaded', label: 'Downloaded' },
-            { v: 'browse', label: 'Browse all' }
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.v}
-            onClick={() => setView(t.v)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-              view === t.v ? 'border-accent text-accent-strong' : 'border-transparent text-muted hover:text-fg'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       {/* Top bar: filters popover + sort + chips + count */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Popover
@@ -284,13 +250,7 @@ export function ScenesPage() {
       {/* Grid */}
       {listQuery.isLoading && <div className="py-16 text-center text-muted">Loading…</div>}
       {listQuery.isError && <div className="py-16 text-center text-danger">Failed to load scenes</div>}
-      <div
-        className={
-          view === 'browse'
-            ? 'grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2'
-            : 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4'
-        }
-      >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
         {items.map((item) =>
           item.kind === 'scene' ? (
             <SceneCard key={`s${item.scene.id}`} scene={item.scene} />

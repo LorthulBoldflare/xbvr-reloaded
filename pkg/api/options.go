@@ -778,6 +778,13 @@ func (i ConfigResource) removeStorage(req *restful.Request, resp *restful.Respon
 		return
 	}
 
+	var volumeCount int
+	db.Model(&models.Volume{}).Count(&volumeCount)
+	if volumeCount <= 1 {
+		APIError(req, resp, http.StatusBadRequest, errors.New("Cannot remove the last remaining storage location"))
+		return
+	}
+
 	db.Where("volume_id = ?", id).Delete(models.File{})
 	db.Delete(&vol)
 

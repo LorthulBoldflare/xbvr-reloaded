@@ -41,7 +41,7 @@ export function ActorDetails() {
   const queryClient = useQueryClient()
   const toast = useToastStore()
   const { data: state } = useOptionsState()
-  const web = state?.currentState?.web
+  const web = state?.config?.web
 
   const [tab, setTab] = useState(0)
   const [imgIdx, setImgIdx] = useState(0)

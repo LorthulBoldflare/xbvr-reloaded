@@ -121,7 +121,9 @@ export function StorageSection() {
                         if (await askConfirm({ title: `Remove ${v.path}?`, message: 'Files stay on disk.', danger: true }))
                           removeVolume.mutate(v.id)
                       }}
-                      className={`${btnDangerCls} px-2 py-0.5 text-xs`}
+                      disabled={volumes.length <= 1}
+                      title={volumes.length <= 1 ? 'Cannot remove the last remaining storage location' : undefined}
+                      className={`${btnDangerCls} px-2 py-0.5 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       Remove
                     </button>

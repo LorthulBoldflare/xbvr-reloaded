@@ -35,13 +35,15 @@ export function useSceneToggle() {
   })
 }
 
-const BTN = 'rounded border px-1.5 py-0.5 text-xs leading-none transition-colors'
+const BTN = 'rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none transition-colors'
 
 // The per-card / per-page scene flag buttons, gated by the Web UI options
-// (Options → Web UI controls which buttons are visible).
-export function SceneFlagButtons({ scene, onEdit }: { scene: Scene; onEdit?: () => void }) {
+// (Options → Web UI controls which buttons are visible). With `onTile` (used
+// on SceneCard) the favourite/watchlist buttons are omitted — those are
+// always-visible on-tile toggles instead.
+export function SceneFlagButtons({ scene, onEdit, onTile = false }: { scene: Scene; onEdit?: () => void; onTile?: boolean }) {
   const { data: state } = useOptionsState()
-  const web = state?.currentState?.web
+  const web = state?.config?.web
   const toggle = useSceneToggle()
 
   const t = (list: ToggleList) => toggle.mutate({ scene, list })
@@ -57,7 +59,9 @@ export function SceneFlagButtons({ scene, onEdit }: { scene: Scene; onEdit?: () 
           {scene.is_hidden ? 'unhide' : 'hide'}
         </button>
       )}
-      {web?.sceneWatchlist && (
+      {/* watchlist + favourite live as on-tile toggles (SceneCard); keep the
+          option-gated buttons only outside card context */}
+      {!onTile && web?.sceneWatchlist && (
         <button
           className={`${BTN} ${scene.watchlist ? 'border-accent text-accent-strong' : 'border-line text-muted hover:text-fg'}`}
           title="Watchlist"
@@ -75,7 +79,7 @@ export function SceneFlagButtons({ scene, onEdit }: { scene: Scene; onEdit?: () 
           trailer
         </button>
       )}
-      {web?.sceneFavourite && (
+      {!onTile && web?.sceneFavourite && (
         <button
           className={`${BTN} ${scene.favourite ? 'border-accent text-accent-strong' : 'border-line text-muted hover:text-fg'}`}
           title="Favourite"

@@ -41,7 +41,9 @@ export function ActorsPage() {
 
   useEffect(() => {
     if (!didInit.current) return
-    const encoded = encodeJsonBase64(filters)
+    // Read imperatively — render-scoped `filters` can be stale in the same
+    // commit that applied an incoming deep link (see ScenesPage).
+    const encoded = encodeJsonBase64(useActorFilterStore.getState().filters)
     if (encoded !== searchParams.get('q')) {
       setSearchParams(
         (prev) => {

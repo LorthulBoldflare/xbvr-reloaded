@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import { Navbar } from './components/Navbar'
+import { Sidebar, UpdateSnackbar } from './components/Sidebar'
 import { QuickFind } from './components/QuickFind'
 import { MigrationOverlay } from './components/MigrationOverlay'
 import { ToastHost } from './components/ToastHost'
@@ -35,11 +35,12 @@ export default function App() {
   }, [openQuickFind, quickFindOpen, confirmOpen])
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Navbar />
-      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-4">
+    <div className="flex min-h-full">
+      <Sidebar />
+      <main className="min-w-0 flex-1 px-5 py-5 lg:px-8">
         <Outlet />
       </main>
+      <UpdateSnackbar />
       <QuickFind />
       <SearchStashdbScenes />
       <ActorDetails />

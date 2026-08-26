@@ -47,7 +47,9 @@
             <button class="button is-small is-outlined" v-on:click='rescanFolder(props.row)' :title="$t('rescan folder')">
               <b-icon pack="mdi" icon="folder-refresh-outline"></b-icon>
             </button>
-            <button class="button is-danger is-small is-outlined" v-on:click='removeFolder(props.row)' :title="$t('remove folder')">
+            <button class="button is-danger is-small is-outlined" v-on:click='removeFolder(props.row)'
+                    :disabled="items.length <= 1"
+                    :title="items.length <= 1 ? $t('Cannot remove the last remaining storage location') : $t('remove folder')">
               <b-icon pack="mdi" icon="close-circle" size="is-small"></b-icon>
             </button>
           </b-field>
@@ -239,6 +241,9 @@ export default {
       await api.post('/options/storage', { json: { token: this.serviceToken, type: this.serviceSelected } })
     },
     removeFolder: function (folder) {
+      if (this.items.length <= 1) {
+        return
+      }
       this.$buefy.dialog.confirm({
         title: this.$t('Remove folder'),
         message: `You're about to remove storage location <strong>${folder.path}</strong> and its files from local database - files will remain intact at the location.`,

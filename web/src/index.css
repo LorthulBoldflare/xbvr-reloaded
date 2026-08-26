@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 /*
- * Semantic design tokens, switched via [data-theme] on <html>.
- * Tailwind v4 exposes these as utilities: bg-surface, text-fg, border-line, etc.
+ * Design tokens — purple/green/red on a dark-first base, with gradient
+ * accents. Switched via [data-theme] on <html>.
+ * Tailwind v4 exposes these as utilities: bg-page, bg-surface, text-fg, …
  */
 @theme inline {
+  --color-page: var(--page);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
@@ -15,6 +17,7 @@
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
   --color-warn: var(--warn);
   --color-ok: var(--ok);
@@ -22,35 +25,43 @@
 
 :root,
 [data-theme="light"] {
+  --page: #f4f4f9;
   --surface: #ffffff;
-  --surface-2: #f3f4f8;
-  --surface-3: #e8eaf1;
-  --border: #d7dae3;
-  --border-strong: #b9bdca;
-  --text: #1c2333;
-  --text-muted: #64708a;
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-soft: #eef0fe;
+  --surface-2: #eceef6;
+  --surface-3: #e0e4f0;
+  --border: #d5dae8;
+  --border-strong: #b7bfd8;
+  --text: #1d2230;
+  --text-muted: #5f6a85;
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --accent-soft: #ece5fd;
+  --accent-fg: #ffffff;
   --danger: #dc2626;
   --warn: #d97706;
-  --ok: #16a34a;
+  --ok: #059669;
+  --grad-from: #8b5cf6;
+  --grad-to: #6d28d9;
 }
 
 [data-theme="dark"] {
-  --surface: #14171f;
-  --surface-2: #1b1f2a;
-  --surface-3: #232838;
-  --border: #2e3446;
-  --border-strong: #414966;
-  --text: #e6e9f2;
-  --text-muted: #8b94ab;
-  --accent: #818cf8;
-  --accent-strong: #a5b0ff;
-  --accent-soft: #262b45;
+  --page: #0b0e14;
+  --surface: #131722;
+  --surface-2: #1a1f2e;
+  --surface-3: #222839;
+  --border: #2a3145;
+  --border-strong: #3d4666;
+  --text: #eceef4;
+  --text-muted: #98a0b5;
+  --accent: #a78bfa;
+  --accent-strong: #c4b5fd;
+  --accent-soft: #241d3d;
+  --accent-fg: #ffffff;
   --danger: #f87171;
   --warn: #fbbf24;
-  --ok: #4ade80;
+  --ok: #34d399;
+  --grad-from: #8b5cf6;
+  --grad-to: #6d28d9;
 }
 
 html,
@@ -60,14 +71,61 @@ body,
 }
 
 body {
-  background: var(--surface-2);
+  background: var(--page);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
+}
+
+/* Subtle purple/green ambient tints on the dark page */
+[data-theme="dark"] body {
+  background-image:
+    radial-gradient(60rem 30rem at -10% -10%, rgba(139, 92, 246, 0.10), transparent 60%),
+    radial-gradient(50rem 28rem at 110% 110%, rgba(52, 211, 153, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(60rem 30rem at -10% -10%, rgba(139, 92, 246, 0.08), transparent 60%),
+    radial-gradient(50rem 28rem at 110% 110%, rgba(5, 150, 105, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.015em;
 }
 
 /* Thin, unobtrusive scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Focus visibility for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Gradient scrim used on media tiles */
+.scrim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.45) 45%, transparent 100%);
+}
+
+/* Gradient brand mark (purple → green) */
+.brand-gradient {
+  background: linear-gradient(135deg, #8b5cf6 0%, #34d399 100%);
+}
+
+/* Gradient primary buttons (purple) */
+.btn-gradient {
+  background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
+  color: #fff;
+  border: none;
+}
+.btn-gradient:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.btn-gradient:disabled {
+  opacity: 0.5;
 }

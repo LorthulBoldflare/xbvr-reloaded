@@ -44,7 +44,7 @@ export function Modal({
         ref={ref}
         role="dialog"
         aria-modal="true"
-        className={`w-full ${width} rounded-xl border border-line bg-surface shadow-2xl`}
+        className={`w-full ${width} rounded-2xl border border-line bg-surface shadow-2xl`}
       >
         {title !== undefined && (
           <div className="flex items-center justify-between border-b border-line px-5 py-3">

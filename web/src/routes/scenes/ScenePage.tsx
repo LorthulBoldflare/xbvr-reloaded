@@ -34,7 +34,7 @@ export function ScenePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { data: state } = useOptionsState()
-  const web = state?.currentState?.web
+  const web = state?.config?.web
   const advanced = state?.config?.advanced
   const askConfirm = useUIStore((s) => s.askConfirm)
   const toast = useToastStore()
@@ -115,7 +115,9 @@ export function ScenePage() {
 
   const patchFiltersAndGoHome = (p: { cast?: string[]; sites?: string[]; tags?: string[] }) => {
     const store = useSceneFilterStore.getState()
-    let f = applyDlState({ ...store.filters, cast: [], sites: [], tags: [] }, 'any')
+    // Chip deep links land on the downloaded view ("Available right now"),
+    // not the whole library.
+    let f = applyDlState({ ...store.filters, cast: [], sites: [], tags: [] }, 'available')
     f = { ...f, ...p }
     store.setFilters(f)
     navigate('/')
@@ -189,64 +191,88 @@ export function ScenePage() {
 
   return (
     <div>
-      {/* header */}
-      <div className="mb-3 flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight">{scene.title}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-            {scene.scene_url && (
-              <a
-                href={safeHref(scene.scene_url)}
-                target="_blank"
-                rel="noreferrer"
-                className={`rounded-full px-2 py-0.5 font-semibold ${scene.is_subscribed ? 'bg-accent text-white' : 'bg-surface-3 hover:bg-accent-soft'}`}
-              >
-                {scene.site}
-              </a>
-            )}
-            {scene.members_url && (
-              <a
-                href={safeHref(scene.members_url)}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full bg-surface-3 px-2 py-0.5 hover:bg-accent-soft"
-              >
-                Members
-              </a>
-            )}
-            <span className="rounded-full bg-surface-3 px-2 py-0.5">{formatDate(scene.release_date)}</span>
-            {scene.duration > 0 && <span className="rounded-full bg-surface-3 px-2 py-0.5">{scene.duration} min</span>}
-            {scene.is_hidden && <span className="rounded-full bg-warn/20 px-2 py-0.5 text-warn">hidden</span>}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="flex items-center gap-1">
-            <StarRating value={scene.star_rating} onChange={(v) => rate.mutate(v)} size="lg" />
-            {scene.star_rating > 0 && (
-              <button onClick={() => rate.mutate(0)} className="text-xs text-muted hover:text-fg" title="Reset rating (0)">
-                ✕
-              </button>
-            )}
-          </span>
-          <SceneFlagButtons scene={scene} onEdit={enterEdit} />
-          {!editMode ? (
-            <button onClick={enterEdit} className="rounded-lg bg-accent px-4 py-1.5 text-sm font-semibold text-white">
-              Edit
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={tryExitEdit} className="rounded-lg border border-line px-4 py-1.5 text-sm">
-                Cancel
-              </button>
-              <button
-                onClick={() => draft && save.mutate(draft)}
-                disabled={save.isPending}
-                className="rounded-lg bg-ok px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Save
-              </button>
+      {/* hero: blurred cover backdrop, poster, title, meta, rating, actions */}
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-line">
+        <img
+          src={getImageURL(scene.cover_url)}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-2xl"
+          onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-page/90 via-page/60 to-transparent" />
+        <div className="relative flex flex-wrap items-center gap-5 p-5 lg:p-7">
+          <img
+            src={getImageURL(scene.cover_url)}
+            alt=""
+            onError={(e) => {
+              const el = e.target as HTMLImageElement
+              if (!el.src.endsWith('blank.png')) el.src = `${import.meta.env.BASE_URL}blank.png`
+            }}
+            className="hidden w-52 shrink-0 rounded-xl object-cover shadow-2xl ring-1 ring-line-strong sm:block"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-extrabold leading-tight lg:text-3xl">{scene.title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+              {scene.scene_url && (
+                <a
+                  href={safeHref(scene.scene_url)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`rounded-full px-2.5 py-1 font-semibold ${scene.is_subscribed ? 'bg-accent text-accent-fg' : 'bg-surface-3 hover:bg-accent-soft'}`}
+                >
+                  {scene.site}
+                </a>
+              )}
+              {scene.members_url && (
+                <a
+                  href={safeHref(scene.members_url)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-surface-3 px-2.5 py-1 hover:bg-accent-soft"
+                >
+                  Members
+                </a>
+              )}
+              <span className="rounded-full bg-surface-3 px-2.5 py-1">{formatDate(scene.release_date)}</span>
+              {scene.duration > 0 && <span className="rounded-full bg-surface-3 px-2.5 py-1">{scene.duration} min</span>}
+              {scene.is_hidden && <span className="rounded-full bg-warn/20 px-2.5 py-1 text-warn">hidden</span>}
             </div>
-          )}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-1">
+                <StarRating value={scene.star_rating} onChange={(v) => rate.mutate(v)} size="lg" />
+                {scene.star_rating > 0 && (
+                  <button onClick={() => rate.mutate(0)} className="text-xs text-muted hover:text-fg" title="Reset rating (0)">
+                    ✕
+                  </button>
+                )}
+              </span>
+              <SceneFlagButtons scene={scene} onEdit={enterEdit} />
+            </div>
+          </div>
+          <div className="shrink-0">
+            {!editMode ? (
+              <button
+                onClick={enterEdit}
+                className="btn-gradient rounded-full px-5 py-2 text-sm font-bold shadow-lg transition-transform hover:scale-105"
+              >
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={tryExitEdit} className="rounded-full border border-line bg-surface px-4 py-2 text-sm font-semibold">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => draft && save.mutate(draft)}
+                  disabled={save.isPending}
+                  className="rounded-full bg-ok px-5 py-2 text-sm font-bold text-white shadow-lg disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
