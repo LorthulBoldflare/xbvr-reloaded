@@ -49,9 +49,12 @@ func authHandle(pattern string, authEnabled bool, authSecret auth.SecretProvider
 		// login) is accepted as an alternative to Basic Auth, so the headset
 		// browser reaches the Web UI without a second login.
 		http.HandleFunc(pattern, func(res http.ResponseWriter, req *http.Request) {
-			authlog.Request("ui", req, nil)
+			e := authlog.Start("ui", req, nil)
+			defer e.Done()
+			markPresented(e, req)
 			if hasValidPlayerSession(req) {
-				authlog.Event("ui", "auth method=cookie result=accepted")
+				e.AuthMethod = "cookie"
+				e.AuthResult = "accepted"
 				http.StripPrefix(pattern, handler).ServeHTTP(res, req)
 				return
 			}
@@ -59,12 +62,14 @@ func authHandle(pattern string, authEnabled bool, authSecret auth.SecretProvider
 			// alternative to the UI credentials, and mints the session cookie
 			// so the Basic prompt does not reappear for every asset.
 			if user, password, ok := req.BasicAuth(); ok && checkPlayerBasicAuth(user, password) {
-				authlog.Event("ui", "auth method=basic user=%q result=success (player credentials)", user)
-				setPlayerSessionCookie("ui", res)
+				e.AuthMethod = "basic-player"
+				e.AuthUser = user
+				e.AuthResult = "success"
+				setPlayerSessionCookie(e, res)
 				http.StripPrefix(pattern, handler).ServeHTTP(res, req)
 				return
 			}
-			authlog.Event("ui", "auth delegating to basic auth")
+			e.Note("delegating to basic auth (UI credentials)")
 			basicWrapped(res, req)
 		})
 	} else {
@@ -105,11 +110,14 @@ func StartServer(version, commit, branch, date string) {
 		// Known VR players get the player login page; everyone else goes
 		// straight to the Web UI.
 		target := "/ui/"
-		if isPlayerClient(req.Request) {
+		player := isPlayerClient(req.Request)
+		if player {
 			target = "/login"
 		}
-		authlog.Event("root", "GET / from %s (ua=%q, x-requested-with=%q) -> %s",
-			req.Request.RemoteAddr, req.Request.UserAgent(), req.Request.Header.Get("X-Requested-With"), target)
+		e := authlog.Start("root", req.Request, nil)
+		e.PlayerClient = player
+		e.RedirectTo = target
+		e.Done()
 		resp.AddHeader("Location", target)
 		resp.WriteHeader(http.StatusFound)
 	}))
@@ -241,28 +249,40 @@ func StartServer(version, commit, branch, date string) {
 		// cross-origin (e.g. DNS-rebinding) page cannot authenticate. A valid
 		// player-session cookie (attached by the browser to the same-origin
 		// handshake) is accepted as an alternative credential.
-		authlog.Request("ws", req, nil)
+		e := authlog.Start("ws", req, nil)
+		markPresented(e, req)
 		if common.IsUIAuthEnabled() {
 			if hasValidPlayerSession(req) {
-				authlog.Event("ws", "auth method=cookie result=accepted")
+				e.AuthMethod = "cookie"
+				e.AuthResult = "accepted"
 			} else {
 				user, password, ok := req.BasicAuth()
 				uiOK := ok && user == common.EnvConfig.UIUsername && checkUIPassword(password)
 				playerOK := !uiOK && checkPlayerBasicAuth(user, password)
 				if !uiOK && !playerOK {
-					authlog.Event("ws", "auth method=basic result=failed (401)")
+					if ok {
+						e.AuthMethod = "basic"
+						e.AuthUser = user
+						e.AuthResult = "failed"
+					} else {
+						e.AuthMethod = "none"
+						e.AuthResult = "denied"
+					}
+					e.Done()
 					w.Header().Set("WWW-Authenticate", `Basic realm="default"`)
 					http.Error(w, "401: Unauthorized", http.StatusUnauthorized)
 					return
 				}
 				if playerOK {
-					authlog.Event("ws", "auth method=basic user=%q result=success (player credentials)", user)
+					e.AuthMethod = "basic-player"
 				} else {
-					authlog.Event("ws", "auth method=basic user=%q result=success", user)
+					e.AuthMethod = "basic-ui"
 				}
+				e.AuthUser = user
+				e.AuthResult = "success"
 			}
 		} else {
-			authlog.Event("ws", "auth disabled, allowing handshake")
+			e.Note("auth disabled, allowing handshake")
 		}
 		// CSWSH note: a websocket initiated by a standard web page (Origin
 		// header present) should originate from the XBVR UI itself, i.e. the
@@ -273,10 +293,11 @@ func StartServer(version, commit, branch, date string) {
 		if !wsOriginAllowed(req) {
 			log.Warnf("websocket request with non-matching Origin %q (Host %q) — allowing (non-standard browser)",
 				req.Header.Get("Origin"), req.Host)
-			authlog.Event("ws", "origin mismatch on handshake (allowed): Origin %q vs Host %q",
+			e.Note("origin mismatch on handshake (allowed): Origin %q vs Host %q",
 				req.Header.Get("Origin"), req.Host)
 		}
-		authlog.Event("ws", "handshake accepted, proxying (stream payload not captured)")
+		e.Note("handshake accepted, proxying (stream payload not captured)")
+		e.Done()
 		// The origin has been validated above; remove it so the WAMP server's
 		// own same-host check (which sees the loopback backend address, not
 		// the UI host) does not reject the forwarded request.

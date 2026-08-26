@@ -10,6 +10,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/xbapps/xbvr/pkg/authlog"
 	"github.com/xbapps/xbvr/pkg/common"
 	"github.com/xbapps/xbvr/pkg/config"
 )
@@ -195,36 +196,43 @@ func TestAPIAuthFilterPlayerBasicAuth(t *testing.T) {
 	})
 }
 
-func TestAuthDataSummary(t *testing.T) {
+func TestMarkPresented(t *testing.T) {
 	setupPlayerSessionTest(t)
 
 	t.Run("no auth data", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "http://xbvr.local/api/dms/file/1", nil)
-		if got := authDataSummary(req); got != "none" {
-			t.Fatalf("authDataSummary() = %q, want %q", got, "none")
+		e := &authlog.Entry{}
+		markPresented(e, req)
+		if e.PresentedBasicUser != "" || e.PresentedPlayerCookie != "" {
+			t.Fatalf("expected no presented auth data, got %+v", e)
 		}
 	})
 
 	t.Run("valid player cookie", func(t *testing.T) {
 		req := withPlayerCookie(httptest.NewRequest(http.MethodGet, "http://xbvr.local/api/dms/file/1", nil), config.PlayerSessionToken())
-		if got := authDataSummary(req); got != "player-cookie valid" {
-			t.Fatalf("authDataSummary() = %q, want %q", got, "player-cookie valid")
+		e := &authlog.Entry{}
+		markPresented(e, req)
+		if e.PresentedPlayerCookie != "valid" {
+			t.Fatalf("PresentedPlayerCookie = %q, want %q", e.PresentedPlayerCookie, "valid")
 		}
 	})
 
 	t.Run("invalid player cookie", func(t *testing.T) {
 		req := withPlayerCookie(httptest.NewRequest(http.MethodGet, "http://xbvr.local/api/dms/file/1", nil), "deadbeef")
-		if got := authDataSummary(req); got != "player-cookie INVALID" {
-			t.Fatalf("authDataSummary() = %q, want %q", got, "player-cookie INVALID")
+		e := &authlog.Entry{}
+		markPresented(e, req)
+		if e.PresentedPlayerCookie != "invalid" {
+			t.Fatalf("PresentedPlayerCookie = %q, want %q", e.PresentedPlayerCookie, "invalid")
 		}
 	})
 
 	t.Run("basic auth header", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "http://xbvr.local/api/dms/file/1", nil)
 		req.SetBasicAuth("someone", "whatever")
-		want := `basic user="someone"`
-		if got := authDataSummary(req); got != want {
-			t.Fatalf("authDataSummary() = %q, want %q", got, want)
+		e := &authlog.Entry{}
+		markPresented(e, req)
+		if e.PresentedBasicUser != "someone" {
+			t.Fatalf("PresentedBasicUser = %q, want %q", e.PresentedBasicUser, "someone")
 		}
 	})
 }

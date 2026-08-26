@@ -74,19 +74,27 @@ func serveLoginPage(w http.ResponseWriter, status int) {
 // cookie and redirects to /ui/.
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if !isPlayerClient(r) {
-		authlog.Event("login", "%s %s from %s rejected (403, not a known player)", r.Method, r.URL.Path, r.RemoteAddr)
-		http.Error(w, "403: Forbidden", http.StatusForbidden)
+		e := authlog.Start("login", r, nil)
+		e.AuthResult = "denied"
+		e.Note("not a known player (403)")
+		e.Done()
+		http.Error(w, "403 Forbidden", http.StatusForbidden)
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		authlog.Request("login", r, nil)
+		e := authlog.Start("login", r, nil)
+		defer e.Done()
+		e.PlayerClient = true
 		if hasValidPlayerSession(r) {
-			authlog.Event("login", "valid session cookie present, redirecting to /ui/")
+			e.AuthMethod = "cookie"
+			e.AuthResult = "accepted"
+			e.RedirectTo = "/ui/"
 			http.Redirect(w, r, "/ui/", http.StatusSeeOther)
 			return
 		}
+		e.Note("served login form")
 		serveLoginPage(w, http.StatusOK)
 
 	case http.MethodPost:
@@ -96,20 +104,25 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			rawBody, _ = io.ReadAll(r.Body)
 			r.Body = io.NopCloser(bytes.NewReader(rawBody))
 		}
-		authlog.Request("login", r, rawBody)
+		e := authlog.Start("login", r, rawBody)
+		defer e.Done()
+		e.PlayerClient = true
 
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
+		e.AuthMethod = "form"
+		e.AuthUser = username
 		if checkPlayerBasicAuth(username, password) {
-			authlog.Event("login", "auth user=%q result=success, redirecting to /ui/", username)
-			setPlayerSessionCookie("login", w)
+			e.AuthResult = "success"
+			e.RedirectTo = "/ui/"
+			setPlayerSessionCookie(e, w)
 			http.Redirect(w, r, "/ui/", http.StatusSeeOther)
 			return
 		}
-		authlog.Event("login", "auth user=%q result=failed", username)
+		e.AuthResult = "failed"
 		serveLoginPage(w, http.StatusUnauthorized)
 
 	default:
-		http.Error(w, "405: Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 }

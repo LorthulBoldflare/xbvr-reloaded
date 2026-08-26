@@ -172,16 +172,14 @@ func isDeoAuthEnabled() bool {
 // native player login. The token is stable, so re-setting it on every
 // authenticated request is idempotent and self-heals the shared cookie jar
 // after a server restart. No-op when player auth is disabled; clients that
-// ignore Set-Cookie are unaffected. HttpOnly is deliberate: no client-side
-// code reads the cookie, and the stable non-expiring token must not be
-// exfiltratable via XSS. No Secure attribute — XBVR serves plain HTTP.
-func setPlayerSessionCookie(component string, resp *restful.Response) {
+// ignore Set-Cookie are unaffected. Marks the auth log entry accordingly.
+func setPlayerSessionCookie(e *authlog.Entry, resp *restful.Response) {
 	cookie := config.PlayerSessionCookie()
 	if cookie == nil {
 		return
 	}
 	http.SetCookie(resp.ResponseWriter, cookie)
-	authlog.Event(component, "minted session cookie %s=%s", config.PlayerSessionCookieName, cookie.Value)
+	e.CookieMinted = true
 }
 
 func getProto(req *restful.Request) string {
@@ -217,7 +215,8 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 		rawBody, _ = io.ReadAll(req.Request.Body)
 		req.Request.Body = io.NopCloser(bytes.NewReader(rawBody))
 	}
-	authlog.Request("deovr", req.Request, rawBody)
+	e := authlog.Start("deovr", req.Request, rawBody)
+	defer e.Done()
 
 	if isDeoAuthEnabled() {
 		authState := "0"
@@ -234,8 +233,9 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 			}
 		}
 
-		result := map[string]string{"0": "no-credentials", "1": "success", "-1": "failed"}[authState]
-		authlog.Event("deovr", "auth user=%q result=%s", username, result)
+		e.AuthMethod = "protocol-body"
+		e.AuthUser = username
+		e.AuthResult = map[string]string{"0": "no-credentials", "1": "success", "-1": "failed"}[authState]
 
 		if authState != "1" {
 			msg := "Login Required"
@@ -255,9 +255,9 @@ func restfulAuthFilter(req *restful.Request, resp *restful.Response, chain *rest
 			return
 		}
 	} else {
-		authlog.Event("deovr", "auth disabled, allowing request")
+		e.Note("player auth disabled, allowing request")
 	}
-	setPlayerSessionCookie("deovr", resp)
+	setPlayerSessionCookie(e, resp)
 	chain.ProcessFilter(req, resp)
 }
 

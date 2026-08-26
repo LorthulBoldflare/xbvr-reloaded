@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"crypto/subtle"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -51,19 +50,23 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	}
 
 	if strings.HasPrefix(req.Request.URL.Path, "/api/dms/") {
-		// Exempt media surface. Bodies are binary streams, but log the full
-		// request headers plus any authentication data the player happens to
-		// send — this tells us whether cookie auth could be required on this
+		// Exempt media surface. Bodies are binary streams, but the entry
+		// still records any authentication data the player happens to send —
+		// this tells us whether cookie auth could be required on this
 		// surface in the future.
-		authlog.Request("dms", req.Request, nil)
-		authlog.Event("dms", "auth data on exempt path: %s", authDataSummary(req.Request))
+		e := authlog.Start("dms", req.Request, nil)
+		e.Note("exempt from auth")
+		markPresented(e, req.Request)
+		e.Done()
 		chain.ProcessFilter(req, resp)
 		return
 	}
 
 	if !common.IsUIAuthEnabled() || common.EnvConfig.NoAPIAuth {
-		authlog.Request("api", req.Request, nil)
-		authlog.Event("api", "auth data on exempt path (auth disabled): %s", authDataSummary(req.Request))
+		e := authlog.Start("api", req.Request, nil)
+		e.Note("auth disabled")
+		markPresented(e, req.Request)
+		e.Done()
 		chain.ProcessFilter(req, resp)
 		return
 	}
@@ -75,7 +78,9 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 		rawBody, _ = io.ReadAll(req.Request.Body)
 		req.Request.Body = io.NopCloser(bytes.NewReader(rawBody))
 	}
-	authlog.Request("api", req.Request, rawBody)
+	e := authlog.Start("api", req.Request, rawBody)
+	defer e.Done()
+	markPresented(e, req.Request)
 
 	// CSRF note for the cookie path: unlike Basic Auth credentials, cookies
 	// are attached by the browser to cross-site requests. Players are
@@ -85,17 +90,15 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	if isMutatingMethod(req.Request.Method) && !browserOriginMatchesHost(req.Request) {
 		log.Warnf("mutating API request %s %s with non-matching Origin %q (Host %q) — allowing (non-standard browser)",
 			req.Request.Method, req.Request.URL.Path, req.Request.Header.Get("Origin"), req.Request.Host)
-		authlog.Event("api", "origin mismatch on mutating request (allowed): Origin %q vs Host %q",
+		e.Note("origin mismatch on mutating request (allowed): Origin %q vs Host %q",
 			req.Request.Header.Get("Origin"), req.Request.Host)
 	}
 
 	if hasValidPlayerSession(req.Request) {
-		authlog.Event("api", "auth method=cookie result=accepted")
+		e.AuthMethod = "cookie"
+		e.AuthResult = "accepted"
 		chain.ProcessFilter(req, resp)
 		return
-	}
-	if _, err := req.Request.Cookie(config.PlayerSessionCookieName); err == nil {
-		authlog.Event("api", "auth method=cookie result=rejected (cookie present but invalid)")
 	}
 
 	user, password, ok := req.Request.BasicAuth()
@@ -103,13 +106,20 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	basicPlayer := !basicUI && checkPlayerBasicAuth(user, password)
 	switch {
 	case !ok:
-		authlog.Event("api", "auth result=denied (no credentials)")
+		e.AuthMethod = "none"
+		e.AuthResult = "denied"
 	case basicUI:
-		authlog.Event("api", "auth method=basic user=%q result=success", user)
+		e.AuthMethod = "basic-ui"
+		e.AuthUser = user
+		e.AuthResult = "success"
 	case basicPlayer:
-		authlog.Event("api", "auth method=basic user=%q result=success (player credentials)", user)
+		e.AuthMethod = "basic-player"
+		e.AuthUser = user
+		e.AuthResult = "success"
 	default:
-		authlog.Event("api", "auth method=basic user=%q result=failed", user)
+		e.AuthMethod = "basic"
+		e.AuthUser = user
+		e.AuthResult = "failed"
 	}
 	if !basicUI && !basicPlayer {
 		resp.AddHeader("WWW-Authenticate", `Basic realm="default"`)
@@ -119,7 +129,7 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	if basicPlayer {
 		// Mint the player-session cookie so subsequent requests from this
 		// browser authenticate without the Basic prompt.
-		setPlayerSessionCookie("api", resp.ResponseWriter)
+		setPlayerSessionCookie(e, resp.ResponseWriter)
 	}
 
 	chain.ProcessFilter(req, resp)
@@ -136,35 +146,31 @@ func checkPlayerBasicAuth(user, password string) bool {
 }
 
 // setPlayerSessionCookie mints the player-session cookie on a plain
-// http.ResponseWriter (Web UI surfaces) and logs it.
-func setPlayerSessionCookie(component string, w http.ResponseWriter) {
+// http.ResponseWriter (Web UI surfaces) and marks the auth log entry.
+func setPlayerSessionCookie(e *authlog.Entry, w http.ResponseWriter) {
 	cookie := config.PlayerSessionCookie()
 	if cookie == nil {
 		return
 	}
 	http.SetCookie(w, cookie)
-	authlog.Event(component, "minted session cookie %s=%s", config.PlayerSessionCookieName, cookie.Value)
+	e.CookieMinted = true
 }
 
-// authDataSummary describes any authentication material present on a
-// request hitting a path where auth is not (currently) required — used to
-// learn whether players could authenticate there if it ever became required.
-func authDataSummary(r *http.Request) string {
-	var parts []string
+// markPresented records any authentication material the request carries
+// (regardless of whether it will be accepted) on the auth log entry — used
+// to learn whether players could authenticate on surfaces where auth is not
+// (currently) required.
+func markPresented(e *authlog.Entry, r *http.Request) {
 	if user, _, ok := r.BasicAuth(); ok {
-		parts = append(parts, fmt.Sprintf("basic user=%q", user))
+		e.PresentedBasicUser = user
 	}
 	if _, err := r.Cookie(config.PlayerSessionCookieName); err == nil {
 		if hasValidPlayerSession(r) {
-			parts = append(parts, "player-cookie valid")
+			e.PresentedPlayerCookie = "valid"
 		} else {
-			parts = append(parts, "player-cookie INVALID")
+			e.PresentedPlayerCookie = "invalid"
 		}
 	}
-	if len(parts) == 0 {
-		return "none"
-	}
-	return strings.Join(parts, ", ")
 }
 
 func isMutatingMethod(method string) bool {
