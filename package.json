@@ -7,9 +7,11 @@
     "lint": "cd ui && vue-cli-service lint",
     "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/locales/**/*.json'",
     "i18n:extract": "yarn vue-i18n-extract report -v './ui/src/**/*.?(js|vue)' -l './ui/src/locales/*.?(js|json)'",
+    "build:web": "cd web && npm run build",
     "dev": "concurrently 'go generate' 'npm:dev:ui' 'npm:dev:go'",
     "dev:go": "air",
-    "dev:ui": "cd ui && vue-cli-service build --watch --silent"
+    "dev:ui": "cd ui && vue-cli-service build --watch --silent",
+    "dev:web": "cd web && npm run dev"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "5.15.4",

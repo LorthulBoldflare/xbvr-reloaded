@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/*
+ * Semantic design tokens, switched via [data-theme] on <html>.
+ * Tailwind v4 exposes these as utilities: bg-surface, text-fg, border-line, etc.
+ */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+}
+
+:root,
+[data-theme="light"] {
+  --surface: #ffffff;
+  --surface-2: #f3f4f8;
+  --surface-3: #e8eaf1;
+  --border: #d7dae3;
+  --border-strong: #b9bdca;
+  --text: #1c2333;
+  --text-muted: #64708a;
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: #eef0fe;
+  --danger: #dc2626;
+  --warn: #d97706;
+  --ok: #16a34a;
+}
+
+[data-theme="dark"] {
+  --surface: #14171f;
+  --surface-2: #1b1f2a;
+  --surface-3: #232838;
+  --border: #2e3446;
+  --border-strong: #414966;
+  --text: #e6e9f2;
+  --text-muted: #8b94ab;
+  --accent: #818cf8;
+  --accent-strong: #a5b0ff;
+  --accent-soft: #262b45;
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --ok: #4ade80;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+}
+
+/* Thin, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}

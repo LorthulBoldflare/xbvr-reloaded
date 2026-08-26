@@ -9,6 +9,7 @@ test.db
 
 node_modules/
 /ui/dist/
+/web/dist/
 /ui/public/static/bundle.*
 npm-debug.log
 yarn-error.log

@@ -27,6 +27,9 @@ jobs:
       - name: Build UI
         run:  cd ui && yarn install --ignore-engines && yarn build
 
+      - name: Build new web UI
+        run:  cd web && npm ci && npm run build
+
       - name: Setup release environment
         run: |-
           echo 'GITHUB_TOKEN=${{secrets.GORELEASER_ACCESS_TOKEN}}' > .release-env

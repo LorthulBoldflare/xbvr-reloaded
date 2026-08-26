@@ -1293,6 +1293,13 @@ func queryScenes(db *gorm.DB, r RequestSceneList) (*gorm.DB, *gorm.DB) {
 		tx = tx.
 			Where("last_opened > '0001-01-01 00:00:00+00:00'").
 			Order("last_opened asc")
+	case "file_added_desc":
+		// Most recently added video files first; scenes without video files last.
+		tx = tx.Order("case when (select max(f.created_time) from files f where f.scene_id = scenes.id and f.type = 'video') is null then 1 else 0 end asc").
+			Order("(select max(f.created_time) from files f where f.scene_id = scenes.id and f.type = 'video') desc")
+	case "file_added_asc":
+		tx = tx.Order("case when (select max(f.created_time) from files f where f.scene_id = scenes.id and f.type = 'video') is null then 1 else 0 end asc").
+			Order("(select max(f.created_time) from files f where f.scene_id = scenes.id and f.type = 'video') asc")
 	case "scene_added_desc":
 		tx = tx.Order("created_at desc")
 	case "scene_updated_desc":

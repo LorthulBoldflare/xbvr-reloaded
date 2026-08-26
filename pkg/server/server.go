@@ -32,6 +32,7 @@ import (
 	"github.com/xbapps/xbvr/pkg/session"
 	"github.com/xbapps/xbvr/pkg/tasks"
 	"github.com/xbapps/xbvr/ui"
+	"github.com/xbapps/xbvr/web"
 )
 
 var (
@@ -178,6 +179,8 @@ func StartServer(version, commit, branch, date string) {
 
 	// Static files
 	authHandle("/ui/", common.IsUIAuthEnabled(), common.GetUISecret, http.FileServer(ui.GetFileSystem(common.EnvConfig.Debug)))
+	// New SPA (React), same auth semantics as /ui/.
+	authHandle("/web/", common.IsUIAuthEnabled(), common.GetUISecret, web.GetHandler(common.EnvConfig.Debug))
 
 	// Player login page (issues the xbvr_player_session cookie). Standalone
 	// handler: reachable without prior auth, restricted to known VR players.
