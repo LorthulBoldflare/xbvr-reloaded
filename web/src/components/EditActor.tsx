@@ -42,9 +42,10 @@ export function EditActor() {
 
   useEffect(() => {
     if (actor) {
-      const parse = (s: string) => {
+      const parse = (s: string): string[] => {
         try {
-          return JSON.parse(s || '[]')
+          const parsed = JSON.parse(s || '[]')
+          return Array.isArray(parsed) ? parsed : []
         } catch {
           return []
         }

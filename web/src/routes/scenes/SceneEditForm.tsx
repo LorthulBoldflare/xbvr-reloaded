@@ -24,7 +24,10 @@ export interface SceneDraft {
 export function draftFromScene(scene: Scene): SceneDraft {
   let filenames: string[] = []
   try {
-    filenames = JSON.parse(scene.filenames_arr || '[]')
+    // note: the server may store the literal string "null" — JSON.parse
+    // succeeds and returns null, so a catch alone is not sufficient
+    const parsed = JSON.parse(scene.filenames_arr || '[]')
+    if (Array.isArray(parsed)) filenames = parsed
   } catch {
     /* keep empty */
   }
