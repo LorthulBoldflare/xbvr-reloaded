@@ -108,18 +108,13 @@ func StartServer(version, commit, branch, date string) {
 	// API endpoints
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/").To(func(req *restful.Request, resp *restful.Response) {
-		// Known VR players get the player login page; everyone else goes
-		// straight to the Web UI.
-		target := "/ui/"
-		player := isPlayerClient(req.Request)
-		if player {
-			target = "/login"
-		}
+		// Everyone lands on the login page first; a valid session cookie
+		// there forwards straight to the Web UI.
 		e := authlog.Start("root", req.Request, nil)
-		e.PlayerClient = player
-		e.RedirectTo = target
+		e.PlayerClient = isPlayerClient(req.Request)
+		e.RedirectTo = "/login"
 		e.Done()
-		resp.AddHeader("Location", target)
+		resp.AddHeader("Location", "/login")
 		resp.WriteHeader(http.StatusFound)
 	}))
 
@@ -182,8 +177,8 @@ func StartServer(version, commit, branch, date string) {
 	// New SPA (React), same auth semantics as /ui/.
 	authHandle("/web/", common.IsUIAuthEnabled(), common.GetUISecret, web.GetHandler(common.EnvConfig.Debug))
 
-	// Player login page (issues the xbvr_player_session cookie). Standalone
-	// handler: reachable without prior auth, restricted to known VR players.
+	// Login page (issues the xbvr_player_session cookie). Standalone
+	// handler: reachable without prior auth, open to all clients.
 	http.HandleFunc("/login", loginHandler)
 
 	// Imageproxy

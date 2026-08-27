@@ -84,13 +84,16 @@ func TestLoginHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("GET as non-player is forbidden", func(t *testing.T) {
+	t.Run("GET as non-player also serves the form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "http://xbvr.local/login", nil)
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/151.0.0.0")
 		rec := httptest.NewRecorder()
 		loginHandler(rec, req)
-		if rec.Code != http.StatusForbidden {
-			t.Fatalf("expected 403, got %d", rec.Code)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), `name="password"`) {
+			t.Fatal("non-player clients must also get the login form")
 		}
 	})
 
@@ -105,8 +108,8 @@ func TestLoginHandler(t *testing.T) {
 		if rec.Code != http.StatusSeeOther {
 			t.Fatalf("expected 303, got %d", rec.Code)
 		}
-		if loc := rec.Header().Get("Location"); loc != "/ui/" {
-			t.Fatalf("expected redirect to /ui/, got %q", loc)
+		if loc := rec.Header().Get("Location"); loc != "/web/" {
+			t.Fatalf("expected redirect to /web/, got %q", loc)
 		}
 		var c *http.Cookie
 		for _, cookie := range rec.Result().Cookies() {
@@ -139,26 +142,29 @@ func TestLoginHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("POST as non-player is forbidden even with valid credentials", func(t *testing.T) {
+	t.Run("POST as non-player is allowed with valid credentials", func(t *testing.T) {
 		form := url.Values{"username": {"player"}, "password": {"player-pass"}}
 		req := httptest.NewRequest(http.MethodPost, "http://xbvr.local/login", strings.NewReader(form.Encode()))
 		req.Header.Set("User-Agent", "curl/8.7.1")
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 		loginHandler(rec, req)
-		if rec.Code != http.StatusForbidden {
-			t.Fatalf("expected 403, got %d", rec.Code)
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("expected 303, got %d", rec.Code)
+		}
+		if loc := rec.Header().Get("Location"); loc != "/web/" {
+			t.Fatalf("expected redirect to /web/, got %q", loc)
 		}
 	})
 
-	t.Run("GET with valid session cookie redirects straight to /ui/", func(t *testing.T) {
+	t.Run("GET with valid session cookie redirects straight to /web/", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "http://xbvr.local/login", nil)
 		req.Header.Set("User-Agent", deoUA)
 		req.AddCookie(&http.Cookie{Name: config.PlayerSessionCookieName, Value: config.PlayerSessionToken()})
 		rec := httptest.NewRecorder()
 		loginHandler(rec, req)
-		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/ui/" {
-			t.Fatalf("expected 303 to /ui/, got %d %q", rec.Code, rec.Header().Get("Location"))
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/web/" {
+			t.Fatalf("expected 303 to /web/, got %d %q", rec.Code, rec.Header().Get("Location"))
 		}
 	})
 }

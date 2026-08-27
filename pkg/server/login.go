@@ -10,10 +10,10 @@ import (
 	"github.com/xbapps/xbvr/pkg/authlog"
 )
 
-// Player detection: a request is treated as coming from a known VR player
+// Player detection: a request looks like it comes from a known VR player
 // when its User-Agent matches one of the key-part regexes below, or when
-// X-Requested-With exactly matches a known player package name. Either
-// signal alone makes the client eligible for the player login page.
+// X-Requested-With exactly matches a known player package name. Detection
+// is informational only (auth logging) — /login is open to all clients.
 var playerUAPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`com\.heresphere\.vrvideoplayer`), // HereSphere media stack (Cronet)
 	regexp.MustCompile(`HereSphere/[0-9]`),               // HereSphere API stack
@@ -117,30 +117,20 @@ func serveLoginPage(w http.ResponseWriter, status int) {
 	io.WriteString(w, loginPage)
 }
 
-// loginHandler serves the player login page (GET) and validates player
-// credentials (POST). Only requests from known VR players may use it; all
-// other clients get 403. A successful login sets the xbvr_player_session
-// cookie and redirects to /ui/.
+// loginHandler serves the login page (GET) and validates player
+// credentials (POST). It is open to all clients. A successful login sets
+// the xbvr_player_session cookie and redirects to /web/.
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if !isPlayerClient(r) {
-		e := authlog.Start("login", r, nil)
-		e.AuthResult = "denied"
-		e.Note("not a known player (403)")
-		e.Done()
-		http.Error(w, "403 Forbidden", http.StatusForbidden)
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		e := authlog.Start("login", r, nil)
 		defer e.Done()
-		e.PlayerClient = true
+		e.PlayerClient = isPlayerClient(r)
 		if hasValidPlayerSession(r) {
 			e.AuthMethod = "cookie"
 			e.AuthResult = "accepted"
-			e.RedirectTo = "/ui/"
-			http.Redirect(w, r, "/ui/", http.StatusSeeOther)
+			e.RedirectTo = "/web/"
+			http.Redirect(w, r, "/web/", http.StatusSeeOther)
 			return
 		}
 		e.Note("served login form")
@@ -155,7 +145,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		e := authlog.Start("login", r, rawBody)
 		defer e.Done()
-		e.PlayerClient = true
+		e.PlayerClient = isPlayerClient(r)
 
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
@@ -163,9 +153,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		e.AuthUser = username
 		if checkPlayerBasicAuth(username, password) {
 			e.AuthResult = "success"
-			e.RedirectTo = "/ui/"
+			e.RedirectTo = "/web/"
 			setPlayerSessionCookie(e, w)
-			http.Redirect(w, r, "/ui/", http.StatusSeeOther)
+			http.Redirect(w, r, "/web/", http.StatusSeeOther)
 			return
 		}
 		e.AuthResult = "failed"
