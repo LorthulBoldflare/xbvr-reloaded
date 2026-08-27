@@ -32,15 +32,20 @@ func (s *ForceCacheTransport) RoundTrip(r *http.Request) (*http.Response, error)
 	return resp, nil
 }
 
-func NewForceCacheTransport() *ForceCacheTransport {
+func NewForceCacheTransport(skipBlocklist bool) *ForceCacheTransport {
 	fct := new(ForceCacheTransport)
 
-	// this is what willnorris.com/go/imageproxy does by default,
-	// so keep the same here. SSRFSafeTransport re-validates every fetch —
-	// including redirect hops — so a proxied image URL cannot rebound or
-	// redirect to a denied internal address.
-	base, _ := aia.NewTransport()
-	fct.Transport = common.SSRFSafeTransport{Base: base}
+	if skipBlocklist {
+		// Used in testing. Sometimes we need to disable SSRF protection there.
+		fct.Transport = http.DefaultTransport
+	} else {
+		// this is what willnorris.com/go/imageproxy does by default,
+		// so keep the same here. SSRFSafeTransport re-validates every fetch —
+		// including redirect hops — so a proxied image URL cannot rebound or
+		// redirect to a denied internal address.
+		base, _ := aia.NewTransport()
+		fct.Transport = common.SSRFSafeTransport{Base: base}
+	}
 
 	return fct
 }

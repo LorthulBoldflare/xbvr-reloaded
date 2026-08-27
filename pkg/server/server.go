@@ -181,20 +181,13 @@ func StartServer(version, commit, branch, date string) {
 	// handler: reachable without prior auth, open to all clients.
 	http.HandleFunc("/login", loginHandler)
 
-	// Imageproxy
+	// Imageproxy. Two backends behind the context handler: a persistent disk
+	// cache for attributed requests, and a NopCache for zero-id (unattributed,
+	// transient) requests. See ImageProxyContextHandler for the routing rule.
 	r := mux.NewRouter()
-	p := imageproxy.NewProxy(NewForceCacheTransport(), diskCache(filepath.Join(common.AppDir, "imageproxy")))
-	p.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
-	// SSRF protection: never fetch loopback, link-local or private-range
-	// targets. Relative remote URLs are rejected too (no DefaultBaseURL) —
-	// all legitimate uses proxy absolute http(s) image URLs. Non-http(s)
-	// schemes fail in the HTTP transport before any fetch happens.
-	p.DenyHosts = deniedProxyHosts
-	// If the client request has a cache-control header (such as 'no-cache'), pass them
-	// onto the imageproxy so that this can be respected.
-	p.PassRequestHeaders = append(p.PassRequestHeaders, "Cache-Control")
-	r.PathPrefix("/img/").Handler(ForceShortCacheHandler(NewImageProxyContextHandler(p)))
-	hmp := NewHeatmapThumbnailProxy(p, diskCache(filepath.Join(common.AppDir, "heatmapthumbnailproxy")))
+	cachingProxy, noCacheProxy := newImageProxyBackends(filepath.Join(common.AppDir, "imageproxy"), false)
+	r.PathPrefix("/img/").Handler(newImageProxyHandler(cachingProxy, noCacheProxy))
+	hmp := NewHeatmapThumbnailProxy(cachingProxy, diskCache(filepath.Join(common.AppDir, "heatmapthumbnailproxy")))
 	r.PathPrefix("/imghm/").Handler(http.StripPrefix("/imghm", hmp))
 	downloadhandler := DownloadHandler{}
 	r.PathPrefix("/download/").Handler(http.StripPrefix("/download/", downloadhandler))
@@ -361,6 +354,46 @@ func StartServer(version, commit, branch, date string) {
 	} else {
 		log.Fatal(http.ListenAndServe(httpAddr, handler))
 	}
+}
+
+// newImageProxyBackends builds the two imageproxy instances used behind the
+// /img context handler: a persistent disk-cache proxy for attributed
+// requests (ForceCache, FollowRedirects) and a NopCache proxy for zero-id
+// (unattributed, transient) requests. Both share the force-cache transport
+// and the same hardening. Tests use this exact constructor so the behaviour
+// suite exercises the production wiring.
+//
+// skipBlocklist must be false in production. Tests with loopback upstreams
+// set it true: the DenyHosts list and the SSRF-safe transport wrapper are
+// then omitted (both block loopback by design), while the cache-header
+// forcing — the part of the transport that is xbvr code — stays in place.
+func newImageProxyBackends(cachePath string, skipBlocklist bool) (caching, noCache *imageproxy.Proxy) {
+	transport := NewForceCacheTransport(skipBlocklist)
+	caching = imageproxy.NewProxy(transport, diskCache(cachePath))
+	caching.ForceCache = true
+	noCache = imageproxy.NewProxy(transport, imageproxy.NopCache)
+	for _, p := range []*imageproxy.Proxy{caching, noCache} {
+		p.FollowRedirects = true
+		p.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+		if !skipBlocklist {
+			// SSRF protection: never fetch loopback, link-local or private-range
+			// targets. Relative remote URLs are rejected too (no DefaultBaseURL) —
+			// all legitimate uses proxy absolute http(s) image URLs. Non-http(s)
+			// schemes fail in the HTTP transport before any fetch happens.
+			p.DenyHosts = deniedProxyHosts
+		}
+		// If the client request has a cache-control header (such as 'no-cache'), pass them
+		// onto the imageproxy so that this can be respected.
+		p.PassRequestHeaders = append(p.PassRequestHeaders, "Cache-Control")
+	}
+	return caching, noCache
+}
+
+// newImageProxyHandler assembles the full /img handler chain: context
+// parsing, recording and cache routing, wrapped in the outgoing short
+// client-cache header override.
+func newImageProxyHandler(caching, noCache http.Handler) http.Handler {
+	return ForceShortCacheHandler(NewImageProxyContextHandler(caching, noCache))
 }
 
 func diskCache(path string) *diskcache.Cache {

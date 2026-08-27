@@ -11,28 +11,9 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
-	"willnorris.com/go/imageproxy"
 
 	"github.com/xbapps/xbvr/pkg/models"
 )
-
-// forceCacheHeaderTransport mimics NewForceCacheTransport's cache-header
-// forcing, without its SSRF transport (which would block the loopback test
-// server). Required because httpcache only stores responses it deems
-// cacheable — the forced Cache-Control header is what makes upstream 2xx
-// responses storable in the disk cache.
-type forceCacheHeaderTransport struct{}
-
-func (forceCacheHeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	resp, err := http.DefaultTransport.RoundTrip(r)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		resp.Header.Set("Cache-Control", "public, max-age=157680000")
-	}
-	return resp, nil
-}
 
 type ctxTestUpstream struct {
 	server  *httptest.Server
@@ -57,13 +38,10 @@ func newCtxTestUpstream(t *testing.T) *ctxTestUpstream {
 	return u
 }
 
-func newCtxTestHandler(t *testing.T, cacheable bool) *ImageProxyContextHandler {
+func newCtxTestHandler(t *testing.T, cacheable bool) (http.Handler) {
 	t.Helper()
-	var transport http.RoundTripper
-	if cacheable {
-		transport = forceCacheHeaderTransport{}
-	}
-	return NewImageProxyContextHandler(imageproxy.NewProxy(transport, diskCache(t.TempDir())))
+	h, _ := mockImgHandler(t)
+	return h
 }
 
 func doImgRequest(h http.Handler, target string) *httptest.ResponseRecorder {
@@ -263,15 +241,16 @@ func TestImageProxyContextRejectsBadPaths(t *testing.T) {
 	}
 }
 
-// Two different context prefixes over the same options+URL remainder must
-// produce the identical upstream request and therefore share one disk cache
-// entry — this is what guarantees existing cached content is reused.
+// Two different attributed context prefixes over the same options+URL
+// remainder must produce the identical upstream request and therefore share
+// one disk cache entry — this is what guarantees existing cached content is
+// reused.
 func TestImageProxyContextCacheReuseAndBytePreservation(t *testing.T) {
 	upstream := newCtxTestUpstream(t)
 	h := newCtxTestHandler(t, true)
 
 	remainder := "700x/" + strings.Replace(upstream.server.URL, "://", ":/", 1) + "/cover%20art.jpg?token=abc%2F123"
-	for _, ctx := range []string{"scene-0", "scene-nonexistent-1"} {
+	for _, ctx := range []string{"scene-nonexistent-1", "icon-cachetest"} {
 		rec := doImgRequest(h, "/img/"+ctx+"/"+remainder)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("ctx %q: expected 200, got %d: %s", ctx, rec.Code, rec.Body.String())
@@ -284,5 +263,24 @@ func TestImageProxyContextCacheReuseAndBytePreservation(t *testing.T) {
 	wantURI := "/cover%20art.jpg?token=abc%2F123"
 	if got, _ := upstream.lastURI.Load().(string); got != wantURI {
 		t.Fatalf("upstream RequestURI = %q, want %q", got, wantURI)
+	}
+}
+
+// Zero-id (unattributed) contexts route to the NopCache backend: every
+// request hits the upstream, nothing is written to the disk cache.
+func TestImageProxyZeroIdNeverCaches(t *testing.T) {
+	upstream := newCtxTestUpstream(t)
+	h := newCtxTestHandler(t, true)
+
+	remainder := "700x/" + strings.Replace(upstream.server.URL, "://", ":/", 1) + "/nocache.jpg?img=zero"
+	for _, ctx := range []string{"scene-0", "act-0", "icon-0", "scene-0"} {
+		rec := doImgRequest(h, "/img/"+ctx+"/"+remainder)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("ctx %q: expected 200, got %d: %s", ctx, rec.Code, rec.Body.String())
+		}
+	}
+
+	if n := atomic.LoadInt64(upstream.hits); n != 4 {
+		t.Fatalf("expected 4 upstream hits (zero-id requests must never be cached), got %d", n)
 	}
 }

@@ -36,8 +36,17 @@ import (
 // literal token "raw" for a full-size passthrough (imageproxy ignores unknown
 // option tokens, so "raw" behaves like empty options and shares their
 // "0x0" cache key).
+//
+// Two imageproxy backends are wired in: a caching one (disk cache,
+// ForceCache, FollowRedirects) and a non-caching one (NopCache). Routing is
+// purely syntactic: zero-id contexts ("scene-0"/"act-0"/"icon-0") are
+// transient/unattributed and bypass the disk cache; every other valid
+// context uses the caching backend — including unknown-but-valid ids, which
+// preserves legacy cache behaviour. Invariant: recordable ⇔ cached (both
+// gate on id != "0").
 type ImageProxyContextHandler struct {
-	proxy http.Handler
+	caching http.Handler
+	noCache http.Handler
 	// recorded caches (context, url, options) triples already written this
 	// process lifetime. Positive results only: a failed existence check must
 	// never be cached, or a scene saved after its images were first requested
@@ -46,8 +55,8 @@ type ImageProxyContextHandler struct {
 	recorded sync.Map
 }
 
-func NewImageProxyContextHandler(p http.Handler) *ImageProxyContextHandler {
-	return &ImageProxyContextHandler{proxy: p}
+func NewImageProxyContextHandler(caching, noCache http.Handler) *ImageProxyContextHandler {
+	return &ImageProxyContextHandler{caching: caching, noCache: noCache}
 }
 
 var (
@@ -100,7 +109,11 @@ func (h *ImageProxyContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		h.recordAssociation(seg, kind, id, options, urlPart, r.URL.RawQuery)
 	}
 
-	http.StripPrefix("/img/"+seg, h.proxy).ServeHTTP(w, r)
+	backend := h.caching
+	if id == "0" {
+		backend = h.noCache
+	}
+	http.StripPrefix("/img/"+seg, backend).ServeHTTP(w, r)
 }
 
 // recordAssociation best-effort records the image<->entity association for
