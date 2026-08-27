@@ -64,6 +64,36 @@ export function sceneListRequestBody(f: SceneFilters, offset: number, limit: num
   return { ...rest, offset, limit }
 }
 
+// Sanitize a filter payload coming from a saved search or a shared URL.
+// Legacy (old-UI) payloads may contain null where we expect arrays, strings
+// where we expect numbers, etc. — coerce everything to a valid SceneFilters.
+export function normalizeSceneFilters(p: Partial<SceneFilters> | null | undefined): SceneFilters {
+  const d = DEFAULT_SCENE_FILTERS
+  const src = p ?? {}
+  const arr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  const boolOrNull = (v: unknown): boolean | null => (v === true || v === false ? v : null)
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const dlState = DL_STATES.some((s) => s.value === src.dlState) ? (src.dlState as SceneFilters['dlState']) : d.dlState
+  return {
+    dlState,
+    isAvailable: boolOrNull(src.isAvailable),
+    isAccessible: boolOrNull(src.isAccessible),
+    isHidden: src.isHidden === true,
+    isWatched: boolOrNull(src.isWatched),
+    lists: arr(src.lists),
+    cast: arr(src.cast),
+    sites: arr(src.sites),
+    tags: arr(src.tags),
+    cuepoint: arr(src.cuepoint),
+    attributes: arr(src.attributes),
+    volume: typeof src.volume === 'number' && !isNaN(src.volume) ? src.volume : 0,
+    releaseMonth: str(src.releaseMonth),
+    sort: typeof src.sort === 'string' && src.sort ? src.sort : d.sort,
+    showUnmatched: src.showUnmatched === true
+  }
+}
+
 // Keys persisted in ?q= / saved searches (must stay compatible with the old
 // UI, including its client-only keys like cardSize which we tolerate on read).
 export function filtersForUrl(f: SceneFilters): Record<string, unknown> {

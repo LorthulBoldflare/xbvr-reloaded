@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { Actor, ActorFilters, ResponseActorList } from '../../api/types'
-import { ACTOR_PAGE_SIZE, ACTOR_SORTS, DEFAULT_ACTOR_FILTERS, useActorFilterStore } from '../../store/actorFilters'
+import { ACTOR_PAGE_SIZE, ACTOR_SORTS, DEFAULT_ACTOR_FILTERS, normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
 import { decodeJsonBase64, encodeJsonBase64 } from '../../lib/base64'
 import { useUIStore } from '../../store/ui'
 import { ActorCard } from '../../components/ActorCard'
@@ -28,7 +28,7 @@ export function ActorsPage() {
     const q = searchParams.get('q')
     if (q) {
       try {
-        setFilters({ ...DEFAULT_ACTOR_FILTERS, ...decodeJsonBase64<Partial<ActorFilters>>(q) })
+        setFilters(normalizeActorFilters(decodeJsonBase64<Partial<ActorFilters>>(q)))
       } catch {
         /* ignore */
       }

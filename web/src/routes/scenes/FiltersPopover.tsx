@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { ResponseGetFilters } from '../../api/types'
-import { useSceneFilterStore, DL_STATES, applyDlState } from '../../store/sceneFilters'
+import { useSceneFilterStore, DL_STATES, applyDlState, normalizeSceneFilters } from '../../store/sceneFilters'
 import { useToastStore } from '../../store/toasts'
 import { useUIStore } from '../../store/ui'
 import { akaApi, tagGroupApi } from '../../api/groups'
@@ -72,8 +72,10 @@ export function FiltersPopoverContent({ counts }: { counts?: Record<string, numb
         type="scene"
         currentFilters={filters as unknown as Record<string, unknown>}
         onApply={(f) => {
-          const parsed = f as Partial<import('../../api/types').SceneFilters>
-          setFilters(applyDlState({ ...filters, ...parsed }, parsed.dlState ?? 'any'))
+          // Saved searches come from the server and may be legacy payloads —
+          // normalize before they enter the store (null arrays etc.).
+          const normalized = normalizeSceneFilters(f as never)
+          setFilters(applyDlState(normalized, normalized.dlState))
         }}
       />
 

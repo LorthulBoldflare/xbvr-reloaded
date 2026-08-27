@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { ResponseGetActorFilters } from '../../api/types'
-import { useActorFilterStore } from '../../store/actorFilters'
+import { normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
 import { useToastStore } from '../../store/toasts'
 import { useUIStore } from '../../store/ui'
 import { useQueryClient } from '@tanstack/react-query'
@@ -86,7 +86,7 @@ export function ActorFiltersPopoverContent() {
       <SavedSearchPicker
         type="actor"
         currentFilters={filters as unknown as Record<string, unknown>}
-        onApply={(f) => setFilters({ ...filters, ...f })}
+        onApply={(f) => setFilters(normalizeActorFilters(f as never))}
       />
 
       <div>

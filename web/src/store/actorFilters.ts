@@ -60,3 +60,37 @@ export const useActorFilterStore = create<ActorFilterState>((set) => ({
   patch: (p) => set((s) => ({ filters: { ...s.filters, ...p } })),
   reset: () => set({ filters: DEFAULT_ACTOR_FILTERS })
 }))
+
+// Same hardening as normalizeSceneFilters: legacy saved searches / shared
+// URLs may carry nulls or wrong types.
+export function normalizeActorFilters(p: Partial<ActorFilters> | null | undefined): ActorFilters {
+  const d = DEFAULT_ACTOR_FILTERS
+  const src = p ?? {}
+  const arr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  const num = (v: unknown, def: number): number =>
+    typeof v === 'number' && !isNaN(v) ? v : def
+  return {
+    lists: arr(src.lists),
+    cast: arr(src.cast),
+    sites: arr(src.sites),
+    tags: arr(src.tags),
+    attributes: arr(src.attributes),
+    jumpTo: typeof src.jumpTo === 'string' ? src.jumpTo : '',
+    min_age: num(src.min_age, d.min_age),
+    max_age: num(src.max_age, d.max_age),
+    min_height: num(src.min_height, d.min_height),
+    max_height: num(src.max_height, d.max_height),
+    min_weight: num(src.min_weight, d.min_weight),
+    max_weight: num(src.max_weight, d.max_weight),
+    min_count: num(src.min_count, d.min_count),
+    max_count: num(src.max_count, d.max_count),
+    min_avail: num(src.min_avail, d.min_avail),
+    max_avail: num(src.max_avail, d.max_avail),
+    min_rating: num(src.min_rating, d.min_rating),
+    max_rating: num(src.max_rating, d.max_rating),
+    min_scene_rating: num(src.min_scene_rating, d.min_scene_rating),
+    max_scene_rating: num(src.max_scene_rating, d.max_scene_rating),
+    sort: typeof src.sort === 'string' && src.sort ? src.sort : d.sort
+  }
+}

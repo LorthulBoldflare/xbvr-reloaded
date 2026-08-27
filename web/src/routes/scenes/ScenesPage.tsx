@@ -6,6 +6,7 @@ import type { File, ResponseSceneList, Scene, SceneFilters } from '../../api/typ
 import {
   applyDlState,
   DEFAULT_SCENE_FILTERS,
+  normalizeSceneFilters,
   sceneListRequestBody,
   useSceneFilterStore
 } from '../../store/sceneFilters'
@@ -47,9 +48,8 @@ export function ScenesPage() {
         lastQ.current = q
         if (q) {
           const parsed = decodeJsonBase64<Partial<SceneFilters>>(q)
-          // Tolerant parse: tolerate old-UI-only keys (cardSize etc.)
-          const merged = { ...DEFAULT_SCENE_FILTERS, ...parsed }
-          setFilters(applyDlState(merged, merged.dlState ?? 'available'))
+          const normalized = normalizeSceneFilters(parsed)
+          setFilters(applyDlState(normalized, normalized.dlState))
         } else {
           setFilters(DEFAULT_SCENE_FILTERS)
         }
