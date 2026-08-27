@@ -30,7 +30,7 @@
                 <b-carousel v-model="carouselSlide" @change="scrollToActiveIndicator" :autoplay="false" :indicator-inside="false">
                   <b-carousel-item v-for="(carousel, i) in images" :key="i">
                     <div class="image is-1by1 is-full"
-                         v-bind:style='{backgroundImage: `url("${getImageURL(carousel.url, "700,fit")}")`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat"}'></div>
+                         v-bind:style='{backgroundImage: `url("${getImageURL(carousel.url, "700,fit", item.scene_id)}")`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat"}'></div>
                   </b-carousel-item>
                   <template slot="indicators" slot-scope="props">
                       <span class="al image" style="width:max-content;">
@@ -137,7 +137,7 @@
               <div v-for="(altsrc, idx) in alternateSourcesWithTitles" :key="idx" class="altsrc-image-wrapper" @click="showExtRefScene(altsrc)">
                 <b-tooltip type="is-light" :label="altsrc.title" :delay="100" append-to-body>
                   <vue-load-image>
-                    <img slot="image" :src="getImageURL(altsrc.site_icon)" alt="Image" width="28px" />
+                    <img slot="image" :src="getImageURL(altsrc.site_icon, '700x', altSourceIconContext(altsrc))" alt="Image" width="28px" />
                     <b-icon slot="error" pack="mdi" icon="link" size="is-small" />
                   </vue-load-image>
                 </b-tooltip>
@@ -148,14 +148,14 @@
               <div v-for="(image, idx) in castimages" :key="idx" class="image-wrapper">
                 <b-tooltip  type="is-light" :label="image.actor_label"  :delay=100>
                   <vue-load-image>
-                    <img slot="image" :src="getImageURL(image.src)" alt="Image" class="thumbnail" @mouseover="showTooltip(idx)" @mouseout="hideTooltip(idx)" @click='showActorDetail([image.actor_id])' />
+                    <img slot="image" :src="getImageURL(image.src, '700x', 'act-' + image.actor_id)" alt="Image" class="thumbnail" @mouseover="showTooltip(idx)" @mouseout="hideTooltip(idx)" @click='showActorDetail([image.actor_id])' />
                     <img slot="preloader" :src="'/ui/images/blank.png'" style="height: 50px;display: block;margin-left:auto;margin-right: auto;" @click='showCastScenes([image.actor_name])' />
                     <img slot="error" src="/ui/images/blank_female_profile.png" width="80" @click='showActorDetail([image.actor_id])' />
                   </vue-load-image>
                 </b-tooltip>
 
                 <div v-if="image.visible" class="tooltip">
-                  <img :src="getImageURL(image.src)" alt="Tooltip Image" />
+                  <img :src="getImageURL(image.src, '700x', 'act-' + image.actor_id)" alt="Tooltip Image" />
                 </div>
               </div>
             </div>
@@ -405,7 +405,7 @@
 <script>
 import api from '../../api'
 import { encodeJsonBase64 } from '../../util/base64'
-import { getImageURL as getImageURLUtil, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
+import { getImageURL as getImageURLUtil, altSourceIconContext, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
 import { safeHref } from '../../util/url'
 import videojs from 'video.js'
 import 'videojs-hotkeys'
@@ -762,7 +762,7 @@ watch:{
       if (src) {
         this.player.src({ src: src, type: 'video/mp4' })
       }
-      this.player.poster(this.getImageURL(this.item.cover_url, ''))
+      this.player.poster(this.getImageURL(this.item.cover_url, '', this.item.scene_id))
     },
     showCastScenes (actor) {
       this.$store.commit('sceneList/setCastFilterOnly', actor)
@@ -894,12 +894,13 @@ watch:{
           this.$store.commit('overlay/showDetails', { scene: data })
       })
     },
-    getImageURL (u, size) {
-      return getImageURLUtil(u, size)
+    getImageURL (u, size, context = '0') {
+      return getImageURLUtil(u, size, context)
     },
+    altSourceIconContext,
     getIndicatorURL (idx) {
       if (this.images[idx] !== undefined) {
-        return this.getImageURL(this.images[idx].url, 'x40')
+        return this.getImageURL(this.images[idx].url, 'x40', this.item.scene_id)
       } else {
         return '/ui/images/blank.png'
       }

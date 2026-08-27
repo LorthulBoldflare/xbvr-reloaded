@@ -2398,6 +2398,12 @@ func Migrate(migrateTo string) {
 				return addPerformanceIndexes(tx)
 			},
 		},
+		{
+			ID: "0089-image-proxy-entries",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&models.ImageProxyEntry{}).Error
+			},
+		},
 	}
 
 	// Wrap migrations to automatically track progress

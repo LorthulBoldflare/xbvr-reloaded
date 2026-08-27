@@ -720,7 +720,7 @@ func (i HeresphereResource) getHeresphereScene(req *restful.Request, resp *restf
 	}
 
 	title := scene.Title
-	thumbnailURL := getProto(req) + "://" + req.Request.Host + "/img/700x/" + strings.Replace(scene.CoverURL, "://", ":/", -1)
+	thumbnailURL := getProto(req) + "://" + req.Request.Host + "/img/" + scene.SceneID + "/700x/" + strings.Replace(scene.CoverURL, "://", ":/", -1)
 
 	if scene.IsScripted {
 		title = scene.GetFunscriptTitle()

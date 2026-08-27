@@ -9,10 +9,13 @@ import { PlusIcon, TrashIcon } from './icons'
 // drag to reorder, delete (behind a lock), set-as-cover.
 export function GalleryEditor({
   images,
-  onChange
+  onChange,
+  sceneId = '0'
 }: {
   images: SceneImage[]
   onChange: (images: SceneImage[]) => void
+  // scene_id of the scene being edited ('0' when unsaved/unknown)
+  sceneId?: string
 }) {
   const [newUrl, setNewUrl] = useState('')
   const [deleteUnlocked, setDeleteUnlocked] = useState(false)
@@ -99,7 +102,7 @@ export function GalleryEditor({
               img.type === 'cover' ? 'border-accent ring-1 ring-accent' : 'border-line'
             }`}
           >
-            <img src={getImageURL(img.url.replaceAll('\\', '/'), '200x')} alt="" className="aspect-square w-full object-cover" />
+            <img src={getImageURL(img.url.replaceAll('\\', '/'), '200x', sceneId)} alt="" className="aspect-square w-full object-cover" />
             {img.type === 'cover' && (
               <span className="absolute left-1 top-1 rounded bg-accent px-1 text-[10px] font-bold text-white">COVER</span>
             )}

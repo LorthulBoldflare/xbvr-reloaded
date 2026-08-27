@@ -33,7 +33,7 @@
       <b-table-column field="icon" width="50" v-slot="props" cell-class="narrow">
             <span class="image is-32x32">
               <vue-load-image>
-                <img slot="image" :src="getImageURL(props.row.avatar_url ? props.row.avatar_url : '/ui/images/blank.png')"/>
+                <img slot="image" :src="getImageURL(props.row)"/>
                 <img slot="preloader" src="/ui/images/blank.png"/>
                 <img slot="error" src="/ui/images/blank.png"/>
               </vue-load-image>
@@ -161,7 +161,7 @@
 
 <script>
 import api from '../../../api'
-import { getImageURL as getImageURLUtil } from '../../../util/image'
+import { getImageURL as getImageURLUtil, iconSlug } from '../../../util/image'
 import VueLoadImage from 'vue-load-image'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
@@ -189,8 +189,8 @@ export default {
     this.$store.dispatch('optionsWeb/load')
   },
   methods: {
-    getImageURL (u) {
-      return getImageURLUtil(u, '128x')
+    getImageURL (row) {
+      return getImageURLUtil(row.avatar_url ? row.avatar_url : '/ui/images/blank.png', '128x', 'icon-' + iconSlug(row.id))
     },
     taskScrape (scraper) {
       api.get(`/task/scrape?site=${scraper}`)

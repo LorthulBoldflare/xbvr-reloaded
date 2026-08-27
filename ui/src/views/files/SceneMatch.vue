@@ -52,7 +52,7 @@
         <b-table :data="data" ref="table" paginated :current-page.sync="currentPage" per-page="5" class="match-table">
           <b-table-column field="cover_url" :label="$t('Image')" width="120" v-slot="props">
             <vue-load-image>
-              <img slot="image" :src="getImageURL(props.row.cover_url)" class="cover-thumb"/>
+              <img slot="image" :src="getImageURL(props.row)" class="cover-thumb"/>
               <img slot="preloader" src="/ui/images/blank.png" class="cover-thumb"/>
               <img slot="error" src="/ui/images/blank.png" class="cover-thumb"/>
             </vue-load-image>
@@ -182,8 +182,8 @@ export default {
         this.currentPage = 1
       }
     },
-    getImageURL (u) {
-      return getImageURLUtil(u, '120x')
+    getImageURL (row) {
+      return getImageURLUtil(row.cover_url, '120x', row.scene_id)
     },
     assign: async function assign (scene_id) {
       await api.post('/files/match', {

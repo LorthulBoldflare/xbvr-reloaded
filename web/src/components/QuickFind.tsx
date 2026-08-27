@@ -109,7 +109,7 @@ export function QuickFind() {
             }`}
           >
             <img
-              src={getImageURL(scene.cover_url, '120x')}
+              src={getImageURL(scene.cover_url, '120x', scene.scene_id)}
               alt=""
               className="h-12 w-12 shrink-0 rounded object-cover"
               loading="lazy"

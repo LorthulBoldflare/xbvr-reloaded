@@ -78,6 +78,11 @@ export default {
       type: String,
       default: ''
     },
+    // scene_id of the scene being edited ('0' when unsaved/unknown)
+    sceneId: {
+      type: String,
+      default: '0'
+    },
     blurFn: {
       type: Function,
       default: () => {}
@@ -149,7 +154,7 @@ export default {
     getImageURL (url) {
       // proxy remote images via the shared util; keep the local-path
       // backslash normalization for Windows-style paths
-      const out = getImageURLUtil(url, '200x')
+      const out = getImageURLUtil(url, '200x', this.sceneId)
       if (typeof out === 'string' && out.includes('\\')) {
         return out.replace(/\\/g, '/')
       }

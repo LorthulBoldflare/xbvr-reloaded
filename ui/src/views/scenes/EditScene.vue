@@ -90,6 +90,7 @@
               :list.sync="scene.gallery"
               :blurFn="() => blur('gallery')"
               :coverUrl="this.scene.cover_url"
+              :sceneId="this.scene.scene_id || '0'"
               @setCover="setCoverImage"
             />
           </b-tab-item>

@@ -26,11 +26,9 @@ func FuckPassVR(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out 
 
 	sceneCollector := createCollector("www.fuckpassvr.com")
 	siteCollector := createCollector("www.fuckpassvr.com")
-
 	client := resty.New()
 	client.SetHeader("User-Agent", UserAgent)
 	client.SetTimeout(5 * time.Second)
-	warmBase := imgProxyBase()
 
 	sceneCollector.OnHTML(`html`, func(e *colly.HTMLElement) {
 		sc := models.ScrapedScene{}
@@ -131,7 +129,7 @@ func FuckPassVR(wg *models.ScrapeWG, updateSite bool, knownScenes []string, out 
 		// emit first so the scene reaches the DB pipeline before the warm fetches
 		warmURLs := append(append([]string{}, sc.Covers...), sc.Gallery...)
 		out <- sc
-		warmImageCache(client, warmBase, warmURLs)
+		warmImageCache(client, imgProxyBase(sc.SceneID), warmURLs)
 	})
 
 	siteCollector.OnHTML(`section.pagination a`, func(e *colly.HTMLElement) {
@@ -199,13 +197,18 @@ func fpvrQuality(title string) string {
 	return q
 }
 
-// imgProxyBase returns the local imageproxy prefix; size is arbitrary since the cache key is the bare source URL.
-func imgProxyBase() string {
+// imgProxyBase returns the local imageproxy prefix for the given scene
+// context ("0" if unknown); size is arbitrary since the cache key is the bare
+// source URL.
+func imgProxyBase(sceneID string) string {
 	host := config.Config.Server.BindAddress
 	if host == "" || host == "0.0.0.0" {
 		host = "127.0.0.1"
 	}
-	return "http://" + host + ":" + strconv.Itoa(config.Config.Server.Port) + "/img/700x/"
+	if sceneID == "" {
+		sceneID = "0"
+	}
+	return "http://" + host + ":" + strconv.Itoa(config.Config.Server.Port) + "/img/" + sceneID + "/700x/"
 }
 
 // imageReachable reports whether u serves an image (2xx with an image content-type).

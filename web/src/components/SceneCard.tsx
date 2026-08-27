@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { AlternateSource, Scene } from '../api/types'
-import { getImageURL } from '../lib/image'
+import { getImageURL, altSourceIconContext } from '../lib/image'
 import { formatDate, safeHref } from '../lib/format'
 import { useOptionsState } from '../api/hooks'
 import { SceneFlagButtons, useSceneToggle } from './SceneFlagButtons'
@@ -120,7 +120,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
         onMouseLeave={() => setHover(false)}
       >
         <img
-          src={getImageURL(scene.cover_url)}
+          src={getImageURL(scene.cover_url, '700x', scene.scene_id)}
           alt={scene.title}
           loading="lazy"
           onError={(e) => {
@@ -290,7 +290,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
           {altSources.map((a, i) => (
             <a key={i} href={safeHref(a.url)} target="_blank" rel="noreferrer" title={altTitle(a)}>
               <img
-                src={getImageURL(a.site_icon, '20x')}
+                src={getImageURL(a.site_icon, '20x', altSourceIconContext(a))}
                 alt=""
                 className="h-5 w-5 rounded"
                 loading="lazy"

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { AlternateSource, Scene } from '../../api/types'
-import { getImageURL } from '../../lib/image'
+import { getImageURL, altSourceIconContext } from '../../lib/image'
 import { safeHref } from '../../lib/format'
 import { useUIStore } from '../../store/ui'
 import { useToastStore } from '../../store/toasts'
@@ -125,7 +125,7 @@ export function AltSourcesSection({ scene }: { scene: Scene }) {
         <div key={`${a.external_source}:${a.external_id}`} className="rounded-lg border border-line bg-surface-2 px-3 py-2">
           <div className="flex items-center gap-2">
             <img
-              src={getImageURL(a.site_icon, '20x')}
+              src={getImageURL(a.site_icon, '20x', altSourceIconContext(a))}
               alt=""
               className="h-5 w-5 rounded"
               onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}

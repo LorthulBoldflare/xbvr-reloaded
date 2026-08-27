@@ -74,7 +74,7 @@ export function SearchStashdbScenes() {
         {results.map((r) => (
           <div key={r.Id} className="flex gap-3 rounded-lg border border-line bg-surface-2 p-2">
             <img
-              src={getImageURL(r.ImageUrl, '120x')}
+              src={getImageURL(r.ImageUrl, '120x', 'stash-' + r.Id)}
               alt=""
               loading="lazy"
               className="h-24 w-24 shrink-0 rounded object-cover"

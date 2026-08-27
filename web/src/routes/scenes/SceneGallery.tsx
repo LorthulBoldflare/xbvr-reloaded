@@ -6,7 +6,7 @@ import { getImageURL } from '../../lib/image'
 // height and keeps its ratio (width follows), centered over a blurred copy of
 // itself so portrait images don't look jarring. The scene's cover/thumbnail
 // image is excluded (it's already used as the player poster / card cover).
-export function SceneGallery({ images, coverUrl }: { images: SceneImage[]; coverUrl?: string }) {
+export function SceneGallery({ images, coverUrl, sceneId }: { images: SceneImage[]; coverUrl?: string; sceneId: string }) {
   const gallery = useMemo(
     () => images.filter((img) => img.type !== 'cover' && img.url !== coverUrl),
     [images, coverUrl]
@@ -42,14 +42,14 @@ export function SceneGallery({ images, coverUrl }: { images: SceneImage[]; cover
         {/* blurred backdrop filling the letterbox area */}
         <img
           key={`bg-${current.url}`}
-          src={getImageURL(current.url, '700x')}
+          src={getImageURL(current.url, '700x', sceneId)}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
         />
         <img
           key={current.url}
-          src={getImageURL(current.url, '700,fit')}
+          src={getImageURL(current.url, '700,fit', sceneId)}
           alt=""
           onError={(e) => {
             const el = e.target as HTMLImageElement
@@ -81,7 +81,7 @@ export function SceneGallery({ images, coverUrl }: { images: SceneImage[]; cover
           {gallery.map((img, i) => (
             <button key={i} data-i={i} onClick={() => setIndex(i)} className="shrink-0">
               <img
-                src={getImageURL(img.url, 'x40')}
+                src={getImageURL(img.url, 'x40', sceneId)}
                 alt=""
                 className={`h-10 rounded object-cover ${i === index ? 'ring-2 ring-accent' : 'opacity-60 hover:opacity-100'}`}
               />

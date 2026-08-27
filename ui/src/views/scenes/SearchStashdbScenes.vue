@@ -26,7 +26,7 @@
                 <div class="media result-card">
                   <div class="media-left">
                       <vue-load-image>
-                          <img slot="image" :src="getImageURL(props.row.ImageUrl)" width="150" class="result-thumb" @mouseover="showTooltipImage(props.row.ImageUrl)" @mouseout="showTooltipImage('')" />
+                          <img slot="image" :src="getImageURL(props.row.ImageUrl, props.row.Id)" width="150" class="result-thumb" @mouseover="showTooltipImage(props.row.ImageUrl)" @mouseout="showTooltipImage('')" />
                           <img slot="preloader" src="/ui/images/blank.png" height="150"/>
                           <img slot="error" src="/ui/images/blank.png" height="150"/>
                       </vue-load-image>
@@ -133,8 +133,10 @@ export default {
           this.close()
         })
     },    
-    getImageURL (u) {
-      return getImageURLUtil(u, '120x')
+    getImageURL (u, stashId) {
+      // results carry the raw stashdb UUID; scenes saved from stashdb use
+      // scene_id 'stash-<uuid>' — match that format for the proxy context
+      return getImageURLUtil(u, '120x', 'stash-' + stashId)
     },
     openDialog(scene) {
         this.isModalActive = true

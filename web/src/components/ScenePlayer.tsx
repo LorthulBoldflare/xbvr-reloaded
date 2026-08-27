@@ -13,11 +13,14 @@ import { getImageURL } from '../lib/image'
 export function ScenePlayer({
   file,
   poster,
+  posterContext = '0',
   onTimeUpdate,
   className = ''
 }: {
   file: File | null
   poster?: string
+  // image proxy context for the poster (scene_id of the scene being played)
+  posterContext?: string
   className?: string
   // Called with the current playback position (seconds); used by the
   // cuepoint editor's "current time" button.
@@ -56,7 +59,7 @@ export function ScenePlayer({
         ref={videoRef}
         controls
         playsInline
-        poster={poster ? getImageURL(poster, '700,fit') : undefined}
+        poster={poster ? getImageURL(poster, '700,fit', posterContext) : undefined}
         className="w-full rounded-xl bg-black"
       >
         <source src={`/api/dms/file/${file.id}?dnt=true`} />

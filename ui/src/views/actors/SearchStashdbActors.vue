@@ -170,7 +170,8 @@ export default {
         })
     },    
     getImageURL (u) {
-      return getImageURLUtil(u, '120x')
+      // stashdb performers have no local actor id — unattributed context
+      return getImageURLUtil(u, '120x', 'act-0')
     },
     openDialog(actor) {
         this.isModalActive = true

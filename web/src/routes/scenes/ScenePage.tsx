@@ -194,7 +194,7 @@ export function ScenePage() {
       {/* hero: blurred cover backdrop, poster, title, meta, rating, actions */}
       <div className="relative mb-6 overflow-hidden rounded-2xl border border-line">
         <img
-          src={getImageURL(scene.cover_url)}
+          src={getImageURL(scene.cover_url, '700x', scene.scene_id)}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-2xl"
@@ -203,7 +203,7 @@ export function ScenePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-page/90 via-page/60 to-transparent" />
         <div className="relative flex flex-wrap items-center gap-5 p-5 lg:p-7">
           <img
-            src={getImageURL(scene.cover_url)}
+            src={getImageURL(scene.cover_url, '700x', scene.scene_id)}
             alt=""
             onError={(e) => {
               const el = e.target as HTMLImageElement
@@ -281,7 +281,7 @@ export function ScenePage() {
         <div>
           {videos.length > 0 && (
             <div ref={playerRef} className="mb-4">
-              <ScenePlayer file={activeFile} poster={scene.cover_url} onTimeUpdate={(t) => (playerTime.current = t)} />
+              <ScenePlayer file={activeFile} poster={scene.cover_url} posterContext={scene.scene_id} onTimeUpdate={(t) => (playerTime.current = t)} />
               {scene.has_preview && (
                 <div className="mt-1.5 text-center">
                   <button
@@ -312,11 +312,11 @@ export function ScenePage() {
               loop
               muted
               playsInline
-              poster={getImageURL(scene.cover_url, '700,fit')}
+              poster={getImageURL(scene.cover_url, '700,fit', scene.scene_id)}
               className="mb-4 w-full rounded-xl bg-black"
             />
           )}
-          <SceneGallery images={images} coverUrl={scene.cover_url} />
+          <SceneGallery images={images} coverUrl={scene.cover_url} sceneId={scene.scene_id} />
         </div>
 
         <div className="space-y-5">
@@ -333,7 +333,7 @@ export function ScenePage() {
                     title={a.name}
                   >
                     <img
-                      src={getImageURL(a.image_url, '200x')}
+                      src={getImageURL(a.image_url, '200x', 'act-' + a.id)}
                       alt={a.name}
                       loading="lazy"
                       onError={(e) => {
@@ -401,7 +401,7 @@ export function ScenePage() {
       {editMode && draft && (
         <section className="mt-6 rounded-xl border border-accent/40 bg-surface p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Edit scene</h2>
-          <SceneEditForm draft={draft} onChange={setDraftDirty} />
+          <SceneEditForm draft={draft} onChange={setDraftDirty} sceneId={scene.scene_id} />
 
           <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
             <button

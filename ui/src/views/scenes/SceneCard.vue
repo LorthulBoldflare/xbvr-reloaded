@@ -2,7 +2,7 @@
   <div class="card scene-card">
     <div class="card-image">
       <div class="bbox"
-           v-bind:style='{backgroundImage: `url("${getImageURL(item.cover_url)}")`, backgroundSize: this.sceneCardScale, backgroundPosition: "center", backgroundRepeat: "no-repeat", opacity:item.is_available ? 1.0 : this.isAvailOpactiy, aspectRatio: this.sceneCardAspectRatio}'
+           v-bind:style='{backgroundImage: `url("${getImageURL(item.cover_url, '700x', item.scene_id)}")`, backgroundSize: this.sceneCardScale, backgroundPosition: "center", backgroundRepeat: "no-repeat", opacity:item.is_available ? 1.0 : this.isAvailOpactiy, aspectRatio: this.sceneCardAspectRatio}'
            @click="showDetails(item)"
            @mouseover="preview = true"
            @mouseleave="preview = false">
@@ -75,7 +75,7 @@
           <b-tooltip type="is-light" :label="altsrc.title" :delay="100">
             <a :href="safeHref(altsrc.url)" target="_blank">
               <vue-load-image>
-                <img slot="image" :src="getImageURL(altsrc.site_icon)" alt="Image" class="thumbnail" width="20" />
+                 <img slot="image" :src="getImageURL(altsrc.site_icon, '700x', altSourceIconContext(altsrc))" alt="Image" class="thumbnail" width="20" />
                 <b-icon slot="error" pack="mdi" icon="link" size="is-small" />
               </vue-load-image>
             </a>
@@ -98,7 +98,7 @@ import TrailerlistButton from '../../components/TrailerlistButton'
 import HiddenButton from '../../components/HiddenButton'
 import api from '../../api'
 import VueLoadImage from 'vue-load-image'
-import { getImageURL } from '../../util/image'
+import { getImageURL, altSourceIconContext } from '../../util/image'
 import { safeHref } from '../../util/url'
 
 export default {
@@ -183,6 +183,7 @@ export default {
   },
   methods: {
     getImageURL,
+    altSourceIconContext,
     safeHref,
     // Fetched once when the card is created. Previously this was an async
     // computed used as v-if — an always-truthy Promise that refetched on

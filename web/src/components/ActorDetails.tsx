@@ -166,7 +166,7 @@ export function ActorDetails() {
         <div>
           <div className="relative overflow-hidden rounded-xl bg-surface-3">
             <img
-              src={getImageURL(images[imgIdx] ?? actor.image_url, '700x')}
+              src={getImageURL(images[imgIdx] ?? actor.image_url, '700x', 'act-' + actor.id)}
               alt={actor.name}
               onError={(e) => {
                 const el = e.target as HTMLImageElement
@@ -181,7 +181,7 @@ export function ActorDetails() {
               {images.map((u, i) => (
                 <button key={i} onClick={() => setImgIdx(i)}>
                   <img
-                    src={getImageURL(u, 'x85')}
+                    src={getImageURL(u, 'x85', 'act-' + actor.id)}
                     alt=""
                     className={`h-10 rounded object-cover ${i === imgIdx ? 'ring-2 ring-accent' : 'opacity-60 hover:opacity-100'}`}
                   />

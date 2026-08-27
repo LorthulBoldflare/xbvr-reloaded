@@ -597,7 +597,7 @@ func (me *Server) serveIcon(w http.ResponseWriter, r *http.Request) {
 	var scene models.Scene
 	scene.GetIfExist(sceneId)
 
-	baseURL := "http://127.0.0.1:" + strconv.Itoa(config.Config.Server.Port) + "/img/700x/" + strings.Replace(scene.CoverURL, "://", ":/", -1)
+	baseURL := "http://127.0.0.1:" + strconv.Itoa(config.Config.Server.Port) + "/img/" + scene.SceneID + "/700x/" + strings.Replace(scene.CoverURL, "://", ":/", -1)
 	iconHTTPClient := &http.Client{Timeout: 10 * time.Second}
 	resp, err := iconHTTPClient.Get(baseURL)
 	if err != nil {

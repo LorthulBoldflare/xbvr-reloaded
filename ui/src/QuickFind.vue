@@ -25,7 +25,7 @@
             <div class="media quickfind-result">
               <div class="media-left">
                 <vue-load-image>
-                  <img slot="image" :src="getImageURL(props.option.cover_url)" width="80" class="quickfind-thumb"/>
+                  <img slot="image" :src="getImageURL(props.option)" width="80" class="quickfind-thumb"/>
                   <img slot="preloader" src="/ui/images/blank.png" width="80" class="quickfind-thumb"/>
                   <img slot="error" src="/ui/images/blank.png" width="80" class="quickfind-thumb"/>
                 </vue-load-image>
@@ -139,8 +139,8 @@ export default {
     }
   },
   methods: {
-    getImageURL (u) {
-      return getImageURLUtil(u, '120x')
+    getImageURL (opt) {
+      return getImageURLUtil(opt.cover_url, '120x', opt.scene_id)
     },
     format,
     parseISO,

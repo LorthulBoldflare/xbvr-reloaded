@@ -40,7 +40,7 @@ export function ActorCard({
         onClick={onClick ?? (() => showActorDetails(actor.id))}
       >
         <img
-          src={getImageURL(actor.image_url, '700x')}
+          src={getImageURL(actor.image_url, '700x', 'act-' + actor.id)}
           alt={actor.name}
           loading="lazy"
           onError={(e) => {

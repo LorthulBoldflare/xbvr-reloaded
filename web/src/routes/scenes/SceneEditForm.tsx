@@ -79,10 +79,13 @@ export function draftToRequest(d: SceneDraft) {
 
 export function SceneEditForm({
   draft,
-  onChange
+  onChange,
+  sceneId = '0'
 }: {
   draft: SceneDraft
   onChange: (d: SceneDraft) => void
+  // scene_id of the scene being edited ('0' when unsaved/unknown)
+  sceneId?: string
 }) {
   const { data: opts } = useSceneFilterOptions()
   const set = (p: Partial<SceneDraft>) => onChange({ ...draft, ...p })
@@ -170,7 +173,7 @@ export function SceneEditForm({
 
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Gallery</div>
-        <GalleryEditor images={draft.images} onChange={(v) => set({ images: v })} />
+        <GalleryEditor images={draft.images} onChange={(v) => set({ images: v })} sceneId={sceneId} />
       </div>
     </div>
   )

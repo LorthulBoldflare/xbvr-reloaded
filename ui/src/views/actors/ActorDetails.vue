@@ -26,7 +26,7 @@
                 <b-carousel v-model="carouselSlide" @change="scrollToActiveIndicator" :autoplay="false" :indicator-inside="false">
                   <b-carousel-item v-for="(carousel, i) in images" :key="i">
                     <div class="image is-1by1 is-full"
-                         v-bind:style="{backgroundImage: `url(${getImageURL(carousel, '700,fit')})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}"></div>
+                         v-bind:style="{backgroundImage: `url(${getImageURL(carousel, '700,fit', 'act-' + actor.id)})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}"></div>
                   </b-carousel-item>
                   <template slot="indicators" slot-scope="props">
                       <span class="al image indicator-thumb">
@@ -115,7 +115,7 @@
                       <strong class="attribute-heading">{{ $t('Nationality') }}:</strong>
                       <b-field grouped class="attribute-data">
                         <vue-load-image>
-                            <img slot="image" :src="getImageURL(this.getCountryFlag(actor.nationality))" class="flag-img"/>
+                             <img slot="image" :src="getImageURL(this.getCountryFlag(actor.nationality), '700x', 'icon-' + String(actor.nationality).toLowerCase())" class="flag-img"/>
                         </vue-load-image>
                         <small>{{ this.getCountryName(actor.nationality) }}</small>
                       </b-field>
@@ -342,12 +342,12 @@ export default {
       }
     },  
     methods: {
-    getImageURL (u, size) {
-      return getImageURLUtil(u, size)
+    getImageURL (u, size, context = '0') {
+      return getImageURLUtil(u, size, context)
     },
-    getIndicatorURL (idx) {      
+    getIndicatorURL (idx) {
       if (this.images[idx] !== undefined) {
-        return this.getImageURL(this.images[idx], 'x85')
+        return this.getImageURL(this.images[idx], 'x85', 'act-' + this.actor.id)
       } else {
         return '/ui/images/blank_female_profile.png'
       }
@@ -507,7 +507,7 @@ export default {
     getCountryFlag(countryCode){
       const country = this.countries.find(c => c.code === countryCode)
       if (country == undefined) {
-        return getImageURLUtil('https://flagcdn.com/' + countryCode.toLowerCase() + '.svg', '700x')
+        return getImageURLUtil('https://flagcdn.com/' + countryCode.toLowerCase() + '.svg', '700x', 'icon-' + countryCode.toLowerCase())
       }
       return country.flag_url
     },

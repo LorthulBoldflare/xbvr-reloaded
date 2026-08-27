@@ -2,7 +2,7 @@
   <div class="card actor-card">
     <div class="card-image">
       <div class="bbox"
-           v-bind:style="{backgroundImage: `url(${getImageURL(actor.image_url)})`, backgroundSize: actorCardScale, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity:isAvailable(actor) ? 1.0 : isAvailOpacity, aspectRatio: actorCardAspectRatio}"
+           v-bind:style="{backgroundImage: `url(${getImageURL(actor.image_url, 'act-' + actor.id)})`, backgroundSize: actorCardScale, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity:isAvailable(actor) ? 1.0 : isAvailOpacity, aspectRatio: actorCardAspectRatio}"
            @click="showDetails(actor)"
            @mouseover="preview = true"
            @mouseleave="preview = false">
@@ -38,7 +38,7 @@
       <span class="is-pulled-right card-meta">
           <span v-if="actor.birth_date != '0001-01-01T00:00:00Z'">{{format(parseISO(actor.birth_date), "yyyy-MM-dd")}}</span>
           <vue-load-image style="display:inline-block">
-            <img slot="image" :src="getImageURL('https://flagcdn.com/' + actor.nationality.toLowerCase() +'.svg')" style="height:10px;border: 1px solid black;margin-left:0.5em" />
+             <img slot="image" :src="getImageURL('https://flagcdn.com/' + actor.nationality.toLowerCase() +'.svg', 'icon-' + actor.nationality.toLowerCase())" style="height:10px;border: 1px solid black;margin-left:0.5em" />
           </vue-load-image>
           <div>
           <span v-if="actor.scenes.length == 1">{{actor.scenes.length}} scene</span>
@@ -96,8 +96,8 @@ export default {
     },
   },
   methods: {
-    getImageURL (u) {
-      return getImageURLUtil(u, '700x', '/ui/images/blank_female_profile.png')
+    getImageURL (u, context = '0') {
+      return getImageURLUtil(u, '700x', context, '/ui/images/blank_female_profile.png')
     },
     showDetails (actor) {
       this.$store.commit('overlay/showActorDetails', { actor: actor })

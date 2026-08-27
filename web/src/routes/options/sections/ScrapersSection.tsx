@@ -7,7 +7,7 @@ import { useToastStore } from '../../../store/toasts'
 import { useUIStore } from '../../../store/ui'
 import { useMessagesStore } from '../../../store/messages'
 import { useOptionsState } from '../../../api/hooks'
-import { getImageURL } from '../../../lib/image'
+import { getImageURL, iconSlug } from '../../../lib/image'
 import { Toggle } from '../../../components/Toggle'
 import { Modal } from '../../../components/Modal'
 import { Popover } from '../../../components/Popover'
@@ -114,7 +114,7 @@ export function ScrapersSection() {
                   <Toggle checked={s.is_enabled} onChange={() => toggleField.mutate({ url: `/options/sites/${s.id}` })} />
                 </td>
                 <td className="py-1.5 pr-2">
-                  {s.avatar_url && <img src={getImageURL(s.avatar_url, '128x')} alt="" className="h-6 w-6 rounded" loading="lazy" />}
+                  {s.avatar_url && <img src={getImageURL(s.avatar_url, '128x', 'icon-' + iconSlug(s.id))} alt="" className="h-6 w-6 rounded" loading="lazy" />}
                 </td>
                 <td className={`py-1.5 pr-2 font-medium ${s.has_scraper ? '' : 'text-danger'}`} title={s.has_scraper ? '' : 'No scraper'}>
                   {studio(s.name)}

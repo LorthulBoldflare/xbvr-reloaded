@@ -92,7 +92,7 @@ export function SearchStashdbActors() {
             <div key={r.Id} className="flex gap-3 rounded-lg border border-line bg-surface-2 p-2">
               <div className="relative h-24 w-24 shrink-0">
                 {imgs.length > 0 && (
-                  <img src={getImageURL(imgs[Math.min(idx, imgs.length - 1)], '120x')} alt="" className="h-24 w-24 rounded object-cover" loading="lazy" />
+                  <img src={getImageURL(imgs[Math.min(idx, imgs.length - 1)], '120x', 'act-0')} alt="" className="h-24 w-24 rounded object-cover" loading="lazy" />
                 )}
                 {imgs.length > 1 && (
                   <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1">
