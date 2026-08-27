@@ -91,6 +91,35 @@ body {
   background-attachment: fixed;
 }
 
+/* Skip layout and paint work for media cards far outside the viewport. */
+.media-grid-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .media-card:hover {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.36);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  body {
+    background-attachment: scroll !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 h1, h2, h3 {
   letter-spacing: -0.015em;
 }

@@ -88,7 +88,10 @@ export function Sidebar() {
   const [theme, setThemeState] = useState(getTheme())
   const [collapsed, toggleCollapsed] = useSidebarCollapsed()
   const { data: version } = useVersionCheck()
-  const { lockScrape, lockRescan, lastScrapeMessage, lastRescanMessage } = useMessagesStore()
+  const lockScrape = useMessagesStore((s) => s.lockScrape)
+  const lockRescan = useMessagesStore((s) => s.lockRescan)
+  const lastScrapeMessage = useMessagesStore((s) => s.lastScrapeMessage)
+  const lastRescanMessage = useMessagesStore((s) => s.lastRescanMessage)
   const openQuickFind = useUIStore((s) => s.openQuickFind)
 
   const navItems = [

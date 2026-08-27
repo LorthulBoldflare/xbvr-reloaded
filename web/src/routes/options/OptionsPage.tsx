@@ -1,19 +1,23 @@
-import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { FilesSection } from './sections/FilesSection'
-import { StorageSection } from './sections/StorageSection'
-import { PreviewsSection } from './sections/PreviewsSection'
-import { CacheSection } from './sections/CacheSection'
-import { SchedulesSection } from './sections/SchedulesSection'
-import { ScrapersSection } from './sections/ScrapersSection'
-import { SceneCreateSection } from './sections/SceneCreateSection'
-import { FunscriptsSection } from './sections/FunscriptsSection'
-import { ImportExportSection } from './sections/ImportExportSection'
-import { AuthenticationSection } from './sections/AuthenticationSection'
-import { PlayersSection } from './sections/PlayersSection'
-import { DlnaSection } from './sections/DlnaSection'
-import { WebUiSection } from './sections/WebUiSection'
-import { AdvancedSection } from './sections/AdvancedSection'
+import { lazy, Suspense, type ComponentType } from 'react'
+import { Link, useParams } from 'react-router-dom'
+
+const lazySection = <T extends Record<string, ComponentType>>(loader: () => Promise<T>, name: keyof T) =>
+  lazy(() => loader().then((m) => ({ default: m[name] })))
+
+const FilesSection = lazySection(() => import('./sections/FilesSection'), 'FilesSection')
+const StorageSection = lazySection(() => import('./sections/StorageSection'), 'StorageSection')
+const PreviewsSection = lazySection(() => import('./sections/PreviewsSection'), 'PreviewsSection')
+const CacheSection = lazySection(() => import('./sections/CacheSection'), 'CacheSection')
+const SchedulesSection = lazySection(() => import('./sections/SchedulesSection'), 'SchedulesSection')
+const ScrapersSection = lazySection(() => import('./sections/ScrapersSection'), 'ScrapersSection')
+const SceneCreateSection = lazySection(() => import('./sections/SceneCreateSection'), 'SceneCreateSection')
+const FunscriptsSection = lazySection(() => import('./sections/FunscriptsSection'), 'FunscriptsSection')
+const ImportExportSection = lazySection(() => import('./sections/ImportExportSection'), 'ImportExportSection')
+const AuthenticationSection = lazySection(() => import('./sections/AuthenticationSection'), 'AuthenticationSection')
+const PlayersSection = lazySection(() => import('./sections/PlayersSection'), 'PlayersSection')
+const DlnaSection = lazySection(() => import('./sections/DlnaSection'), 'DlnaSection')
+const WebUiSection = lazySection(() => import('./sections/WebUiSection'), 'WebUiSection')
+const AdvancedSection = lazySection(() => import('./sections/AdvancedSection'), 'AdvancedSection')
 
 const GROUPS: { name: string; sections: { id: string; label: string; component: () => JSX.Element }[] }[] = [
   {
@@ -75,7 +79,9 @@ export function OptionsPage() {
         ))}
       </aside>
       <div className="min-w-0 max-w-5xl flex-1">
-        <active.component />
+        <Suspense fallback={<div className="py-16 text-center text-muted">Loading…</div>}>
+          <active.component />
+        </Suspense>
       </div>
     </div>
   )

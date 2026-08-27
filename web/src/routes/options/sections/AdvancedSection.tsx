@@ -20,7 +20,7 @@ import { SectionCard, Field, SaveButton, btnCls, inputCls } from '../common'
 export function AdvancedSection() {
   const { data: state } = useOptionsState()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const askConfirm = useUIStore((s) => s.askConfirm)
 
   const [form, setForm] = useState<Record<string, any> | null>(null)

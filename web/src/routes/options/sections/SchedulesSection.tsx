@@ -24,7 +24,7 @@ const SCHEDULES: { key: string; label: string; disabledNote?: (state: ReturnType
 // require a restart to take effect (same as the old UI).
 export function SchedulesSection() {
   const { data: state } = useOptionsState()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [form, setForm] = useState<Record<string, CronSchedule>>({})
 
   useEffect(() => {

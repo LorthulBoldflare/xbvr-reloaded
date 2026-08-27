@@ -9,7 +9,7 @@ import { SectionCard, Field, btnCls, btnPrimaryCls, inputCls } from '../common'
 
 // Content bundle backup/restore (old UI: Data import/export).
 export function ImportExportSection() {
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const askConfirm = useUIStore((s) => s.askConfirm)
 
   const [tab, setTab] = useState<'import' | 'export'>('export')

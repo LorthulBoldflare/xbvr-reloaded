@@ -11,7 +11,7 @@ import { SectionCard, Field, SaveButton, inputCls } from '../common'
 export function WebUiSection() {
   const { data: state } = useOptionsState()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [form, setForm] = useState<WebOptions | null>(null)
 
   useEffect(() => {

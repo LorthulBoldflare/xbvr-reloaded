@@ -37,7 +37,7 @@ export function FiltersPopoverContent({ counts }: { counts?: Record<string, numb
   const { data: opts } = useSceneFilterOptions()
   const queryClient = useQueryClient()
   const askConfirm = useUIStore((s) => s.askConfirm)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [tagGroupDialog, setTagGroupDialog] = useState<'create' | 'rename' | null>(null)
   const [tagGroupName, setTagGroupName] = useState('')

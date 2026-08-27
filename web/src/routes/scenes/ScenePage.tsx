@@ -37,7 +37,7 @@ export function ScenePage() {
   const web = state?.config?.web
   const advanced = state?.config?.advanced
   const askConfirm = useUIStore((s) => s.askConfirm)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const sceneQuery = useQuery({
     queryKey: ['scene', 'sid', id],
@@ -194,9 +194,10 @@ export function ScenePage() {
       {/* hero: blurred cover backdrop, poster, title, meta, rating, actions */}
       <div className="relative mb-6 overflow-hidden rounded-2xl border border-line">
         <img
-          src={getImageURL(scene.cover_url, '700x', sceneContext(scene.scene_id))}
+          src={getImageURL(scene.cover_url, '240x', sceneContext(scene.scene_id))}
           alt=""
           aria-hidden
+          decoding="async"
           className="absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-2xl"
           onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
         />
@@ -205,6 +206,7 @@ export function ScenePage() {
           <img
             src={getImageURL(scene.cover_url, '700x', sceneContext(scene.scene_id))}
             alt=""
+            decoding="async"
             onError={(e) => {
               const el = e.target as HTMLImageElement
               if (!el.src.endsWith('blank.png')) el.src = `${import.meta.env.BASE_URL}blank.png`
@@ -247,7 +249,7 @@ export function ScenePage() {
                   </button>
                 )}
               </span>
-              <SceneFlagButtons scene={scene} onEdit={enterEdit} />
+              <SceneFlagButtons scene={scene} web={web} onEdit={enterEdit} />
             </div>
           </div>
           <div className="shrink-0">

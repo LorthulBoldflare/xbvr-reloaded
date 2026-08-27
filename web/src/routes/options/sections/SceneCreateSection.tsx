@@ -23,7 +23,7 @@ const SINGLE_SCENE_SITES: { match: string; site: string; warn?: string }[] = [
 export function SceneCreateSection() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const { data: state } = useOptionsState()
 
   const [javrScraper, setJavrScraper] = useState('javdatabase')

@@ -41,7 +41,11 @@ export function QuickFind() {
 
   const { data } = useQuery({
     queryKey: ['quickfind', debounced],
-    queryFn: () => api.get<ResponseGetScenes>(`/scene/search?q=${encodeURIComponent(debounced)}`, { toastOnError: false }),
+    queryFn: ({ signal }) =>
+      api.get<ResponseGetScenes>(`/scene/search?q=${encodeURIComponent(debounced)}`, {
+        signal,
+        toastOnError: false
+      }),
     enabled: open && debounced.length > 0,
     placeholderData: (prev) => prev
   })

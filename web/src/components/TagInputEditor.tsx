@@ -16,11 +16,17 @@ export function TagInputEditor({
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const selected = useMemo(() => new Set(values), [values])
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
-    return options.filter((o) => !values.includes(o) && o.toLowerCase().includes(q)).slice(0, 30)
-  }, [options, values, query])
+    const matches: string[] = []
+    for (const option of options) {
+      if (!selected.has(option) && option.toLowerCase().includes(q)) matches.push(option)
+      if (matches.length === 30) break
+    }
+    return matches
+  }, [options, selected, query])
 
   const add = (name: string) => {
     const v = name.trim()

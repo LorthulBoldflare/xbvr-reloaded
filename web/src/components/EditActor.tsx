@@ -15,7 +15,7 @@ export function EditActor() {
   const hide = useUIStore((s) => s.hideEditActor)
   const askConfirm = useUIStore((s) => s.askConfirm)
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const { data: state } = useOptionsState()
   const imperial = state?.config?.advanced?.useImperialEntry ?? false
 

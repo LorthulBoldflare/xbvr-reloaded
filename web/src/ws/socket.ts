@@ -6,6 +6,8 @@ import { Wampy } from 'wampy'
 import { useMessagesStore } from '../store/messages'
 import { useRemoteStore } from '../store/remote'
 import { usePreviewsStore } from '../store/previews'
+import type { GetStateResponse, ObjectState } from '../api/types'
+import { queryClient } from '../queryClient'
 
 type ArgsDict = Record<string, any>
 
@@ -20,9 +22,9 @@ export function startSocket() {
   ws.subscribe('service.log', (dataArr: any) => {
     const args: ArgsDict = dataArr.argsDict ?? {}
     const msg: string = args.message ?? ''
-    if (args.level === 'debug') console.debug(msg)
-    else if (args.level === 'error') console.error(msg)
-    else if (args.level === 'info') console.info(msg)
+    if (args.level === 'error') console.error(msg)
+    else if (import.meta.env.DEV && args.level === 'debug') console.debug(msg)
+    else if (import.meta.env.DEV && args.level === 'info') console.info(msg)
 
     const task: string | undefined = args.data?.task
     if (task === 'scrape') {
@@ -47,9 +49,16 @@ export function startSocket() {
   })
 
   ws.subscribe('state.change.optionsStorage', () => {
-    // Consumers use react-query; invalidate lazily via a dynamic import to
-    // avoid a hard dependency cycle at module init.
-    import('../queryClient').then((m) => m.queryClient.invalidateQueries({ queryKey: ['optionsStorage'] }))
+    queryClient.invalidateQueries({ queryKey: ['optionsStorage'] })
+  })
+
+  ws.subscribe('state.change.migration', (dataArr: any) => {
+    const migration = (dataArr.argsDict ?? {}) as ObjectState['migration']
+    queryClient.setQueryData<GetStateResponse>(['optionsState'], (state) =>
+      state
+        ? { ...state, currentState: { ...state.currentState, migration } }
+        : state
+    )
   })
 
   ws.subscribe('options.previews.previewReady', (dataArr: any) => {

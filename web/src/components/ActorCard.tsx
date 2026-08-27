@@ -1,24 +1,24 @@
+import { memo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { Actor } from '../api/types'
-import { useOptionsState } from '../api/hooks'
+import type { Actor, WebOptions } from '../api/types'
 import { getImageURL } from '../lib/image'
 import { formatDate } from '../lib/format'
 import { useUIStore } from '../store/ui'
 import { StarRating } from './StarRating'
 
 // Actor portrait card (actors grid + actor modal tabs).
-export function ActorCard({
+export const ActorCard = memo(function ActorCard({
   actor,
+  web,
   colleagueMode = false,
   onClick
 }: {
   actor: Actor
+  web?: WebOptions
   colleagueMode?: boolean
   onClick?: () => void
 }) {
-  const { data: state } = useOptionsState()
-  const web = state?.config?.web
   const queryClient = useQueryClient()
   const showActorDetails = useUIStore((s) => s.showActorDetails)
 
@@ -33,16 +33,17 @@ export function ActorCard({
   const opacity = actor.avail_count > 0 ? 1 : (web?.isAvailOpacity ?? 40) / 100
 
   return (
-    <div className="group">
+    <div className="media-grid-item group">
       <div
-        className="relative cursor-pointer overflow-hidden rounded-xl bg-surface-3 ring-accent transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_10px_36px_rgba(0,0,0,0.45)] group-hover:ring-2"
+        className="media-card relative cursor-pointer overflow-hidden rounded-xl bg-surface-3 ring-accent transition-transform duration-200 group-hover:-translate-y-1 group-hover:ring-2"
         style={{ aspectRatio: aspect }}
         onClick={onClick ?? (() => showActorDetails(actor.id))}
       >
         <img
-          src={getImageURL(actor.image_url, '700x', 'act-' + actor.id)}
+          src={getImageURL(actor.image_url, '360x', 'act-' + actor.id)}
           alt={actor.name}
           loading="lazy"
+          decoding="async"
           onError={(e) => {
             const el = e.target as HTMLImageElement
             if (!el.src.endsWith('blank_female_profile.png'))
@@ -53,14 +54,14 @@ export function ActorCard({
         />
         <div className="pointer-events-none absolute right-1.5 top-1.5 flex flex-wrap justify-end gap-1">
           {actor.star_rating > 0 && (
-            <span className="flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+            <span className="flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
               ★ {actor.star_rating}
             </span>
           )}
           {actor.scene_rating_average !== undefined && Number(actor.scene_rating_average) > 0 && (
             <span
               title="Average scene rating"
-              className="flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm"
+              className="flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
             >
               ∅ {Number(actor.scene_rating_average).toFixed(2)}
             </span>
@@ -100,4 +101,4 @@ export function ActorCard({
       </div>
     </div>
   )
-}
+})

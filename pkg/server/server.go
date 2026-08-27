@@ -91,7 +91,7 @@ func StartServer(version, commit, branch, date string) {
 
 	// Run migrations in background
 	go func() {
-		config.State.Migration.IsRunning = true
+		config.UpdateMigrationStatus("", 0, 0, "Starting database migrations...")
 		migrations.ProcessCustomSceneRemappingFiles()
 		migrations.Migrate("")
 		config.CompleteMigration()

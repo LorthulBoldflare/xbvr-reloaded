@@ -9,6 +9,7 @@ import { useUIStore } from '../../store/ui'
 import { ActorCard } from '../../components/ActorCard'
 import { Popover } from '../../components/Popover'
 import { ActorFiltersPopoverContent } from './ActorFiltersPopover'
+import { useWebOptions } from '../../api/hooks'
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
@@ -17,6 +18,7 @@ export function ActorsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, setFilters, patch } = useActorFilterStore()
   const [page, setPage] = useState(0)
+  const web = useWebOptions()
   const queryClient = useQueryClient()
   const showActorDetails = useUIStore((s) => s.showActorDetails)
   const actorDetailsOpen = useUIStore((s) => s.actorDetailsId !== null)
@@ -171,7 +173,7 @@ export function ActorsPage() {
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
         {actors.map((a) => (
-          <ActorCard key={a.id} actor={a} />
+          <ActorCard key={a.id} actor={a} web={web} />
         ))}
       </div>
       {actors.length === 0 && <div className="py-16 text-center text-muted">No actors match the current filters</div>}

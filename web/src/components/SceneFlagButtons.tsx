@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { Scene } from '../api/types'
+import type { Scene, WebOptions } from '../api/types'
 import { patchSceneInCaches } from '../api/sceneCache'
-import { useOptionsState } from '../api/hooks'
 
 type ToggleList =
   | 'watchlist'
@@ -30,8 +29,12 @@ export function useSceneToggle() {
               : list
       const current = scene[key as keyof Scene] as boolean
       patchSceneInCaches(queryClient, scene.id, { [key]: !current } as Partial<Scene>)
+      return { key, current }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['sceneList'] })
+    onError: (_error, { scene }, context) => {
+      if (context) patchSceneInCaches(queryClient, scene.id, { [context.key]: context.current } as Partial<Scene>)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['sceneList'], refetchType: 'none' })
   })
 }
 
@@ -41,9 +44,17 @@ const BTN = 'rounded-full border px-2 py-0.5 text-[11px] font-medium leading-non
 // (Options → Web UI controls which buttons are visible). With `onTile` (used
 // on SceneCard) the favourite/watchlist buttons are omitted — those are
 // always-visible on-tile toggles instead.
-export function SceneFlagButtons({ scene, onEdit, onTile = false }: { scene: Scene; onEdit?: () => void; onTile?: boolean }) {
-  const { data: state } = useOptionsState()
-  const web = state?.config?.web
+export function SceneFlagButtons({
+  scene,
+  web,
+  onEdit,
+  onTile = false
+}: {
+  scene: Scene
+  web?: WebOptions
+  onEdit?: () => void
+  onTile?: boolean
+}) {
   const toggle = useSceneToggle()
 
   const t = (list: ToggleList) => toggle.mutate({ scene, list })

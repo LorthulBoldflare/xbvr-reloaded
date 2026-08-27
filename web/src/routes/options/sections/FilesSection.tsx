@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api/client'
@@ -28,6 +28,7 @@ export function FilesSection() {
 
   const [state, setState] = useState<'all' | 'matched' | 'unmatched'>('unmatched')
   const [filename, setFilename] = useState('')
+  const [debouncedFilename, setDebouncedFilename] = useState('')
   const [createdFrom, setCreatedFrom] = useState('')
   const [createdTo, setCreatedTo] = useState('')
   const [resolutions, setResolutions] = useState<string[]>([])
@@ -38,22 +39,28 @@ export function FilesSection() {
   const [matchFile, setMatchFile] = useState<File | null>(null)
   const [createFile, setCreateFile] = useState<File | null>(null)
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFilename(filename), 300)
+    return () => window.clearTimeout(timer)
+  }, [filename])
+
   const body = useMemo(
     () => ({
       state: state === 'all' ? '' : state,
-      filename,
+      filename: debouncedFilename,
       createdDate: createdFrom && createdTo ? [createdFrom, createdTo] : [],
       resolutions,
       framerates,
       bitrates,
       sort
     }),
-    [state, filename, createdFrom, createdTo, resolutions, framerates, bitrates, sort]
+    [state, debouncedFilename, createdFrom, createdTo, resolutions, framerates, bitrates, sort]
   )
 
   const { data: files } = useQuery({
     queryKey: ['files', body],
-    queryFn: () => api.post<File[]>('/files/list', body)
+    queryFn: ({ signal }) => api.post<File[]>('/files/list', body, { signal }),
+    gcTime: 60_000
   })
 
   const invalidate = () => {

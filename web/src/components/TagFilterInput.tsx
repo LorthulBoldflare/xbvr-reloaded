@@ -33,7 +33,12 @@ export function TagFilterInput({
   const selected = useMemo(() => new Set(values.map((v) => chipState(v).name)), [values])
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
-    return options.filter((o) => !selected.has(o) && o.toLowerCase().includes(q)).slice(0, 30)
+    const matches: string[] = []
+    for (const option of options) {
+      if (!selected.has(option) && option.toLowerCase().includes(q)) matches.push(option)
+      if (matches.length === 30) break
+    }
+    return matches
   }, [options, selected, query])
 
   const cycle = (v: string) => {

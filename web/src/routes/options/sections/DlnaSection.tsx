@@ -11,7 +11,7 @@ import { SectionCard, Field, SaveButton, inputCls } from '../common'
 export function DlnaSection() {
   const { data: state } = useOptionsState()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [enabled, setEnabled] = useState(true)
   const [name, setName] = useState('XBVR')

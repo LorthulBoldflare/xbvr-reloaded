@@ -1,20 +1,25 @@
-import { useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { AlternateSource, Scene } from '../api/types'
+import type { AlternateSource, Scene, WebOptions } from '../api/types'
 import { getImageURL, altSourceIconContext, sceneContext } from '../lib/image'
 import { formatDate, safeHref } from '../lib/format'
-import { useOptionsState } from '../api/hooks'
 import { SceneFlagButtons, useSceneToggle } from './SceneFlagButtons'
 import {
   BookmarkIcon, ClockIcon, CloudOffIcon, CuepointIcon, EyeIcon, FileIcon, GogglesIcon, HeartIcon, LinkIcon, PulseIcon, StarIcon, StorageOffIcon, SubtitlesIcon
 } from './icons'
 
+const AUTO_PREVIEW_ALLOWED =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches &&
+  !(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
+
 function Badge({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
     <span
       title={title}
-      className="flex items-center gap-0.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm"
+      className="flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
     >
       {children}
     </span>
@@ -43,7 +48,7 @@ function TileToggle({
         e.stopPropagation()
         onClick()
       }}
-      className={`flex h-6 w-6 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition-transform hover:scale-110 ${
+      className={`flex h-6 w-6 items-center justify-center rounded-full bg-black/70 transition-transform hover:scale-110 ${
         active ? activeClass : 'text-white/80'
       }`}
     >
@@ -54,14 +59,52 @@ function TileToggle({
 
 // One scene in the grid. Hover: accent border + preview video (when the
 // scene has one). Click: navigate to the scene page (or call onOpen).
-export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Scene) => void }) {
+export const SceneCard = memo(function SceneCard({
+  scene,
+  web,
+  onOpen,
+  enablePreview = true
+}: {
+  scene: Scene
+  web?: WebOptions
+  onOpen?: (scene: Scene) => void
+  enablePreview?: boolean
+}) {
   const navigate = useNavigate()
-  const { data: state } = useOptionsState()
-  const web = state?.config?.web
-
   const [hover, setHover] = useState(false)
   const [altSources, setAltSources] = useState<AlternateSource[] | null>(null)
+  const hoverTimer = useRef<number | null>(null)
+  const queryClient = useQueryClient()
   const toggle = useSceneToggle()
+
+  useEffect(
+    () => () => {
+      if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current)
+    },
+    []
+  )
+
+  const loadAltSources = async () => {
+    if (altSources !== null) return
+    try {
+      const data = await queryClient.fetchQuery({
+        queryKey: ['altSources', scene.id],
+        queryFn: async ({ signal }) => {
+          const res = await api.get<AlternateSource[]>(`/scene/alternate_source/${scene.id}`, {
+            signal,
+            toastOnError: false
+          })
+          return (res ?? []).filter(
+            (a) => a.external_source.startsWith('alternate scene ') || a.external_source === 'stashdb scene'
+          )
+        },
+        staleTime: 10 * 60_000
+      })
+      setAltSources(data)
+    } catch {
+      setAltSources([])
+    }
+  }
 
   const files = scene.file ?? []
   const videoCount = files.filter((f) => f.type === 'video').length
@@ -82,22 +125,6 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
     return sel ? [sel] : withMap.slice(0, 1)
   })()
 
-  // Alternate-source icons are fetched lazily on first hover (the old UI did
-  // this per card on mount, which floods the API when scrolling).
-  const loadAltSources = () => {
-    if (altSources !== null) return
-    api
-      .get<AlternateSource[]>(`/scene/alternate_source/${scene.id}`, { toastOnError: false })
-      .then((res) =>
-        setAltSources(
-          (res ?? []).filter(
-            (a) => a.external_source.startsWith('alternate scene ') || a.external_source === 'stashdb scene'
-          )
-        )
-      )
-      .catch(() => setAltSources([]))
-  }
-
   const altTitle = (a: AlternateSource): string => {
     try {
       const ext = JSON.parse(a.external_data)
@@ -109,20 +136,27 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
   }
 
   return (
-    <div className="group">
+    <div className="media-grid-item group">
       <div
-        className="relative aspect-video cursor-pointer overflow-hidden rounded-xl bg-surface-3 ring-accent transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_10px_36px_rgba(0,0,0,0.45)] group-hover:ring-2"
+        className="media-card relative aspect-video cursor-pointer overflow-hidden rounded-xl bg-surface-3 ring-accent transition-transform duration-200 group-hover:-translate-y-1 group-hover:ring-2"
         onClick={() => (onOpen ? onOpen(scene) : navigate(`/scenes/${scene.scene_id}`))}
         onMouseEnter={() => {
-          setHover(true)
-          loadAltSources()
+          hoverTimer.current = window.setTimeout(() => {
+            setHover(true)
+            void loadAltSources()
+          }, 300)
         }}
-        onMouseLeave={() => setHover(false)}
+        onMouseLeave={() => {
+          if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current)
+          hoverTimer.current = null
+          setHover(false)
+        }}
       >
         <img
-          src={getImageURL(scene.cover_url, '700x', sceneContext(scene.scene_id))}
+          src={getImageURL(scene.cover_url, '480x', sceneContext(scene.scene_id))}
           alt={scene.title}
           loading="lazy"
+          decoding="async"
           onError={(e) => {
             const el = e.target as HTMLImageElement
             if (!el.src.endsWith('blank.png')) el.src = `${import.meta.env.BASE_URL}blank.png`
@@ -130,13 +164,14 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
           className="absolute left-0 top-1/2 w-full -translate-y-1/2"
           style={{ opacity }}
         />
-        {hover && scene.has_preview && (
+        {hover && enablePreview && AUTO_PREVIEW_ALLOWED && scene.has_preview && (
           <video
             src={`/api/dms/preview/${scene.scene_id}`}
             autoPlay
             muted
             loop
             playsInline
+            preload="none"
             className="absolute left-0 top-1/2 w-full -translate-y-1/2"
           />
         )}
@@ -144,7 +179,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
         {/* prominent "not available" indicator (the dimming alone is too subtle) */}
         {!scene.is_available && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm ring-1 ring-white/25">
+            <span className="flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/25">
               <CloudOffIcon className="h-4 w-4" />
               Not downloaded
             </span>
@@ -152,7 +187,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
         )}
         {scene.is_available && !scene.is_accessible && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-semibold text-warn backdrop-blur-sm ring-1 ring-warn/40">
+            <span className="flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-semibold text-warn ring-1 ring-warn/40">
               <StorageOffIcon className="h-4 w-4" />
               Storage offline
             </span>
@@ -237,6 +272,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
                   alt="funscript heatmap"
                   className="h-2.5 w-full rounded-full opacity-90"
                   loading="lazy"
+                  decoding="async"
                 />
               ))}
             </div>
@@ -258,7 +294,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
       {/* actions row */}
       <div className="flex items-start justify-between gap-1 pt-1.5">
         <div className="min-w-0">
-          <SceneFlagButtons scene={scene} onTile onEdit={() => navigate(`/scenes/${scene.scene_id}?edit=1`)} />
+          <SceneFlagButtons scene={scene} web={web} onTile onEdit={() => navigate(`/scenes/${scene.scene_id}?edit=1`)} />
         </div>
         <div className="flex shrink-0 items-center gap-1 pt-0.5">
           {scene.members_url && (
@@ -294,6 +330,7 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
                 alt=""
                 className="h-5 w-5 rounded"
                 loading="lazy"
+                decoding="async"
                 onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
               />
             </a>
@@ -302,4 +339,4 @@ export function SceneCard({ scene, onOpen }: { scene: Scene; onOpen?: (scene: Sc
       )}
     </div>
   )
-}
+})

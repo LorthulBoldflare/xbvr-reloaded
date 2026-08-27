@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api/client'
 import type { PreviewQueueStatus } from '../../../api/types'
@@ -11,7 +11,7 @@ import { SectionCard, Field, SaveButton, btnCls } from '../common'
 // Preview generation settings + test + queue control.
 export function PreviewsSection() {
   const { data: state } = useOptionsState()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const queue = usePreviewsStore((s) => s.queue)
   const previewFn = usePreviewsStore((s) => s.previewFn)
   const clearPreview = usePreviewsStore((s) => s.clearPreview)
@@ -28,6 +28,10 @@ export function PreviewsSection() {
     refetchInterval: queue?.running ? 2000 : false
   })
   const q = queue ?? status
+  const previewURL = useMemo(
+    () => (previewFn ? `/api/dms/preview/${previewFn}?ts=${Date.now()}` : ''),
+    [previewFn]
+  )
 
   const save = useMutation({
     mutationFn: () => api.put('/options/previews', { ...form, enabled: state?.config?.library?.preview?.enabled ?? true }),
@@ -78,7 +82,7 @@ export function PreviewsSection() {
         </div>
         {previewFn && (
           <div className="mt-3">
-            <video key={previewFn} src={`/api/dms/preview/${previewFn}?ts=${Date.now()}`} controls autoPlay muted loop className="max-w-md rounded-xl bg-black" />
+            <video key={previewFn} src={previewURL} controls autoPlay muted loop className="max-w-md rounded-xl bg-black" />
             <button onClick={clearPreview} className="mt-1 text-xs text-muted hover:text-fg">
               Dismiss
             </button>

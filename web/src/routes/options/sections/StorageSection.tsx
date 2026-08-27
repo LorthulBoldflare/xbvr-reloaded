@@ -15,7 +15,7 @@ export function StorageSection() {
   const { data: storage } = useOptionsStorage()
   const queryClient = useQueryClient()
   const askConfirm = useUIStore((s) => s.askConfirm)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [newPath, setNewPath] = useState('')
   const [newToken, setNewToken] = useState('')

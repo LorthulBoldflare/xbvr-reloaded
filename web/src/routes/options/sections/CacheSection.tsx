@@ -9,7 +9,7 @@ import { SectionCard, btnCls } from '../common'
 // Cache sizes + resets, search index, scene refresh.
 export function CacheSection() {
   const { data: state, refetch } = useOptionsState()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const askConfirm = useUIStore((s) => s.askConfirm)
 
   const { data: search, refetch: refetchSearch } = useQuery({

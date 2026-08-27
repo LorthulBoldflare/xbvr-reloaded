@@ -18,7 +18,7 @@ import { SectionCard, Field, btnCls, inputCls } from '../common'
 // scrape actions, bulk toggles, and the match-params editor for sub-sites.
 export function ScrapersSection() {
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const askConfirm = useUIStore((s) => s.askConfirm)
   const runningScrapers = useMessagesStore((s) => s.runningScrapers)
   const { data: state } = useOptionsState()
@@ -269,7 +269,7 @@ export function ScrapersSection() {
 
 // "Scrape single scene" dialog (collects the scene URL + optional extra info).
 function SingleScrapeModal({ site, onClose }: { site: Site | null; onClose: () => void }) {
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [url, setUrl] = useState('')
   const [extra, setExtra] = useState('')
   const [busy, setBusy] = useState(false)

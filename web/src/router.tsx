@@ -1,10 +1,16 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import App from './App'
-import { ScenesPage } from './routes/scenes/ScenesPage'
-import { ScenePage } from './routes/scenes/ScenePage'
-import { FilePage } from './routes/files/FilePage'
-import { ActorsPage } from './routes/actors/ActorsPage'
-import { OptionsPage } from './routes/options/OptionsPage'
+
+const ScenesPage = lazy(() => import('./routes/scenes/ScenesPage').then((m) => ({ default: m.ScenesPage })))
+const ScenePage = lazy(() => import('./routes/scenes/ScenePage').then((m) => ({ default: m.ScenePage })))
+const FilePage = lazy(() => import('./routes/files/FilePage').then((m) => ({ default: m.FilePage })))
+const ActorsPage = lazy(() => import('./routes/actors/ActorsPage').then((m) => ({ default: m.ActorsPage })))
+const OptionsPage = lazy(() => import('./routes/options/OptionsPage').then((m) => ({ default: m.OptionsPage })))
+
+function route(element: JSX.Element) {
+  return <Suspense fallback={<div className="py-16 text-center text-muted">Loading…</div>}>{element}</Suspense>
+}
 
 export const router = createBrowserRouter(
   [
@@ -12,11 +18,11 @@ export const router = createBrowserRouter(
       path: '/',
       element: <App />,
       children: [
-        { index: true, element: <ScenesPage /> },
-        { path: 'scenes/:id', element: <ScenePage /> },
-        { path: 'files/:id', element: <FilePage /> },
-        { path: 'actors', element: <ActorsPage /> },
-        { path: 'options/*', element: <OptionsPage /> }
+        { index: true, element: route(<ScenesPage />) },
+        { path: 'scenes/:id', element: route(<ScenePage />) },
+        { path: 'files/:id', element: route(<FilePage />) },
+        { path: 'actors', element: route(<ActorsPage />) },
+        { path: 'options/*', element: route(<OptionsPage />) }
       ]
     }
   ],

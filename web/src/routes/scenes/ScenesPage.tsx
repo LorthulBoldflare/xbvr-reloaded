@@ -12,6 +12,7 @@ import {
 } from '../../store/sceneFilters'
 import { decodeJsonBase64, encodeJsonBase64 } from '../../lib/base64'
 import { SCENE_SORTS } from '../../api/sorts'
+import { useWebOptions } from '../../api/hooks'
 import { SceneCard } from '../../components/SceneCard'
 import { FileCard } from '../../components/FileCard'
 import { Popover } from '../../components/Popover'
@@ -36,6 +37,7 @@ export function ScenesPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, setFilters, patch } = useSceneFilterStore()
+  const web = useWebOptions()
   const [autoLoad, setAutoLoad] = useState(true)
 
   // ---- URL → store (on mount / external nav), store → URL (on change)
@@ -91,8 +93,8 @@ export function ScenesPage() {
   // ---- Data
   const listQuery = useInfiniteQuery({
     queryKey: ['sceneList', filters],
-    queryFn: ({ pageParam }) =>
-      api.post<ResponseSceneList>('/scene/list', sceneListRequestBody(filters, pageParam as number, PAGE_SIZE)),
+    queryFn: ({ pageParam, signal }) =>
+      api.post<ResponseSceneList>('/scene/list', sceneListRequestBody(filters, pageParam as number, PAGE_SIZE), { signal }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       const loaded = pages.length * PAGE_SIZE
@@ -105,7 +107,8 @@ export function ScenesPage() {
 
   const unmatchedQuery = useQuery({
     queryKey: ['unmatchedFiles'],
-    queryFn: () => api.post<File[]>('/files/list', { state: 'unmatched', sort: 'created_time_desc' }),
+    queryFn: ({ signal }) =>
+      api.post<File[]>('/files/list', { state: 'unmatched', sort: 'created_time_desc' }, { signal }),
     enabled: !!filters.showUnmatched,
     staleTime: 30_000
   })
@@ -130,22 +133,29 @@ export function ScenesPage() {
 
   // ---- Infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = listQuery
   useEffect(() => {
     if (!autoLoad) return
     const el = sentinelRef.current
     if (!el) return
     const obs = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && listQuery.hasNextPage && !listQuery.isFetchingNextPage) {
-        listQuery.fetchNextPage()
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage()
       }
-    })
+    }, { rootMargin: '600px 0px' })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [autoLoad, listQuery])
+  }, [autoLoad, fetchNextPage, hasNextPage, isFetchingNextPage])
 
   // Keep the loaded order for scene-page prev/next navigation.
   useEffect(() => {
-    sessionStorage.setItem('sceneOrder', JSON.stringify(scenes.map((s) => s.scene_id)))
+    const writeOrder = () => sessionStorage.setItem('sceneOrder', JSON.stringify(scenes.map((s) => s.scene_id)))
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(writeOrder, { timeout: 1000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = window.setTimeout(writeOrder, 0)
+    return () => window.clearTimeout(id)
   }, [scenes])
 
   // Active-filter chips for the top bar
@@ -253,7 +263,7 @@ export function ScenesPage() {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
         {items.map((item) =>
           item.kind === 'scene' ? (
-            <SceneCard key={`s${item.scene.id}`} scene={item.scene} />
+            <SceneCard key={`s${item.scene.id}`} scene={item.scene} web={web} />
           ) : (
             <FileCard key={`f${item.file.id}`} file={item.file} />
           )

@@ -39,7 +39,7 @@ export function ActorDetails() {
   const askConfirm = useUIStore((s) => s.askConfirm)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const { data: state } = useOptionsState()
   const web = state?.config?.web
 
@@ -168,6 +168,7 @@ export function ActorDetails() {
             <img
               src={getImageURL(images[imgIdx] ?? actor.image_url, '700x', 'act-' + actor.id)}
               alt={actor.name}
+              decoding="async"
               onError={(e) => {
                 const el = e.target as HTMLImageElement
                 if (!el.src.endsWith('blank_female_profile.png'))
@@ -183,6 +184,8 @@ export function ActorDetails() {
                   <img
                     src={getImageURL(u, 'x85', 'act-' + actor.id)}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className={`h-10 rounded object-cover ${i === imgIdx ? 'ring-2 ring-accent' : 'opacity-60 hover:opacity-100'}`}
                   />
                 </button>
@@ -360,6 +363,8 @@ export function ActorDetails() {
                   <SceneCard
                     key={s.id}
                     scene={s}
+                    web={web}
+                    enablePreview={false}
                     onOpen={(scene) => {
                       hide()
                       navigate(`/scenes/${scene.scene_id}`)
@@ -390,7 +395,7 @@ export function ActorDetails() {
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                       {akas!.actors.map((a) => (
                         <div key={a.id} className="relative">
-                          <ActorCard actor={a} />
+                          <ActorCard actor={a} web={web} />
                           <button
                             onClick={async () => {
                               if (await askConfirm({ title: `Remove ${a.name} from the group?` }))
@@ -412,7 +417,7 @@ export function ActorDetails() {
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                       {akas!.possible_akas.map((a) => (
                         <div key={a.id} className="relative">
-                          <ActorCard actor={a} />
+                          <ActorCard actor={a} web={web} />
                           <button
                             onClick={() => akaAction('add', [actor.name, a.name])}
                             className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-ok"
@@ -431,7 +436,7 @@ export function ActorDetails() {
             {tab === 3 && (
               <div className="grid max-h-[50vh] grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 overflow-y-auto">
                 {(colleagues ?? []).map((a) => (
-                  <ActorCard key={a.id} actor={a} colleagueMode onClick={() => useUIStore.getState().showActorDetails(a.id)} />
+                  <ActorCard key={a.id} actor={a} web={web} colleagueMode onClick={() => useUIStore.getState().showActorDetails(a.id)} />
                 ))}
                 {(colleagues ?? []).length === 0 && <div className="text-sm text-muted">No colleagues</div>}
               </div>

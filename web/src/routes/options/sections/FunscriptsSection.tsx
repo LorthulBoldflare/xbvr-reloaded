@@ -9,7 +9,7 @@ import { SectionCard, SaveButton } from '../common'
 // Funscripts: export links with counts + scrape-for-funscripts switch.
 export function FunscriptsSection() {
   const { data: state } = useOptionsState()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [scrape, setScrape] = useState(false)
 
   useEffect(() => {

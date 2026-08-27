@@ -13,7 +13,7 @@ export function SearchStashdbActors() {
   const actorId = useUIStore((s) => s.stashdbActorSearchId)
   const hide = useUIStore((s) => s.hideStashdbActorSearch)
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const { data: actor } = useQuery({
     queryKey: ['actor', actorId],
@@ -39,10 +39,10 @@ export function SearchStashdbActors() {
 
   const { data, isFetching } = useQuery({
     queryKey: ['stashdbActorSearch', actorId, debounced],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.get<StashdbPerformerSearchResponse>(
         `/extref/stashdb/searchactor/${actorId}?q=${encodeURIComponent(debounced)}`,
-        { toastOnError: false }
+        { signal, toastOnError: false }
       ),
     enabled: actorId !== null
   })

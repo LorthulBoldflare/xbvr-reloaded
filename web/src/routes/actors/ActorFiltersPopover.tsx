@@ -72,7 +72,7 @@ export function ActorFiltersPopoverContent() {
   const { data: opts } = useActorFilterOptions()
   const queryClient = useQueryClient()
   const askConfirm = useUIStore((s) => s.askConfirm)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const reloadFilters = () => queryClient.invalidateQueries({ queryKey: ['actorFilters'] })
   const warn = (status: string) => status && toast.info(`Warning: ${status}`)

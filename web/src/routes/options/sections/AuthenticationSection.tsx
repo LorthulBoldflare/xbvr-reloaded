@@ -13,7 +13,7 @@ import { buildDeovrPayload } from './deovrPayload'
 export function AuthenticationSection() {
   const { data: state } = useOptionsState()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [authEnabled, setAuthEnabled] = useState(false)
   const [username, setUsername] = useState('')

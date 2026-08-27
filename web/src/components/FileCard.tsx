@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { File } from '../api/types'
 import { formatDate, prettyBytes } from '../lib/format'
@@ -5,12 +6,12 @@ import { FileIcon } from './icons'
 
 // Card for an unmatched file inside the scene grid — same tile shape/hover
 // as SceneCard, but no scene metadata and no preview video.
-export function FileCard({ file }: { file: File }) {
+export const FileCard = memo(function FileCard({ file }: { file: File }) {
   const navigate = useNavigate()
   return (
-    <div className="group">
+    <div className="media-grid-item group">
       <div
-        className="relative aspect-video cursor-pointer overflow-hidden rounded-xl bg-surface-2 ring-warn transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-[0_10px_36px_rgba(0,0,0,0.45)] group-hover:ring-2"
+        className="media-card relative aspect-video cursor-pointer overflow-hidden rounded-xl bg-surface-2 ring-warn transition-transform duration-200 group-hover:-translate-y-1 group-hover:ring-2"
         onClick={() => navigate(`/files/${file.id}`)}
         title={`${file.path}/${file.filename}`}
       >
@@ -33,4 +34,4 @@ export function FileCard({ file }: { file: File }) {
       </div>
     </div>
   )
-}
+})

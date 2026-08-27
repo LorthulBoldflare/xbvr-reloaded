@@ -14,7 +14,7 @@ export function SearchStashdbScenes() {
   const sceneId = useUIStore((s) => s.stashdbSceneSearchId)
   const hide = useUIStore((s) => s.hideStashdbSceneSearch)
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -33,10 +33,10 @@ export function SearchStashdbScenes() {
 
   const { data, isFetching } = useQuery({
     queryKey: ['stashdbSceneSearch', sceneId, debounced],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.get<StashdbSceneSearchResponse>(
         `/extref/stashdb/search/${sceneId}?q=${encodeURIComponent(debounced)}`,
-        { toastOnError: false }
+        { signal, toastOnError: false }
       ),
     enabled: sceneId !== null
   })

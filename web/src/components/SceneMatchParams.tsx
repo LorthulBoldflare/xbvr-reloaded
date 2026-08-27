@@ -8,7 +8,7 @@ import { Field, SaveButton, btnCls, inputCls } from '../routes/options/common'
 
 // Match-parameter editor for sub-sites (old UI: SceneMatchParams overlay).
 export function SceneMatchParams({ siteId, onClose }: { siteId: string | null; onClose: () => void }) {
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const askConfirm = useUIStore((s) => s.askConfirm)
   const [params, setParams] = useState<Record<string, any> | null>(null)
   const [dateSet, setDateSet] = useState(false)

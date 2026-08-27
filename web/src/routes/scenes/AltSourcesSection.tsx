@@ -20,7 +20,7 @@ export function AltSourcesSection({ scene }: { scene: Scene }) {
   const openQuickFindSelect = useUIStore((s) => s.openQuickFind)
   const quickFindSelected = useUIStore((s) => s.quickFindSelectedScene)
   const setQuickFindSelected = useUIStore((s) => s.setQuickFindSelectedScene)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [manageOpen, setManageOpen] = useState<string | null>(null)
 
   const { data } = useQuery({

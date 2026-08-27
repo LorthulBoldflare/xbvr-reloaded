@@ -1,24 +1,9 @@
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../api/client'
-import type { GetStateResponse } from '../api/types'
+import { useOptionsState } from '../api/hooks'
 
-// Blocking overlay while a DB migration runs (parity with the old UI's
-// MigrationOverlay): polls /api/options/state every 2s.
+// Blocking overlay while a DB migration runs. The shared options-state query
+// provides the initial snapshot; websocket events keep migration progress live.
 export function MigrationOverlay() {
-  const [visible, setVisible] = useState(!document.hidden)
-
-  useEffect(() => {
-    const onVis = () => setVisible(!document.hidden)
-    document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
-  }, [])
-
-  const { data } = useQuery({
-    queryKey: ['migrationState'],
-    queryFn: () => api.get<GetStateResponse>('/options/state', { toastOnError: false }),
-    refetchInterval: visible ? 2000 : false
-  })
+  const { data } = useOptionsState()
 
   const migration = data?.currentState?.migration
   if (!migration?.is_running) return null

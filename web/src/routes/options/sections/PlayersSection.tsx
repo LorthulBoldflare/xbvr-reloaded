@@ -13,7 +13,7 @@ import { buildDeovrPayload } from './deovrPayload'
 export function PlayersSection() {
   const { data: state } = useOptionsState()
   const queryClient = useQueryClient()
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
 
   const [form, setForm] = useState<Record<string, any>>({})
 

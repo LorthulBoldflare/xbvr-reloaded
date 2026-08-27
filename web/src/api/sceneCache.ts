@@ -7,12 +7,19 @@ import type { ResponseSceneList, Scene } from '../api/types'
 export function patchSceneInCaches(queryClient: ReturnType<typeof useQueryClient>, sceneId: number, patch: Partial<Scene>) {
   queryClient.setQueriesData<InfiniteData<ResponseSceneList>>({ queryKey: ['sceneList'] }, (data) => {
     if (!data) return data
+    let changed = false
+    const pages = data.pages.map((page) => {
+      const index = page.scenes.findIndex((scene) => scene.id === sceneId)
+      if (index === -1) return page
+      changed = true
+      const scenes = page.scenes.slice()
+      scenes[index] = { ...scenes[index], ...patch }
+      return { ...page, scenes }
+    })
+    if (!changed) return data
     return {
       ...data,
-      pages: data.pages.map((page) => ({
-        ...page,
-        scenes: page.scenes.map((s) => (s.id === sceneId ? { ...s, ...patch } : s))
-      }))
+      pages
     }
   })
   queryClient.setQueryData<Scene>(['scene', sceneId], (old) => (old ? { ...old, ...patch } : old))

@@ -18,7 +18,7 @@ export function FilePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const askConfirm = useUIStore((s) => s.askConfirm)
-  const toast = useToastStore()
+  const toast = useToastStore.getState()
   const [matchOpen, setMatchOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
 

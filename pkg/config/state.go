@@ -55,6 +55,16 @@ type ObjectState struct {
 
 var State ObjectState
 
+const migrationStateTopic = "state.change.migration"
+
+var dispatchMigrationWS = func(topic string, message map[string]interface{}) {
+	go func() {
+		if err := common.PublishWS(topic, message); err != nil {
+			common.Log.Debugf("Could not publish migration state: %v", err)
+		}
+	}()
+}
+
 func LoadState() {
 	db, _ := models.GetDB()
 
@@ -82,6 +92,7 @@ func UpdateMigrationStatus(current string, progress int, total int, message stri
 	State.Migration.Total = total
 	State.Migration.Message = message
 	State.Migration.IsRunning = true
+	publishMigrationState()
 }
 
 func CompleteMigration() {
@@ -90,4 +101,15 @@ func CompleteMigration() {
 	State.Migration.Progress = 0
 	State.Migration.Total = 0
 	State.Migration.Message = ""
+	publishMigrationState()
+}
+
+func publishMigrationState() {
+	dispatchMigrationWS(migrationStateTopic, map[string]interface{}{
+		"is_running": State.Migration.IsRunning,
+		"current":    State.Migration.Current,
+		"total":      State.Migration.Total,
+		"progress":   State.Migration.Progress,
+		"message":    State.Migration.Message,
+	})
 }

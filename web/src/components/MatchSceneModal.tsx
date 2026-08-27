@@ -40,7 +40,11 @@ export function MatchSceneModal({
 
   const { data, isFetching } = useQuery({
     queryKey: ['sceneMatch', debounced],
-    queryFn: () => api.get<ResponseGetScenes>(`/scene/search?q=${encodeURIComponent(debounced)}`, { toastOnError: false }),
+    queryFn: ({ signal }) =>
+      api.get<ResponseGetScenes>(`/scene/search?q=${encodeURIComponent(debounced)}`, {
+        signal,
+        toastOnError: false
+      }),
     enabled: open && debounced.length > 0,
     placeholderData: (prev) => prev
   })
