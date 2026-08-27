@@ -342,7 +342,7 @@ export default {
       }
     },  
     methods: {
-    getImageURL (u, size, context = '0') {
+    getImageURL (u, size, context = 'scene-0') {
       return getImageURLUtil(u, size, context)
     },
     getIndicatorURL (idx) {

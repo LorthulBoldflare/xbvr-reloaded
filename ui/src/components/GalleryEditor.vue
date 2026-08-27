@@ -62,7 +62,7 @@
 
 <script>
 import draggable from 'vuedraggable'
-import { getImageURL as getImageURLUtil } from '../util/image'
+import { getImageURL as getImageURLUtil, sceneContext } from '../util/image'
 
 export default {
   name: 'GalleryEditor',
@@ -154,7 +154,7 @@ export default {
     getImageURL (url) {
       // proxy remote images via the shared util; keep the local-path
       // backslash normalization for Windows-style paths
-      const out = getImageURLUtil(url, '200x', this.sceneId)
+      const out = getImageURLUtil(url, '200x', sceneContext(this.sceneId))
       if (typeof out === 'string' && out.includes('\\')) {
         return out.replace(/\\/g, '/')
       }

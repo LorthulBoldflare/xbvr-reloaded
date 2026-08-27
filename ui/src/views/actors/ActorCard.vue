@@ -96,7 +96,7 @@ export default {
     },
   },
   methods: {
-    getImageURL (u, context = '0') {
+    getImageURL (u, context = 'scene-0') {
       return getImageURLUtil(u, '700x', context, '/ui/images/blank_female_profile.png')
     },
     showDetails (actor) {

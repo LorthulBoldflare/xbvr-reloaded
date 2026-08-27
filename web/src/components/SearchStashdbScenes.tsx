@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { Scene, StashdbSceneSearchResponse } from '../api/types'
 import { useUIStore } from '../store/ui'
 import { useToastStore } from '../store/toasts'
-import { getImageURL } from '../lib/image'
+import { getImageURL, sceneContext } from '../lib/image'
 import { humanizeSeconds } from '../lib/format'
 import { Modal } from './Modal'
 import { LinkIcon } from './icons'
@@ -74,7 +74,7 @@ export function SearchStashdbScenes() {
         {results.map((r) => (
           <div key={r.Id} className="flex gap-3 rounded-lg border border-line bg-surface-2 p-2">
             <img
-              src={getImageURL(r.ImageUrl, '120x', 'stash-' + r.Id)}
+              src={getImageURL(r.ImageUrl, '120x', sceneContext('stash-' + r.Id))}
               alt=""
               loading="lazy"
               className="h-24 w-24 shrink-0 rounded object-cover"

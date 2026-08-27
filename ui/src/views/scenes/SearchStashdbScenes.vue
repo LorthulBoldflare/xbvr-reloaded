@@ -66,7 +66,7 @@
 <script>
 import GlobalEvents from 'vue-global-events'
 import api from '../../api'
-import { getImageURL as getImageURLUtil } from '../../util/image'
+import { getImageURL as getImageURLUtil, sceneContext } from '../../util/image'
 import VueLoadImage from 'vue-load-image'
 import { format, parseISO } from 'date-fns'
 
@@ -136,7 +136,7 @@ export default {
     getImageURL (u, stashId) {
       // results carry the raw stashdb UUID; scenes saved from stashdb use
       // scene_id 'stash-<uuid>' — match that format for the proxy context
-      return getImageURLUtil(u, '120x', 'stash-' + stashId)
+      return getImageURLUtil(u, '120x', sceneContext('stash-' + stashId))
     },
     openDialog(scene) {
         this.isModalActive = true

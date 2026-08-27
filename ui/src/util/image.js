@@ -3,15 +3,22 @@
 // unchanged; empty URLs return the optional blank placeholder.
 //
 // context identifies the entity the image belongs to and becomes the first
-// path segment: a scene's scene_id (e.g. 'slr-1234', '0' if unknown),
-// 'act-<actor id>', or 'icon-<slug>' (see iconSlug). Inserted raw, matching
-// how scene ids are interpolated into /scenes/<scene_id> routes.
-export function getImageURL (u, size = '700x', context = '0', blank = null) {
+// path segment: 'scene-<scene_id>' (see sceneContext), 'act-<actor id>', or
+// 'icon-<slug>' (see iconSlug). Inserted raw, matching how scene ids are
+// interpolated into /scenes/<scene_id> routes.
+//
+// size is an imageproxy options string (e.g. '700x', '120x', '700,fit',
+// 'x40'); the literal token 'raw' (also used for an empty size) requests a
+// full-size passthrough.
+export function getImageURL (u, size = '700x', context = 'scene-0', blank = null) {
   if (u === '' || u === undefined || u === null) {
     return blank === null ? u : blank
   }
   if (!u.startsWith('http')) {
     return u
+  }
+  if (size === '') {
+    size = 'raw'
   }
   if (u.search('%') === -1) {
     return '/img/' + context + '/' + size + '/' + encodeURI(u)
@@ -24,6 +31,12 @@ export function getImageURL (u, size = '700x', context = '0', blank = null) {
   } catch (_) {
     return '/img/' + context + '/' + size + '/' + encodeURI(u)
   }
+}
+
+// sceneContext builds the image proxy context for a scene id
+// ('scene-0' when unknown/unsaved).
+export function sceneContext (sceneId) {
+  return 'scene-' + (sceneId || '0')
 }
 
 // iconSlug builds the slug for 'icon-<slug>' image proxy contexts: lowercased

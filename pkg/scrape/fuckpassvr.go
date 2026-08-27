@@ -208,7 +208,7 @@ func imgProxyBase(sceneID string) string {
 	if sceneID == "" {
 		sceneID = "0"
 	}
-	return "http://" + host + ":" + strconv.Itoa(config.Config.Server.Port) + "/img/" + sceneID + "/700x/"
+	return "http://" + host + ":" + strconv.Itoa(config.Config.Server.Port) + "/img/scene-" + sceneID + "/700x/"
 }
 
 // imageReachable reports whether u serves an image (2xx with an image content-type).

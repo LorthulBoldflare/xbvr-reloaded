@@ -30,7 +30,7 @@
                 <b-carousel v-model="carouselSlide" @change="scrollToActiveIndicator" :autoplay="false" :indicator-inside="false">
                   <b-carousel-item v-for="(carousel, i) in images" :key="i">
                     <div class="image is-1by1 is-full"
-                         v-bind:style='{backgroundImage: `url("${getImageURL(carousel.url, "700,fit", item.scene_id)}")`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat"}'></div>
+                         v-bind:style='{backgroundImage: `url("${getImageURL(carousel.url, "700,fit", sceneContext(item.scene_id))}")`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat"}'></div>
                   </b-carousel-item>
                   <template slot="indicators" slot-scope="props">
                       <span class="al image" style="width:max-content;">
@@ -405,7 +405,7 @@
 <script>
 import api from '../../api'
 import { encodeJsonBase64 } from '../../util/base64'
-import { getImageURL as getImageURLUtil, altSourceIconContext, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
+import { getImageURL as getImageURLUtil, altSourceIconContext, sceneContext, humanizeSeconds, humanizeSeconds1DP } from '../../util/image'
 import { safeHref } from '../../util/url'
 import videojs from 'video.js'
 import 'videojs-hotkeys'
@@ -762,7 +762,7 @@ watch:{
       if (src) {
         this.player.src({ src: src, type: 'video/mp4' })
       }
-      this.player.poster(this.getImageURL(this.item.cover_url, '', this.item.scene_id))
+      this.player.poster(this.getImageURL(this.item.cover_url, 'raw', sceneContext(this.item.scene_id)))
     },
     showCastScenes (actor) {
       this.$store.commit('sceneList/setCastFilterOnly', actor)
@@ -894,13 +894,14 @@ watch:{
           this.$store.commit('overlay/showDetails', { scene: data })
       })
     },
-    getImageURL (u, size, context = '0') {
+    getImageURL (u, size, context = 'scene-0') {
       return getImageURLUtil(u, size, context)
     },
     altSourceIconContext,
+    sceneContext,
     getIndicatorURL (idx) {
       if (this.images[idx] !== undefined) {
-        return this.getImageURL(this.images[idx].url, 'x40', this.item.scene_id)
+        return this.getImageURL(this.images[idx].url, 'x40', sceneContext(this.item.scene_id))
       } else {
         return '/ui/images/blank.png'
       }

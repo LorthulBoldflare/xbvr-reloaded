@@ -2,9 +2,13 @@
 // the server's image proxy; local/relative URLs pass through unchanged.
 //
 // context identifies the entity the image belongs to and becomes the first
-// path segment: a scene's scene_id (e.g. 'slr-1234', '0' if unknown),
-// 'act-<actor id>', or 'icon-<slug>' (see iconSlug). Inserted raw, matching
-// how scene ids are interpolated into /scenes/<scene_id> routes.
+// path segment: 'scene-<scene_id>' (see sceneContext), 'act-<actor id>', or
+// 'icon-<slug>' (see iconSlug). Inserted raw, matching how scene ids are
+// interpolated into /scenes/<scene_id> routes.
+//
+// size is an imageproxy options string (e.g. '700x', '700,fit', 'x40'); the
+// literal token 'raw' (also used for an empty size) requests a full-size
+// passthrough.
 
 import type { AlternateSource } from '../api/types'
 
@@ -13,6 +17,7 @@ const BLANK = `${import.meta.env.BASE_URL}blank.png`
 export function getImageURL(url: string | null | undefined, size: string, context: string): string {
   if (!url) return BLANK
   if (!url.startsWith('http')) return url
+  if (size === '') size = 'raw'
   if (url.search('%') === -1) {
     return `/img/${context}/${size}/${encodeURI(url)}`
   }
@@ -31,6 +36,12 @@ export function getImageURL(url: string | null | undefined, size: string, contex
 // name with all special characters removed.
 export function iconSlug(name: string): string {
   return String(name).toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+// sceneContext builds the image proxy context for a scene id
+// ('scene-0' when unknown/unsaved).
+export function sceneContext(sceneId: string | null | undefined): string {
+  return 'scene-' + (sceneId || '0')
 }
 
 // altSourceIconContext builds the icon context for an AlternateSource's

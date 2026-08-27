@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SceneImage } from '../../api/types'
-import { getImageURL } from '../../lib/image'
+import { getImageURL, sceneContext } from '../../lib/image'
 
 // Image carousel for the scene page. Fixed 16:9 frame; the image fills the
 // height and keeps its ratio (width follows), centered over a blurred copy of
@@ -42,14 +42,14 @@ export function SceneGallery({ images, coverUrl, sceneId }: { images: SceneImage
         {/* blurred backdrop filling the letterbox area */}
         <img
           key={`bg-${current.url}`}
-          src={getImageURL(current.url, '700x', sceneId)}
+          src={getImageURL(current.url, '700x', sceneContext(sceneId))}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
         />
         <img
           key={current.url}
-          src={getImageURL(current.url, '700,fit', sceneId)}
+          src={getImageURL(current.url, '700,fit', sceneContext(sceneId))}
           alt=""
           onError={(e) => {
             const el = e.target as HTMLImageElement
@@ -81,7 +81,7 @@ export function SceneGallery({ images, coverUrl, sceneId }: { images: SceneImage
           {gallery.map((img, i) => (
             <button key={i} data-i={i} onClick={() => setIndex(i)} className="shrink-0">
               <img
-                src={getImageURL(img.url, 'x40', sceneId)}
+                src={getImageURL(img.url, 'x40', sceneContext(sceneId))}
                 alt=""
                 className={`h-10 rounded object-cover ${i === index ? 'ring-2 ring-accent' : 'opacity-60 hover:opacity-100'}`}
               />

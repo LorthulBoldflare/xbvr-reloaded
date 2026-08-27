@@ -10,7 +10,7 @@ import (
 
 // ImageProxyEntry records which remote images were requested through the
 // image proxy (/img/<context>/<options>/<url>) for which entity. Context is
-// a scenes.scene_id string, "act-<actors.id>" or "icon-<slug>".
+// "scene-<scenes.scene_id>", "act-<actors.id>" or "icon-<slug>".
 //
 // The table is insert-only bookkeeping: rows are never deleted by the app
 // (not even on scene/actor deletion), so the request handler's in-process
@@ -20,7 +20,7 @@ type ImageProxyEntry struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Context string `gorm:"size:255;unique_index:uix_imageproxy_ctx_hash" json:"context"` // "slr-1234", "act-45", "icon-baberotica"
+	Context string `gorm:"size:255;unique_index:uix_imageproxy_ctx_hash" json:"context"` // "scene-slr-1234", "act-45", "icon-baberotica"
 	URLHash string `gorm:"size:32;unique_index:uix_imageproxy_ctx_hash" json:"url_hash"` // ImageProxyURLHash(url, options)
 	URL     string `gorm:"size:1000" json:"url"`
 	Options string `gorm:"size:100" json:"options"`

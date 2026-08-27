@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { File, ResponseGetScenes, Scene } from '../api/types'
-import { getImageURL } from '../lib/image'
+import { getImageURL, sceneContext } from '../lib/image'
 import { formatDate } from '../lib/format'
 import { cleanFilename } from '../lib/filename'
 import { Modal } from './Modal'
@@ -93,7 +93,7 @@ export function MatchSceneModal({
       <div className="max-h-[55vh] space-y-1.5 overflow-y-auto">
         {results.map((s) => (
           <div key={s.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-2">
-            <img src={getImageURL(s.cover_url, '120x', s.scene_id)} alt="" className="h-14 w-14 shrink-0 rounded object-cover" loading="lazy" />
+            <img src={getImageURL(s.cover_url, '120x', sceneContext(s.scene_id))} alt="" className="h-14 w-14 shrink-0 rounded object-cover" loading="lazy" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{s.title}</div>
               <div className="truncate text-xs text-muted">

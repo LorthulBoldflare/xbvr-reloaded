@@ -112,7 +112,7 @@
 
 <script>
 import api from '../../api'
-import { getImageURL as getImageURLUtil } from '../../util/image'
+import { getImageURL as getImageURLUtil, sceneContext } from '../../util/image'
 import { safeHref } from '../../util/url'
 import { format, parseISO } from 'date-fns'
 import prettyBytes from 'pretty-bytes'
@@ -183,7 +183,7 @@ export default {
       }
     },
     getImageURL (row) {
-      return getImageURLUtil(row.cover_url, '120x', row.scene_id)
+      return getImageURLUtil(row.cover_url, '120x', sceneContext(row.scene_id))
     },
     assign: async function assign (scene_id) {
       await api.post('/files/match', {

@@ -15,15 +15,16 @@ import (
 // ImageProxyContextHandler wraps the image proxy with a leading "context"
 // path segment: /img/<context>/<options>/<remote-url>.
 //
-//	context := "0"            → unattributed (never recorded)
-//	          | "act-"<id>    → actor (actors.id; "act-0" never recorded)
-//	          | "icon-"<slug> → icon (^[a-z0-9]+$, always recorded)
-//	          | <scene_id>    → scenes.scene_id (any other non-empty segment)
+//	context := "scene-"<scene_id>  → scene (scenes.scene_id; any non-empty
+//	                                 slug, e.g. scene-slr-1234, scene-stash-<uuid>)
+//	          | "act-"<id>         → actor (actors.id, numeric PK)
+//	          | "icon-"<slug>      → icon ([a-z0-9]+, e.g. icon-baberotica)
 //
-// Requests whose context resolves to an existing scene/actor are recorded in
-// image_proxy_entries (strict policy: unknown contexts proxy fine but write
-// no row). UIs insert the context segment raw, matching how scene ids are
-// already interpolated into /scenes/<scene_id> routes.
+// A literal 0 id ("scene-0" / "act-0" / "icon-0") means unattributed: the
+// request is passed through to the proxy but never recorded. Requests whose
+// context resolves to an existing scene/actor (icons always) are recorded in
+// image_proxy_entries (strict policy: unknown ids proxy fine but write no
+// row). Anything not matching the grammar above is rejected with 400.
 //
 // The context segment is plain unencoded ASCII in both Path and RawPath, so
 // stripping it with http.StripPrefix leaves the remainder byte-identical to
@@ -31,8 +32,10 @@ import (
 // builds (and therefore the httpcache disk key) is unchanged and existing
 // on-disk cache entries are reused. Do NOT re-encode the remainder.
 //
-// Scene ids containing a literal "/" are unsupported (none exist today:
-// scrapers build them from slugified site names and id components).
+// The options segment is passed through to imageproxy unmodified; UIs use the
+// literal token "raw" for a full-size passthrough (imageproxy ignores unknown
+// option tokens, so "raw" behaves like empty options and shares their
+// "0x0" cache key).
 type ImageProxyContextHandler struct {
 	proxy http.Handler
 	// recorded caches (context, url, options) triples already written this
@@ -48,23 +51,53 @@ func NewImageProxyContextHandler(p http.Handler) *ImageProxyContextHandler {
 }
 
 var (
+	// imgPathRe splits /img/<context>/<options>/<url> in one pass. All three
+	// segments must be non-empty — this also rejects "/img/<seg>" outright,
+	// which would otherwise strip to an empty URL.Path and panic imageproxy's
+	// NewRequest (EscapedPath()[1:]).
+	imgPathRe = regexp.MustCompile(`^/img/([^/]+)/([^/]+)/(.+)$`)
+
+	sceneContextRe = regexp.MustCompile(`^scene-([^/]+)$`)
 	actorContextRe = regexp.MustCompile(`^act-([0-9]+)$`)
-	iconContextRe  = regexp.MustCompile(`^icon-[a-z0-9]+$`)
+	iconContextRe  = regexp.MustCompile(`^icon-([a-z0-9]+)$`)
+
+	// cleanedURLRe normalizes the remote URL exactly like imageproxy's own
+	// reCleanedURL: both the ":/" scheme hack and the full "://" form resolve
+	// to "://", never ":///".
+	cleanedURLRe = regexp.MustCompile(`^(https?):/+([^/])`)
 )
 
-func (h *ImageProxyContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rest := strings.TrimPrefix(r.URL.Path, "/img/")
-	seg := rest
-	if i := strings.IndexByte(rest, '/'); i >= 0 {
-		seg = rest[:i]
+// parseImageContext validates and splits the context segment; ok=false means
+// the segment does not match the established grammar.
+func parseImageContext(seg string) (kind, id string, ok bool) {
+	if m := sceneContextRe.FindStringSubmatch(seg); m != nil {
+		return "scene", m[1], true
 	}
-	if seg == "" {
-		http.Error(w, "image proxy: missing context", http.StatusBadRequest)
+	if m := actorContextRe.FindStringSubmatch(seg); m != nil {
+		return "act", m[1], true
+	}
+	if m := iconContextRe.FindStringSubmatch(seg); m != nil {
+		return "icon", m[1], true
+	}
+	return "", "", false
+}
+
+func (h *ImageProxyContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	m := imgPathRe.FindStringSubmatch(r.URL.Path)
+	if m == nil {
+		http.Error(w, "image proxy: malformed path, want /img/<context>/<options>/<url>", http.StatusBadRequest)
+		return
+	}
+	seg, options, urlPart := m[1], m[2], m[3]
+
+	kind, id, ok := parseImageContext(seg)
+	if !ok {
+		http.Error(w, "image proxy: invalid context, want scene-<id>|act-<id>|icon-<slug>", http.StatusBadRequest)
 		return
 	}
 
 	if r.Method == http.MethodGet || r.Method == http.MethodHead {
-		h.recordAssociation(seg, remainder, r.URL.RawQuery)
+		h.recordAssociation(seg, kind, id, options, urlPart, r.URL.RawQuery)
 	}
 
 	http.StripPrefix("/img/"+seg, h.proxy).ServeHTTP(w, r)
@@ -72,19 +105,17 @@ func (h *ImageProxyContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 // recordAssociation best-effort records the image<->entity association for
 // this request. It must never affect serving the image.
-func (h *ImageProxyContextHandler) recordAssociation(seg, remainder, rawQuery string) {
-	if seg == "0" || seg == "act-0" {
+func (h *ImageProxyContextHandler) recordAssociation(seg, kind, id, options, urlPart, rawQuery string) {
+	// literal 0 id = unattributed: pass-through, no recording
+	if id == "0" {
 		return
 	}
 
-	// remainder = "/<options>/<remote-url>"; options may be empty ("//...").
-	// The remote url uses the ":/" scheme hack; its query string, if any,
-	// arrived as this request's RawQuery.
-	parts := strings.SplitN(strings.TrimPrefix(remainder, "/"), "/", 2)
-	if len(parts) != 2 || parts[1] == "" {
+	remoteURL := cleanedURLRe.ReplaceAllString(urlPart, "$1://$2")
+	if !strings.HasPrefix(remoteURL, "http://") && !strings.HasPrefix(remoteURL, "https://") {
 		return
 	}
-	options, remoteURL := parts[0], strings.Replace(parts[1], ":/", "://", 1)
+	// The remote url's query string, if any, arrived as this request's RawQuery.
 	if rawQuery != "" {
 		remoteURL += "?" + rawQuery
 	}
@@ -101,15 +132,18 @@ func (h *ImageProxyContextHandler) recordAssociation(seg, remainder, rawQuery st
 		return
 	}
 
-	if m := actorContextRe.FindStringSubmatch(seg); m != nil {
-		if !rowExists(db.Model(&models.Actor{}).Where("id = ?", m[1])) {
+	switch kind {
+	case "scene":
+		// soft-deleted scenes are excluded by gorm's default scope
+		if !rowExists(db.Model(&models.Scene{}).Where("scene_id = ?", id)) {
 			return
 		}
-	} else if !iconContextRe.MatchString(seg) {
-		// scene context (soft-deleted scenes are excluded by gorm's scope)
-		if !rowExists(db.Model(&models.Scene{}).Where("scene_id = ?", seg)) {
+	case "act":
+		if !rowExists(db.Model(&models.Actor{}).Where("id = ?", id)) {
 			return
 		}
+	case "icon":
+		// icons have no backing entity; always record
 	}
 
 	models.RecordImageProxyEntry(db, seg, remoteURL, options)

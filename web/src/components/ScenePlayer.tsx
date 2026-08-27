@@ -13,13 +13,13 @@ import { getImageURL } from '../lib/image'
 export function ScenePlayer({
   file,
   poster,
-  posterContext = '0',
+  posterContext = 'scene-0',
   onTimeUpdate,
   className = ''
 }: {
   file: File | null
   poster?: string
-  // image proxy context for the poster (scene_id of the scene being played)
+  // image proxy context for the poster, e.g. sceneContext(scene.scene_id)
   posterContext?: string
   className?: string
   // Called with the current playback position (seconds); used by the

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { ResponseGetScenes, Scene } from '../api/types'
 import { useUIStore } from '../store/ui'
-import { getImageURL } from '../lib/image'
+import { getImageURL, sceneContext } from '../lib/image'
 import { formatDate } from '../lib/format'
 import { Modal } from './Modal'
 import { StarRating } from './StarRating'
@@ -109,7 +109,7 @@ export function QuickFind() {
             }`}
           >
             <img
-              src={getImageURL(scene.cover_url, '120x', scene.scene_id)}
+              src={getImageURL(scene.cover_url, '120x', sceneContext(scene.scene_id))}
               alt=""
               className="h-12 w-12 shrink-0 rounded object-cover"
               loading="lazy"

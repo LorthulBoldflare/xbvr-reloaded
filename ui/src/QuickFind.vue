@@ -81,7 +81,7 @@
 
 <script>
 import api from './api'
-import { getImageURL as getImageURLUtil } from './util/image'
+import { getImageURL as getImageURLUtil, sceneContext } from './util/image'
 import VueLoadImage from 'vue-load-image'
 import GlobalEvents from 'vue-global-events'
 import { format, parseISO } from 'date-fns'
@@ -140,7 +140,7 @@ export default {
   },
   methods: {
     getImageURL (opt) {
-      return getImageURLUtil(opt.cover_url, '120x', opt.scene_id)
+      return getImageURLUtil(opt.cover_url, '120x', sceneContext(opt.scene_id))
     },
     format,
     parseISO,

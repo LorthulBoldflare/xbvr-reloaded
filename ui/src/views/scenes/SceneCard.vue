@@ -2,7 +2,7 @@
   <div class="card scene-card">
     <div class="card-image">
       <div class="bbox"
-           v-bind:style='{backgroundImage: `url("${getImageURL(item.cover_url, '700x', item.scene_id)}")`, backgroundSize: this.sceneCardScale, backgroundPosition: "center", backgroundRepeat: "no-repeat", opacity:item.is_available ? 1.0 : this.isAvailOpactiy, aspectRatio: this.sceneCardAspectRatio}'
+           v-bind:style='{backgroundImage: `url("${getImageURL(item.cover_url, '700x', sceneContext(item.scene_id))}")`, backgroundSize: this.sceneCardScale, backgroundPosition: "center", backgroundRepeat: "no-repeat", opacity:item.is_available ? 1.0 : this.isAvailOpactiy, aspectRatio: this.sceneCardAspectRatio}'
            @click="showDetails(item)"
            @mouseover="preview = true"
            @mouseleave="preview = false">
@@ -98,7 +98,7 @@ import TrailerlistButton from '../../components/TrailerlistButton'
 import HiddenButton from '../../components/HiddenButton'
 import api from '../../api'
 import VueLoadImage from 'vue-load-image'
-import { getImageURL, altSourceIconContext } from '../../util/image'
+import { getImageURL, altSourceIconContext, sceneContext } from '../../util/image'
 import { safeHref } from '../../util/url'
 
 export default {
@@ -184,6 +184,7 @@ export default {
   methods: {
     getImageURL,
     altSourceIconContext,
+    sceneContext,
     safeHref,
     // Fetched once when the card is created. Previously this was an async
     // computed used as v-if — an always-truthy Promise that refetched on

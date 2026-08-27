@@ -9,7 +9,7 @@ import { useToastStore } from '../../store/toasts'
 import { useSceneFilterStore, applyDlState } from '../../store/sceneFilters'
 import { patchSceneInCaches } from '../../api/sceneCache'
 import { rescrapeScene } from '../../api/rescrape'
-import { getImageURL } from '../../lib/image'
+import { getImageURL, sceneContext } from '../../lib/image'
 import { formatDate, formatDateTime, humanizeSeconds, safeHref } from '../../lib/format'
 import { ScenePlayer } from '../../components/ScenePlayer'
 import { StarRating } from '../../components/StarRating'
@@ -194,7 +194,7 @@ export function ScenePage() {
       {/* hero: blurred cover backdrop, poster, title, meta, rating, actions */}
       <div className="relative mb-6 overflow-hidden rounded-2xl border border-line">
         <img
-          src={getImageURL(scene.cover_url, '700x', scene.scene_id)}
+          src={getImageURL(scene.cover_url, '700x', sceneContext(scene.scene_id))}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-2xl"
@@ -203,7 +203,7 @@ export function ScenePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-page/90 via-page/60 to-transparent" />
         <div className="relative flex flex-wrap items-center gap-5 p-5 lg:p-7">
           <img
-            src={getImageURL(scene.cover_url, '700x', scene.scene_id)}
+            src={getImageURL(scene.cover_url, '700x', sceneContext(scene.scene_id))}
             alt=""
             onError={(e) => {
               const el = e.target as HTMLImageElement
@@ -281,7 +281,7 @@ export function ScenePage() {
         <div>
           {videos.length > 0 && (
             <div ref={playerRef} className="mb-4">
-              <ScenePlayer file={activeFile} poster={scene.cover_url} posterContext={scene.scene_id} onTimeUpdate={(t) => (playerTime.current = t)} />
+              <ScenePlayer file={activeFile} poster={scene.cover_url} posterContext={sceneContext(scene.scene_id)} onTimeUpdate={(t) => (playerTime.current = t)} />
               {scene.has_preview && (
                 <div className="mt-1.5 text-center">
                   <button
@@ -312,7 +312,7 @@ export function ScenePage() {
               loop
               muted
               playsInline
-              poster={getImageURL(scene.cover_url, '700,fit', scene.scene_id)}
+              poster={getImageURL(scene.cover_url, '700,fit', sceneContext(scene.scene_id))}
               className="mb-4 w-full rounded-xl bg-black"
             />
           )}

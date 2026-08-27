@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { SceneImage } from '../api/types'
-import { getImageURL } from '../lib/image'
+import { getImageURL, sceneContext } from '../lib/image'
 import { useUIStore } from '../store/ui'
 import { Toggle } from './Toggle'
 import { PlusIcon, TrashIcon } from './icons'
@@ -102,7 +102,7 @@ export function GalleryEditor({
               img.type === 'cover' ? 'border-accent ring-1 ring-accent' : 'border-line'
             }`}
           >
-            <img src={getImageURL(img.url.replaceAll('\\', '/'), '200x', sceneId)} alt="" className="aspect-square w-full object-cover" />
+            <img src={getImageURL(img.url.replaceAll('\\', '/'), '200x', sceneContext(sceneId))} alt="" className="aspect-square w-full object-cover" />
             {img.type === 'cover' && (
               <span className="absolute left-1 top-1 rounded bg-accent px-1 text-[10px] font-bold text-white">COVER</span>
             )}

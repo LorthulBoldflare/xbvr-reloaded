@@ -57,7 +57,7 @@ func newCtxTestUpstream(t *testing.T) *ctxTestUpstream {
 	return u
 }
 
-func newCtxTestHandler(t *testing.T, upstream *ctxTestUpstream, cacheable bool) *ImageProxyContextHandler {
+func newCtxTestHandler(t *testing.T, cacheable bool) *ImageProxyContextHandler {
 	t.Helper()
 	var transport http.RoundTripper
 	if cacheable {
@@ -96,8 +96,8 @@ func setupImgCtxDB(t *testing.T) (*gorm.DB, models.Scene, models.Actor) {
 		db.Unscoped().Delete(&scene)
 		db.Unscoped().Delete(&actor)
 		db.Where("context IN (?)", []string{
-			"imgctx-test-scene-1", "imgctx-test-unknown",
-			fmt.Sprintf("act-%d", actor.ID), "icon-imgctxtest", "700x",
+			"scene-imgctx-test-scene-1", "scene-imgctx-test-unknown",
+			fmt.Sprintf("act-%d", actor.ID), "icon-imgctxtest",
 		}).Delete(&models.ImageProxyEntry{})
 	})
 	return db, scene, actor
@@ -115,22 +115,23 @@ func countEntries(t *testing.T, db *gorm.DB, context string) int {
 func TestImageProxyContextRecording(t *testing.T) {
 	db, scene, actor := setupImgCtxDB(t)
 	upstream := newCtxTestUpstream(t)
-	h := newCtxTestHandler(t, upstream, false)
+	h := newCtxTestHandler(t, false)
+	sceneCtx := "scene-" + scene.SceneID
 	target := strings.Replace(upstream.server.URL, "://", ":/", 1) + "/cover.jpg"
 
 	t.Run("existing scene records one row and dedupes", func(t *testing.T) {
 		url := target + "?img=scene1"
 		for i := 0; i < 2; i++ {
-			rec := doImgRequest(h, "/img/"+scene.SceneID+"/700x/"+url)
+			rec := doImgRequest(h, "/img/"+sceneCtx+"/700x/"+url)
 			if rec.Code != http.StatusOK {
 				t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
 			}
 		}
-		if n := countEntries(t, db, scene.SceneID); n != 1 {
+		if n := countEntries(t, db, sceneCtx); n != 1 {
 			t.Fatalf("expected 1 row after repeat requests, got %d", n)
 		}
 		var e models.ImageProxyEntry
-		if err := db.Where("context = ?", scene.SceneID).First(&e).Error; err != nil {
+		if err := db.Where("context = ?", sceneCtx).First(&e).Error; err != nil {
 			t.Fatal(err)
 		}
 		if e.Options != "700x" {
@@ -142,35 +143,68 @@ func TestImageProxyContextRecording(t *testing.T) {
 		}
 	})
 
-	t.Run("empty options segment records empty options", func(t *testing.T) {
-		rec := doImgRequest(h, "/img/"+scene.SceneID+"//"+target+"?img=noop")
+	t.Run("full :// form normalizes to exactly :// and dedupes with :/ form", func(t *testing.T) {
+		// UIs send the remote URL with its full scheme (encodeURI preserves
+		// "://"), server callers use the ":/" hack — both must record the
+		// same canonical URL, never ":///".
+		fullForm := strings.Replace(upstream.server.URL, "://", "://", 1) + "/both.jpg?img=forms"
+		hackForm := strings.Replace(upstream.server.URL, "://", ":/", 1) + "/both.jpg?img=forms"
+		for _, u := range []string{fullForm, hackForm} {
+			rec := doImgRequest(h, "/img/"+sceneCtx+"/700x/"+u)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d", rec.Code)
+			}
+		}
+		var entries []models.ImageProxyEntry
+		if err := db.Where("context = ? AND options = ?", sceneCtx, "700x").Find(&entries).Error; err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, e := range entries {
+			if strings.HasSuffix(e.URL, "/both.jpg?img=forms") {
+				n++
+				if strings.Contains(e.URL, ":///") {
+					t.Fatalf("recorded URL has triple slash: %q", e.URL)
+				}
+				if !strings.HasPrefix(e.URL, "http://") {
+					t.Fatalf("recorded URL missing http:// prefix: %q", e.URL)
+				}
+			}
+		}
+		if n != 1 {
+			t.Fatalf("expected exactly 1 row across :// and :/ forms, got %d", n)
+		}
+	})
+
+	t.Run("raw options token is recorded as-is", func(t *testing.T) {
+		rec := doImgRequest(h, "/img/"+sceneCtx+"/raw/"+target+"?img=raw")
 		if rec.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d", rec.Code)
 		}
 		var e models.ImageProxyEntry
-		if err := db.Where("context = ? AND options = ''", scene.SceneID).First(&e).Error; err != nil {
-			t.Fatalf("expected row with empty options: %v", err)
+		if err := db.Where("context = ? AND options = 'raw'", sceneCtx).First(&e).Error; err != nil {
+			t.Fatalf("expected row with options 'raw': %v", err)
 		}
 	})
 
-	t.Run("unknown scene context writes no row", func(t *testing.T) {
-		rec := doImgRequest(h, "/img/imgctx-test-unknown/700x/"+target+"?img=unknown")
+	t.Run("unknown scene id writes no row", func(t *testing.T) {
+		rec := doImgRequest(h, "/img/scene-imgctx-test-unknown/700x/"+target+"?img=unknown")
 		if rec.Code != http.StatusOK {
-			t.Fatalf("unknown contexts must still proxy, got %d", rec.Code)
+			t.Fatalf("unknown ids must still proxy, got %d", rec.Code)
 		}
-		if n := countEntries(t, db, "imgctx-test-unknown"); n != 0 {
+		if n := countEntries(t, db, "scene-imgctx-test-unknown"); n != 0 {
 			t.Fatalf("expected no rows, got %d", n)
 		}
 	})
 
-	t.Run("zero contexts write no row", func(t *testing.T) {
-		doImgRequest(h, "/img/0/700x/"+target+"?img=zero")
+	t.Run("zero ids write no row", func(t *testing.T) {
+		doImgRequest(h, "/img/scene-0/700x/"+target+"?img=zero")
 		doImgRequest(h, "/img/act-0/700x/"+target+"?img=zero")
-		if n := countEntries(t, db, "0"); n != 0 {
-			t.Fatalf("expected no rows for 0, got %d", n)
-		}
-		if n := countEntries(t, db, "act-0"); n != 0 {
-			t.Fatalf("expected no rows for act-0, got %d", n)
+		doImgRequest(h, "/img/icon-0/700x/"+target+"?img=zero")
+		for _, ctx := range []string{"scene-0", "act-0", "icon-0"} {
+			if n := countEntries(t, db, ctx); n != 0 {
+				t.Fatalf("expected no rows for %s, got %d", ctx, n)
+			}
 		}
 	})
 
@@ -195,22 +229,37 @@ func TestImageProxyContextRecording(t *testing.T) {
 		}
 	})
 
-	t.Run("legacy-form context writes no row", func(t *testing.T) {
-		// A stale /img/700x/<url> request parses as scene context "700x",
-		// which does not exist — nothing may be recorded.
-		doImgRequest(h, "/img/700x/"+target+"?img=legacy")
-		if n := countEntries(t, db, "700x"); n != 0 {
-			t.Fatalf("expected no rows for legacy context, got %d", n)
+	t.Run("non-http remote URL writes no row", func(t *testing.T) {
+		before := countEntries(t, db, sceneCtx)
+		doImgRequest(h, "/img/"+sceneCtx+"/700x/ftp:/example.com/x.jpg")
+		if n := countEntries(t, db, sceneCtx); n != before {
+			t.Fatalf("expected no new row for non-http url, got %d -> %d", before, n)
 		}
 	})
 }
 
-func TestImageProxyContextEmptyContext(t *testing.T) {
+func TestImageProxyContextRejectsBadPaths(t *testing.T) {
 	upstream := newCtxTestUpstream(t)
-	h := newCtxTestHandler(t, upstream, false)
-	rec := doImgRequest(h, "/img//700x/http:/example.com/x.jpg")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for empty context, got %d", rec.Code)
+	h := newCtxTestHandler(t, false)
+	target := strings.Replace(upstream.server.URL, "://", ":/", 1) + "/x.jpg"
+
+	cases := map[string]string{
+		"legacy options-only context": "/img/700x/" + target,
+		"unprefixed scene id":         "/img/imgctx-test-scene-1/700x/" + target,
+		"malformed actor context":     "/img/act-x/700x/" + target,
+		"malformed icon context":      "/img/icon-BAD!/700x/" + target,
+		"missing options and url":     "/img/scene-slr-1234",
+		"missing url":                 "/img/scene-slr-1234/700x",
+		"empty context":               "/img//700x/" + target,
+		"empty options segment":       "/img/scene-slr-1234//" + target,
+	}
+	for name, path := range cases {
+		t.Run(name, func(t *testing.T) {
+			rec := doImgRequest(h, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", rec.Code)
+			}
+		})
 	}
 }
 
@@ -219,10 +268,10 @@ func TestImageProxyContextEmptyContext(t *testing.T) {
 // entry — this is what guarantees existing cached content is reused.
 func TestImageProxyContextCacheReuseAndBytePreservation(t *testing.T) {
 	upstream := newCtxTestUpstream(t)
-	h := newCtxTestHandler(t, upstream, true)
+	h := newCtxTestHandler(t, true)
 
 	remainder := "700x/" + strings.Replace(upstream.server.URL, "://", ":/", 1) + "/cover%20art.jpg?token=abc%2F123"
-	for _, ctx := range []string{"0", "slr-nonexistent"} {
+	for _, ctx := range []string{"scene-0", "scene-nonexistent-1"} {
 		rec := doImgRequest(h, "/img/"+ctx+"/"+remainder)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("ctx %q: expected 200, got %d: %s", ctx, rec.Code, rec.Body.String())
