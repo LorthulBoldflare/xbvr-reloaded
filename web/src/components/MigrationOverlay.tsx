@@ -1,9 +1,17 @@
-import { useOptionsState } from '../api/hooks'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../api/client'
+import type { GetStateResponse } from '../api/types'
 
-// Blocking overlay while a DB migration runs. The shared options-state query
-// provides the initial snapshot; websocket events keep migration progress live.
+// Blocking overlay while a DB migration runs. Websocket events keep migration
+// progress live; a slow poll while running guarantees convergence if a push
+// is missed (pub-sub has no replay, e.g. across a WS reconnect).
 export function MigrationOverlay() {
-  const { data } = useOptionsState()
+  const { data } = useQuery({
+    queryKey: ['optionsState'],
+    queryFn: ({ signal }) => api.get<GetStateResponse>('/options/state', { signal, toastOnError: false }),
+    staleTime: 60_000,
+    refetchInterval: (query) => (query.state.data?.currentState?.migration?.is_running ? 10_000 : false)
+  })
 
   const migration = data?.currentState?.migration
   if (!migration?.is_running) return null

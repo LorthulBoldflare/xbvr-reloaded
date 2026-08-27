@@ -14,7 +14,7 @@ export function FunscriptsSection() {
 
   useEffect(() => {
     setScrape(state?.config?.funscripts?.scrapeFunscripts ?? false)
-  }, [state])
+  }, [state?.config?.funscripts?.scrapeFunscripts])
 
   const { data: counts, refetch } = useQuery({
     queryKey: ['funscriptCount'],

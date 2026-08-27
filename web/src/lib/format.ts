@@ -19,18 +19,25 @@ export function humanizeSeconds1DP(seconds: number): string {
   return `${base}.${Math.floor((seconds % 1) * 10)}`
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+// Date-only strings pass through verbatim; full timestamps (RFC3339 from the
+// server) are rendered in local time, matching the old date-fns behavior —
+// taking the literal prefix would show the UTC date for users behind UTC.
 export function formatDate(iso: string | null | undefined): string {
   if (!iso || iso.startsWith('0001-01-01')) return ''
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
-  return match ? `${match[1]}-${match[2]}-${match[3]}` : ''
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})$/.exec(iso)
+  if (dateOnly) return dateOnly[1]
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso || iso.startsWith('0001-01-01')) return ''
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
 }
 
 // Only http(s) and site-relative URLs may be used as link targets (port of

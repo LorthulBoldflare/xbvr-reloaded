@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { filterTagOptions } from '../lib/tagOptions'
 
 // Chip editor with autocomplete and allow-new (used by scene/actor edit
 // forms — unlike TagFilterInput, values are plain names and new entries are
@@ -18,15 +19,7 @@ export function TagInputEditor({
   const [open, setOpen] = useState(false)
   const selected = useMemo(() => new Set(values), [values])
 
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase()
-    const matches: string[] = []
-    for (const option of options) {
-      if (!selected.has(option) && option.toLowerCase().includes(q)) matches.push(option)
-      if (matches.length === 30) break
-    }
-    return matches
-  }, [options, selected, query])
+  const filtered = useMemo(() => filterTagOptions(options, selected, query), [options, selected, query])
 
   const add = (name: string) => {
     const v = name.trim()

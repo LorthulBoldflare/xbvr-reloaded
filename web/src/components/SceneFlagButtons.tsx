@@ -34,7 +34,7 @@ export function useSceneToggle() {
     onError: (_error, { scene }, context) => {
       if (context) patchSceneInCaches(queryClient, scene.id, { [context.key]: context.current } as Partial<Scene>)
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['sceneList'], refetchType: 'none' })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['sceneList'] })
   })
 }
 

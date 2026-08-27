@@ -39,7 +39,7 @@ export function SceneCreateSection() {
   useEffect(() => {
     setJavrScraper(state?.config?.scraper_settings?.javr?.javrScraper ?? 'javdatabase')
     setTpdbToken(state?.config?.vendor?.tpdb?.apiToken ?? '')
-  }, [state])
+  }, [state?.config?.scraper_settings?.javr, state?.config?.vendor?.tpdb])
 
   const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: () => api.get<Site[]>('/options/sites') })
 

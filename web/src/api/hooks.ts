@@ -8,9 +8,7 @@ export function useOptionsState() {
   return useQuery({
     queryKey: ['optionsState'],
     queryFn: ({ signal }) => api.get<GetStateResponse>('/options/state', { signal }),
-    staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
-    refetchIntervalInBackground: false
+    staleTime: 60_000
   })
 }
 

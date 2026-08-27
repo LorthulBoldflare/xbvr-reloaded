@@ -16,7 +16,7 @@ export function WebUiSection() {
 
   useEffect(() => {
     if (state?.config?.web) setForm(state.config.web)
-  }, [state])
+  }, [state?.config?.web])
 
   const save = useMutation({
     mutationFn: () => api.put('/options/interface/web', form),

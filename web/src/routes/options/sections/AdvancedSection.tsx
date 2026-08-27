@@ -32,7 +32,7 @@ export function AdvancedSection() {
         ignoreReleasedBefore: (state.config.advanced.ignoreReleasedBefore ?? '').slice(0, 10)
       })
     }
-  }, [state])
+  }, [state?.config?.advanced])
 
   const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: () => api.get<Site[]>('/options/sites') })
   const { data: collectorList } = useQuery({

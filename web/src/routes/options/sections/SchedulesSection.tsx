@@ -29,7 +29,7 @@ export function SchedulesSection() {
 
   useEffect(() => {
     if (state?.config?.cron) setForm(state.config.cron)
-  }, [state])
+  }, [state?.config?.cron])
 
   const save = useMutation({
     mutationFn: () => {

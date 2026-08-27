@@ -26,7 +26,7 @@ export function DlnaSection() {
       setImage(d.serviceImage)
       setAllowedIp(d.allowedIp ?? [])
     }
-  }, [state])
+  }, [state?.config?.interfaces?.dlna])
 
   const save = useMutation({
     mutationFn: () => api.put('/options/interface/dlna', { enabled, name, image, allowedIp }),

@@ -27,7 +27,7 @@ export function AuthenticationSection() {
       setUsername(d.username)
       setPassword(d.password) // redacted sentinel "***" when set
     }
-  }, [state])
+  }, [state?.config?.interfaces?.deovr])
 
   // 404 when UI auth is disabled (no UI creds → no token can exist)
   const { data: tokenData, error } = useQuery({

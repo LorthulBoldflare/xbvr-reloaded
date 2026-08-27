@@ -20,7 +20,7 @@ export function PreviewsSection() {
 
   useEffect(() => {
     if (state?.config?.library?.preview) setForm(state.config.library.preview)
-  }, [state])
+  }, [state?.config?.library?.preview])
 
   const { data: status } = useQuery({
     queryKey: ['previewStatus'],

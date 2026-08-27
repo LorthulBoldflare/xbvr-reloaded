@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { filterTagOptions } from '../lib/tagOptions'
 
 export type ChipMode = '2way' | '3way'
 
@@ -31,15 +32,7 @@ export function TagFilterInput({
   const ref = useRef<HTMLDivElement>(null)
 
   const selected = useMemo(() => new Set(values.map((v) => chipState(v).name)), [values])
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase()
-    const matches: string[] = []
-    for (const option of options) {
-      if (!selected.has(option) && option.toLowerCase().includes(q)) matches.push(option)
-      if (matches.length === 30) break
-    }
-    return matches
-  }, [options, selected, query])
+  const filtered = useMemo(() => filterTagOptions(options, selected, query), [options, selected, query])
 
   const cycle = (v: string) => {
     const { name, mode: m } = chipState(v)

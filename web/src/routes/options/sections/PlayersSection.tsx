@@ -42,7 +42,7 @@ export function PlayersSection() {
         subtitle_sort_seq: p.subtitle_sort_seq
       })
     }
-  }, [state])
+  }, [state?.config?.interfaces])
 
   const save = useMutation({
     mutationFn: () => api.put('/options/interface/deovr', buildDeovrPayload(state!.config, form)),
