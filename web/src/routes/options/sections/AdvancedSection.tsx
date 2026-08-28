@@ -29,6 +29,7 @@ export function AdvancedSection() {
     if (state?.config?.advanced) {
       setForm({
         ...state.config.advanced,
+        publicUrl: state.config.server?.publicUrl ?? '',
         ignoreReleasedBefore: (state.config.advanced.ignoreReleasedBefore ?? '').slice(0, 10)
       })
     }
@@ -104,6 +105,23 @@ export function AdvancedSection() {
         <p className="mt-2 text-xs text-muted">
           The MCP token moved to the <a href="/web/options/authentication" className="text-accent-strong underline">Authentication</a> section.
         </p>
+      </SectionCard>
+
+      <SectionCard title="Instance" actions={<SaveButton onClick={() => save.mutate()} pending={save.isPending} />}>
+        <div className="max-w-md">
+          <Field
+            label="Public URL"
+            hint="Public base URL of this instance, e.g. https://my.xbvr.reloaded/ — used to build the DeoVR deep link on scene pages. XBVR_PUBLIC_URL overrides this at startup."
+          >
+            <input
+              value={form.publicUrl ?? ''}
+              onChange={(e) => set('publicUrl', e.target.value)}
+              placeholder="https://my.xbvr.reloaded/"
+              className={`${inputCls} font-mono text-xs`}
+              autoComplete="off"
+            />
+          </Field>
+        </div>
       </SectionCard>
 
       <SectionCard title="Actor scraping">

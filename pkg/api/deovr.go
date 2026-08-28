@@ -298,6 +298,61 @@ func (i DeoVRResource) WebService() *restful.WebService {
 	return ws
 }
 
+// DeoVRDeeplinkResource serves the per-scene single-video deeplink JSON at
+// /api/deovr/<scene-id>.json. The .json suffix is required: DeoVR expects an
+// explicit JSON link when following a deovr:// deeplink from a scene page.
+// Auth is handled by apiAuthFilter, which accepts the per-scene ?token= on
+// /api/deovr/ paths in addition to the normal Basic/cookie credentials.
+type DeoVRDeeplinkResource struct{}
+
+func (i DeoVRDeeplinkResource) WebService() *restful.WebService {
+	tags := []string{"DeoVR"}
+
+	ws := new(restful.WebService)
+
+	ws.Path("/api/deovr").
+		Consumes(restful.MIME_JSON).
+		Produces(restful.MIME_JSON)
+
+	ws.Route(ws.GET("/{scene-file}").To(i.getSceneDeeplink).
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Writes(DeoScene{}))
+
+	return ws
+}
+
+func (i DeoVRDeeplinkResource) getSceneDeeplink(req *restful.Request, resp *restful.Response) {
+	if !config.Config.Interfaces.DeoVR.Enabled {
+		resp.WriteErrorString(http.StatusNotFound, "DeoVR interface is disabled")
+		return
+	}
+
+	sceneFile := req.PathParameter("scene-file")
+	if !strings.HasSuffix(sceneFile, ".json") {
+		resp.WriteErrorString(http.StatusNotFound, "deeplink URLs must end in .json")
+		return
+	}
+	sceneID := strings.TrimSuffix(sceneFile, ".json")
+
+	// Deep links are followed from the public address of the instance; the
+	// configured public URL wins over the request host so the media URLs in
+	// the payload stay correct even when a reverse proxy does not forward
+	// Host / X-Forwarded-Proto.
+	baseURL := config.Config.Server.PublicURL
+	if baseURL == "" {
+		baseURL = getProto(req) + "://" + req.Request.Host
+	}
+
+	payload, err := buildDeoScenePayload(sceneID, baseURL)
+	if err != nil {
+		log.Error(err)
+		resp.WriteErrorString(http.StatusNotFound, "scene not found")
+		return
+	}
+
+	resp.WriteHeaderAndEntity(http.StatusOK, payload)
+}
+
 func (i DeoVRResource) getDeoFile(req *restful.Request, resp *restful.Response) {
 	if !config.Config.Interfaces.DeoVR.Enabled {
 		return
@@ -363,6 +418,22 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 
 	setDeoPlayerHost(req)
 
+	payload, err := buildDeoScenePayload(sceneID, session.DeoRequestHost)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	resp.WriteHeaderAndEntity(http.StatusOK, payload)
+}
+
+// buildDeoScenePayload assembles the DeoVR single-video deeplink JSON for a
+// scene (a DeoScene, or DeoScenePassthrough when chroma-key data applies).
+// baseURL is the absolute origin for every media URL in the payload — the
+// player endpoint passes session.DeoRequestHost, the deeplink endpoint the
+// configured public URL (falling back to the request host). The helper
+// deliberately does not touch session globals.
+func buildDeoScenePayload(sceneID string, baseURL string) (interface{}, error) {
 	dnt := ""
 	if config.Config.Interfaces.DeoVR.RemoteEnabled || !config.Config.Interfaces.DeoVR.TrackWatchTime {
 		dnt = "?dnt=true"
@@ -376,8 +447,7 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 		Preload("Cuepoints", "track is null").
 		Where("id = ?", sceneID).First(&scene).Error
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
 	if len(scene.Cuepoints) == 0 {
 		db.Preload("Cast").
@@ -415,8 +485,7 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 	var videoFiles []models.File
 	videoFiles, err = scene.GetVideoFilesSorted(config.Config.Interfaces.Players.VideoSortSeq)
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
 
 	var sceneMultiProjection bool = true
@@ -432,7 +501,7 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 					Height:     height,
 					Width:      width,
 					Size:       file.Size,
-					URL:        fmt.Sprintf("%v/api/dms/file/%v/%v%v", session.DeoRequestHost, file.ID, scene.GetFunscriptTitle(), dnt),
+					URL:        fmt.Sprintf("%v/api/dms/file/%v/%v%v", baseURL, file.ID, scene.GetFunscriptTitle(), dnt),
 				},
 			},
 		}
@@ -454,15 +523,14 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 	var scriptFiles []models.File
 	scriptFiles, err = scene.GetScriptFilesSorted(config.Config.Interfaces.Players.ScriptSortSeq)
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
 
 	for _, file := range scriptFiles {
 		if strings.HasSuffix(file.Filename, ".funscript") {
 			deoScriptFiles = append(deoScriptFiles, DeoSceneScriptFile{
 				Title: file.Filename,
-				URL:   fmt.Sprintf("%v/api/dms/file/%v", session.DeoRequestHost, file.ID),
+				URL:   fmt.Sprintf("%v/api/dms/file/%v", baseURL, file.ID),
 			})
 		}
 	}
@@ -471,14 +539,13 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 	var hspFiles []models.File
 	hspFiles, err = scene.GetHSPFiles()
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
 
 	for _, file := range hspFiles {
 		deoHSPFiles = append(deoHSPFiles, DeoSceneHSPFile{
 			Title: file.Filename,
-			URL:   fmt.Sprintf("%v/api/dms/file/%v", session.DeoRequestHost, file.ID),
+			URL:   fmt.Sprintf("%v/api/dms/file/%v", baseURL, file.ID),
 		})
 	}
 
@@ -597,7 +664,7 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 	}
 
 	if scene.HasVideoPreview {
-		deoScene.VideoPreview = fmt.Sprintf("%v/api/dms/preview/%v", session.DeoRequestHost, scene.SceneID)
+		deoScene.VideoPreview = fmt.Sprintf("%v/api/dms/preview/%v", baseURL, scene.SceneID)
 	}
 
 	if gjson.Valid(scene.ChromaKey) || hasAlpha {
@@ -637,10 +704,10 @@ func (i DeoVRResource) getDeoScene(req *restful.Request, resp *restful.Response)
 			},
 			VideoPreview: deoScene.VideoPreview,
 		}
-		resp.WriteHeaderAndEntity(http.StatusOK, deoPtScene)
-	} else {
-		resp.WriteHeaderAndEntity(http.StatusOK, deoScene)
+		return &deoPtScene, nil
 	}
+
+	return &deoScene, nil
 }
 
 func (i DeoVRResource) getDeoLibrary(req *restful.Request, resp *restful.Response) {

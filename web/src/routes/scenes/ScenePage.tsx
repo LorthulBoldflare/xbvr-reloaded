@@ -46,6 +46,9 @@ export function ScenePage() {
   })
   const scene = sceneQuery.data
 
+  // Public base URL for the DeoVR deep link (trailing slashes stripped).
+  const publicUrl = state?.config?.server?.publicUrl?.replace(/\/+$/, '') || ''
+
   const [editMode, setEditMode] = useState(searchParams.get('edit') === '1')
   const [draft, setDraft] = useState<SceneDraft | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -503,6 +506,15 @@ export function ScenePage() {
         {advanced?.showHSPApiLink && (
           <a href={`/heresphere/${scene.id}`} target="_blank" rel="noreferrer" className="hover:text-accent">
             HereSphere API
+          </a>
+        )}
+        {publicUrl && (
+          <a
+            href={`deovr://${publicUrl}/api/deovr/${scene.id}.json${scene.deovr_deeplink_token ? `?token=${scene.deovr_deeplink_token}` : ''}`}
+            className="hover:text-accent"
+            title="Open this scene in the DeoVR player"
+          >
+            Open in DeoVR
           </a>
         )}
       </footer>

@@ -104,6 +104,21 @@ func GetCommonDB() (*gorm.DB, error) {
 	return commonConnection, nil
 }
 
+// SetCommonDBForTests swaps the shared database handle and returns a function
+// that restores the previous one. Test-only seam so handler tests can run
+// against a seeded in-memory database instead of the real application DB.
+func SetCommonDBForTests(db *gorm.DB) func() {
+	commonConnMu.Lock()
+	prev := commonConnection
+	commonConnection = db
+	commonConnMu.Unlock()
+	return func() {
+		commonConnMu.Lock()
+		commonConnection = prev
+		commonConnMu.Unlock()
+	}
+}
+
 // Lock functions
 
 func CreateLock(lock string) {

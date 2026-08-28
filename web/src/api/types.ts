@@ -53,6 +53,9 @@ export interface Scene {
   human_script: boolean
   description: string
   _score?: number
+  // Per-scene DeoVR deeplink token (?token= on /api/deovr/<id>.json);
+  // only populated on the scene detail response when player auth is enabled.
+  deovr_deeplink_token?: string
   alternate_source?: ExternalReferenceLink[]
 }
 
@@ -426,7 +429,7 @@ export interface WebOptions {
 }
 
 export interface ObjectConfig {
-  server: { bindAddress: string; port: number }
+  server: { bindAddress: string; port: number; publicUrl: string }
   web: WebOptions
   advanced: {
     showInternalSceneId: boolean

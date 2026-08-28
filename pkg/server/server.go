@@ -126,6 +126,7 @@ func StartServer(version, commit, branch, date string) {
 	restful.Add(api.ConfigResource{}.WebService())
 	restful.Add(api.FilesResource{}.WebService())
 	restful.Add(api.DeoVRResource{}.WebService())
+	restful.Add(api.DeoVRDeeplinkResource{}.WebService())
 	restful.Add(api.HeresphereResource{}.WebService())
 	restful.Add(api.PlaylistResource{}.WebService())
 	restful.Add(api.AkaResource{}.WebService())

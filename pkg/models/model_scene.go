@@ -115,6 +115,12 @@ type Scene struct {
 	Description string  `gorm:"-" json:"description" xbvrbackup:"-"`
 	Score       float64 `gorm:"-" json:"_score" xbvrbackup:"-"`
 
+	// DeoVRDeeplinkToken is the per-scene ?token= credential for the DeoVR
+	// deeplink JSON (/api/deovr/<id>.json). Computed field, populated only by
+	// SceneResource.getScene — never persisted, never backed up, empty when
+	// player auth is disabled.
+	DeoVRDeeplinkToken string `gorm:"-" json:"deovr_deeplink_token,omitempty" xbvrbackup:"-"`
+
 	AlternateSource []ExternalReferenceLink `json:"alternate_source" xbvrbackup:"-"`
 }
 

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 )
 
 // PlayerSessionCookieName carries the stable credential-derived token
@@ -35,6 +36,26 @@ func PlayerSessionToken() string {
 	}
 	mac := hmac.New(sha256.New, []byte(Config.Interfaces.DeoVR.Password))
 	mac.Write([]byte("xbvr-player-ui:" + Config.Interfaces.DeoVR.Username))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// DeoVRDeeplinkToken derives the per-scene token carried as ?token= on DeoVR
+// deeplink JSON URLs (/api/deovr/<scene-id>.json). DeoVR fetches those URLs
+// via plain GET and cannot present Basic credentials or reliably send the
+// session cookie, so the token is the credential. Same derivation shape as
+// PlayerSessionToken — keyed by the stored bcrypt password hash, stable
+// across restarts, rotating when either credential changes — but
+// domain-separated ("xbvr-deovr-deeplink") and scene-scoped: a leaked
+// deeplink URL grants exactly one scene's metadata JSON and is neither
+// replayable against another scene nor usable as the full-UI session token.
+// Returns "" when player auth is disabled; revocation = changing the player
+// password.
+func DeoVRDeeplinkToken(sceneID uint) string {
+	if !PlayerAuthEnabled() {
+		return ""
+	}
+	mac := hmac.New(sha256.New, []byte(Config.Interfaces.DeoVR.Password))
+	mac.Write([]byte("xbvr-deovr-deeplink:" + Config.Interfaces.DeoVR.Username + ":" + strconv.FormatUint(uint64(sceneID), 10)))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 

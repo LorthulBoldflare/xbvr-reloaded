@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/creasty/defaults"
@@ -35,6 +37,10 @@ type ObjectConfig struct {
 	Server struct {
 		BindAddress string `default:"0.0.0.0" json:"bindAddress"`
 		Port        int    `default:"9999" json:"port"`
+		// PublicURL is the externally reachable base URL of this instance
+		// (e.g. https://my.xbvr.reloaded), used to build DeoVR deep links.
+		// Empty = feature off; XBVR_PUBLIC_URL overrides at startup.
+		PublicURL string `default:"" json:"publicUrl"`
 	} `json:"server"`
 	Security struct {
 		Username string `default:"" json:"username"`
@@ -222,6 +228,36 @@ func LoadConfig() {
 			SaveConfig()
 		}
 	}
+
+	// Env override: a non-empty XBVR_PUBLIC_URL wins over the stored config,
+	// mirroring the XBVR_WEB_PORT handling above. Applied to the in-memory
+	// config unconditionally so deep links work on first boot, but only
+	// persisted when a config row already exists: LoadConfig runs before
+	// migrations, so writing with no row present would hit a missing kvs
+	// table (KV.Save log.Fatals on failure). The value persists via the
+	// first real options save, or on the next boot once the row exists.
+	// Removing the env var later keeps the last persisted value.
+	if common.EnvConfig.PublicURL != "" {
+		if normalized := NormalizePublicURL(common.EnvConfig.PublicURL); normalized != Config.Server.PublicURL {
+			Config.Server.PublicURL = normalized
+			if err == nil {
+				SaveConfig()
+			}
+		}
+	}
+}
+
+// NormalizePublicURL trims whitespace and trailing slashes from the
+// configured public base URL and requires an absolute http(s) URL. Anything
+// else — including a bare scheme like "https://" — normalizes to ""
+// (feature off) rather than half-enabling it with a broken base URL.
+func NormalizePublicURL(s string) string {
+	s = strings.TrimRight(strings.TrimSpace(s), "/")
+	u, err := url.Parse(s)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	return s
 }
 
 func SaveConfig() {

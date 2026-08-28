@@ -61,5 +61,6 @@ Cinematic, dark-first, art-first. Purple accent, green = ok/positive, red = dang
 ## Server conventions (for changes touching Go)
 
 - New API surface goes through the existing resources in `pkg/api/`; adding an endpoint requires justification (both UIs share it).
+- `GET /api/deovr/{scene-id}.json` serves the per-scene DeoVR single-video deeplink JSON (`DeoVRDeeplinkResource`, payload shared with `/deovr/{scene-id}` via `buildDeoScenePayload`). Auth: per-scene `?token=` (`config.DeoVRDeeplinkToken(sceneID)`, HMAC keyed by the player password hash) is accepted by `apiAuthFilter` on `/api/deovr/` paths only. Media URLs in the payload are based on `server.publicUrl` (Settings → Advanced) when set, else the request host; `XBVR_PUBLIC_URL` overrides and persists at startup.
 - `/web/` serving is `web/fs.go` (embed + index.html fallback); auth is the shared `authHandle`/`apiAuthFilter` — no UI-specific auth code.
 - The root `/` redirect stays on `/ui/`; old UI remains functional at all times.

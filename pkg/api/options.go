@@ -80,6 +80,9 @@ type RequestSaveOptionsAdvanced struct {
 	UseAltSrcInScriptFilters     bool      `json:"useAltSrcInScriptFilters"`
 	AutoLimitScraping            bool      `json:"autoLimitScraping"`
 	IgnoreReleasedBefore         time.Time `json:"ignoreReleasedBefore"`
+	// PublicURL is a pointer so absent = unchanged: the old UI saves this
+	// section without the field and must not clear the configured value.
+	PublicURL *string `json:"publicUrl"`
 }
 
 type RequestSaveOptionsFunscripts struct {
@@ -612,6 +615,9 @@ func (i ConfigResource) saveOptionsAdvanced(req *restful.Request, resp *restful.
 	config.Config.Advanced.UseAltSrcInScriptFilters = r.UseAltSrcInScriptFilters
 	config.Config.Advanced.AutoLimitScraping = r.AutoLimitScraping
 	config.Config.Advanced.IgnoreReleasedBefore = r.IgnoreReleasedBefore
+	if r.PublicURL != nil {
+		config.Config.Server.PublicURL = config.NormalizePublicURL(*r.PublicURL)
+	}
 	config.SaveConfig()
 
 	resp.WriteHeaderAndEntity(http.StatusOK, r)

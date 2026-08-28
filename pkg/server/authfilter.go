@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -82,6 +83,27 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	defer e.Done()
 	markPresented(e, req.Request)
 
+	// DeoVR deeplinks: DeoVR fetches /api/deovr/<scene-id>.json via a plain
+	// GET and can present neither Basic credentials nor (reliably) the
+	// player-session cookie, so the deep link carries a per-scene ?token=
+	// derived from the player credentials and the scene ID. A match
+	// authenticates exactly that one scene JSON; anything else falls through
+	// to the normal Basic/cookie chain (which keeps the link working for the
+	// owner in an authenticated browser session).
+	if sceneID, ok := deoVRDeeplinkSceneID(req.Request.URL.Path); ok {
+		if want := config.DeoVRDeeplinkToken(sceneID); want != "" {
+			if got := req.Request.URL.Query().Get("token"); got != "" {
+				if subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1 {
+					e.AuthMethod = "deeplink-token"
+					e.AuthResult = "accepted"
+					chain.ProcessFilter(req, resp)
+					return
+				}
+				e.Note("invalid deeplink token presented")
+			}
+		}
+	}
+
 	// CSRF note for the cookie path: unlike Basic Auth credentials, cookies
 	// are attached by the browser to cross-site requests. Players are
 	// non-standard browsers whose Origin headers cannot be relied upon, so
@@ -133,6 +155,24 @@ func apiAuthFilter(req *restful.Request, resp *restful.Response, chain *restful.
 	}
 
 	chain.ProcessFilter(req, resp)
+}
+
+// deoVRDeeplinkSceneID extracts the numeric scene ID from a DeoVR deeplink
+// JSON path (/api/deovr/<scene-id>.json). Returns ok=false for any other path
+// or a malformed segment — those fall through to the normal auth chain.
+func deoVRDeeplinkSceneID(path string) (uint, bool) {
+	if !strings.HasPrefix(path, "/api/deovr/") {
+		return 0, false
+	}
+	segment := strings.TrimPrefix(path, "/api/deovr/")
+	if !strings.HasSuffix(segment, ".json") {
+		return 0, false
+	}
+	id, err := strconv.ParseUint(strings.TrimSuffix(segment, ".json"), 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return uint(id), true
 }
 
 // checkPlayerBasicAuth reports whether the given Basic credentials match the

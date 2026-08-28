@@ -20,6 +20,7 @@ import (
 	"github.com/mozillazg/go-slugify"
 
 	"github.com/xbapps/xbvr/pkg/common"
+	"github.com/xbapps/xbvr/pkg/config"
 	"github.com/xbapps/xbvr/pkg/models"
 	"github.com/xbapps/xbvr/pkg/tasks"
 )
@@ -475,6 +476,12 @@ func (i SceneResource) getScene(req *restful.Request, resp *restful.Response) {
 			return
 		}
 		_ = scene.GetIfExistByPK(uint(id))
+	}
+
+	// Per-scene DeoVR deeplink token for the scene page's "Open in DeoVR"
+	// link. Empty (and omitted from JSON) when player auth is disabled.
+	if scene.ID != 0 {
+		scene.DeoVRDeeplinkToken = config.DeoVRDeeplinkToken(scene.ID)
 	}
 
 	resp.WriteHeaderAndEntity(http.StatusOK, scene)
