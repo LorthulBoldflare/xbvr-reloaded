@@ -11,7 +11,7 @@ XBVR is a VR video library manager: Go backend (`main.go` → `pkg/`) serving tw
 ## Build & test
 
 - `mise run web` — install + build the new UI (`npm --prefix web install && npm --prefix web run build`).
-- `mise run ui` / `mise run build-local` — old UI / full local binary (embeds both UIs; `go build` requires both `ui/dist` and `web/dist` to exist).
+- `mise run ui` / `mise run build-local` — old UI / full local binary (embeds both UIs; `go build` requires both `ui/dist` and `web/dist` to exist). Tasks `cd` to the invocation directory (`MISE_ORIGINAL_CWD`), so running from a worktree builds the worktree; `build-local` injects `main.version/commit/branch/date` from git via ldflags (version = current short commit, not the `CURRENT` default).
 - `cd web && npm run build` runs `tsc --noEmit` + `vite build` — must stay clean.
 - `go build -tags=json1 ./...`, `go vet ./...`, `go test ./pkg/...` — must stay clean. Add Go tests for new server behavior (see `pkg/models/model_scene_filesort_test.go` for the in-memory sqlite pattern).
 
