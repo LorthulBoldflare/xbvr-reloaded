@@ -8,7 +8,7 @@
 - Support for all the most popular VR sites: BadoinkVR, CzechVR Network, DDFNetworkVR, MilfVR, NaughtyAmericaVR, SexBabesVR, StasyQVR, TmwVRnet, VirtualRealPorn, VirtualTaboo, VRBangers, VRHush, VRLatina, WankzVR and many studios on SexLikeReal
 - Directly supports DeoVR and HereSphere VR players via API
 - Built-in DLNA streaming server compatible with popular VR players (Pigasus, Skybox, Mobile Station VR)
-- Sleek and simple web UI
+- Two web UIs: a brand-new modern React UI (default) and the classic UI, both redesigned with dark and light themes
 - Browse your content by cast, site, tags, and release date
 - Available for Windows, macOS, Linux (including ARM builds for RaspberryPi)
 
@@ -28,12 +28,17 @@ XBVR Reloaded is a fork of [XBVR](https://github.com/xbapps/xbvr), currently und
 | Encrypted bundle export | ❌ | ✅ | Credentials in exported bundles are encrypted with a user-supplied password |
 | Bundle validation on restore | ❌ | ✅ | Malformed bundles are rejected with HTTP 400 before any data is imported |
 | Scene metadata sync & smarter matching | 🟡 | ✅ | Duration sorting support in metadata sync and apostrophe-tolerant title matching |
-| Scene sorting options | 🟡 | ✅ | Reloaded adds sorting by video duration (↑/↓, scenes without a known duration always sort last), and the "scene added date" sort now keys off the oldest file creation time instead of the newest, so ordering no longer shifts when files are re-added |
+| Scene sorting options | 🟡 | ✅ | Reloaded adds sorting by video duration (↑/↓, scenes without a known duration always sort last), and the "scene added date" sort now keys off the oldest file creation time instead of the newest, so ordering no longer shifts when files are re-added; plus `file_added_desc/asc`, which rank scenes by the *newest* video file's creation time (scenes without files sort last) — unlike the "scene added date" sort above, which uses the *oldest* — and is the default sort in the new UI |
 | SSRF protection on outbound URLs | ❌ | ✅ | User-supplied URLs are validated at config and request time; scraped outbound URLs are sanitized and secrets masked in the UI |
-| Server & protocol hardening | ❌ | ✅ | HTTP server, session handling, DLNA/UPnP/SSDP services, and binary downloads hardened |
-| Database & UI performance | ❌ | ✅ | Connection pooling, query batching, index/auth state caching, additional DB indexes, and route-level code splitting |
+| Server & protocol hardening | ❌ | ✅ | HTTP server, session handling, DLNA/UPnP/SSDP services, and binary downloads hardened; session management was centralized with structured request-based auth/audit logging |
+| Database & UI performance | ❌ | ✅ | Connection pooling, query batching, index/auth state caching, additional DB indexes, and route-level code splitting, plus actor-list rating aggregation limited to the current page and image-proxy disk-cache bypass for transient contexts |
 | Self-contained binary | ❌ | ✅ | Release migration data is bundled into the binary via `go:embed` |
-| UI polish | ❌ | ✅ | Confirmation dialogs for destructive actions, accessibility improvements (dialog roles, responsive modals), and translatable dialog strings |
+| **Modern React web UI** | ❌ | ✅ | A second, modern UI at `/web/` (React 18 + TypeScript + Tailwind) with a collapsible sidebar, scene details as a full page with an Edit mode, watchlist/favourite toggles directly on tiles, unmatched files mixed into the scene grid, and full keyboard shortcuts — it is the post-login landing page; the classic UI remains available at `/ui/` |
+| Actor availability filtering | ❌ | ✅ | Any / Available right now / Downloaded / Not downloaded presets on the actor list, filtered server-side against live scene availability, with per-preset counts |
+| Webhooks for external imports | ❌ | ✅ | Configurable "trigger external import" / "refresh external import" webhooks (method, URL, custom headers) in Options → Storage, fired server-side so headers never reach the browser, one click away in the sidebar Actions menu |
+| DeoVR per-scene deeplinks | ❌ | ✅ | `GET /api/deovr/{scene-id}.json` serves a single-scene DeoVR payload behind a scene-scoped HMAC token (rotates with the player credentials), powering an "Open in DeoVR" link on the scene page |
+| Scraper robustness | 🟡 | ✅ | SLR cuepoint extraction tolerates both API payload variants, re-scrapes import new cuepoints without clobbering HereSphere tracks, and scenes flagged needs_update bypass the scheduled-scrape limit |
+| UI polish | ❌ | ✅ | Confirmation dialogs for destructive actions, accessibility improvements (dialog roles, responsive modals), and translatable dialog strings; both UIs were redesigned on a shared design-token system with light/dark themes (system/light/dark switcher, applied before first paint) |
 | Internal cleanup | 🟡 | ✅ | Superficial changes only: shared UI API layer, deduplicated components, dead-code removal, and lint tooling fixes — no user-visible behavior change |
 
 ## Download
