@@ -8,6 +8,26 @@ import (
 	"github.com/markphelps/optional"
 )
 
+// Phase-2 page assembly must restore the phase-1 ID order (the IN(...) fetch
+// does not preserve it) and skip IDs that vanished between the two phases.
+func TestOrderActorsByIDs(t *testing.T) {
+	actors := []Actor{{ID: 3, Name: "c"}, {ID: 1, Name: "a"}, {ID: 2, Name: "b"}}
+
+	got := orderActorsByIDs(actors, []uint{2, 3, 1})
+	if len(got) != 3 || got[0].ID != 2 || got[1].ID != 3 || got[2].ID != 1 {
+		t.Fatalf("got order %v, want [2 3 1]", got)
+	}
+
+	got = orderActorsByIDs(actors, []uint{3, 99})
+	if len(got) != 1 || got[0].ID != 3 {
+		t.Fatalf("got %v, want just actor 3 (id 99 vanished)", got)
+	}
+
+	if got := orderActorsByIDs(actors, nil); len(got) != 0 {
+		t.Fatalf("got %v, want empty", got)
+	}
+}
+
 // The actor availability presets (driven by the isAvailable/isAccessible flags
 // on RequestActorList) filter actors by the availability of their associated
 // scenes: "available" is a live subquery on scene_cast+scenes (avail_count may

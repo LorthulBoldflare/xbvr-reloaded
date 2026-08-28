@@ -201,10 +201,6 @@ func QueryActors(r RequestActorList, enablePreload bool) ResponseActorList {
 
 	tx.Count(&out.Results)
 
-	tx = tx.Preload("Scenes", func(db *gorm.DB) *gorm.DB {
-		return db.Order("release_date DESC").Where("is_hidden = 0")
-	})
-
 	if r.JumpTo.OrElse("") != "" {
 		// if we want to jump to actors starting with a specific letter, then we need to work out the offset to them
 		cnt := 0
@@ -220,14 +216,40 @@ func QueryActors(r RequestActorList, enablePreload bool) ResponseActorList {
 	}
 	out.Offset = offset
 
-	tx = tx.Select(`distinct actors.*, 
-	(select AVG(s.star_rating) scene_avg from scene_cast sc join scenes s on s.id=sc.scene_id where sc.actor_id =actors.id and s.star_rating > 0 and is_hidden=0) as scene_rating_average	
-	`)
+	// Two-phase pagination. Phase 1 plucks only the page's actor IDs: the
+	// scene_rating_average AVG subquery must not be in this query's SELECT —
+	// with ORDER BY the database evaluates SELECT expressions for every
+	// *matching* row before LIMIT applies, so the page cost would scale with
+	// the number of matched actors instead of the rows displayed.
+	var ids []uint
+	if err := tx.Limit(limit).Offset(offset).Pluck("actors.id", &ids).Error; err != nil {
+		log.Error(err)
+	}
 
-	tx.Limit(limit).
-		Offset(offset).
-		Find(&out.Actors)
+	// Phase 2: full rows, the Scenes preload, and scene_rating_average for
+	// just this page (the AVG subquery runs once per displayed row).
+	actors, err := GetActorsWithSceneAvgByPKs(ids)
+	if err != nil {
+		log.Error(err)
+	}
+	out.Actors = orderActorsByIDs(actors, ids)
 
+	return out
+}
+
+// orderActorsByIDs restores the phase-1 page order — the IN(...) fetch in
+// phase 2 does not preserve it.
+func orderActorsByIDs(actors []Actor, ids []uint) []Actor {
+	byID := make(map[uint]Actor, len(actors))
+	for _, a := range actors {
+		byID[a.ID] = a
+	}
+	out := make([]Actor, 0, len(ids))
+	for _, id := range ids {
+		if a, ok := byID[id]; ok {
+			out = append(out, a)
+		}
+	}
 	return out
 }
 
