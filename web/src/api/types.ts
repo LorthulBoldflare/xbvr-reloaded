@@ -268,6 +268,11 @@ export interface ResponseGetScenes {
 export interface ResponseActorList {
   results: number
   actors: Actor[]
+  count_any: number
+  count_available: number
+  count_downloaded: number
+  count_not_downloaded: number
+  count_hidden: number
   offset: number
 }
 
@@ -278,6 +283,9 @@ export interface ResponseGetActorFilters {
 }
 
 export interface ActorFilters {
+  dlState: 'any' | 'available' | 'downloaded' | 'missing'
+  isAvailable: boolean | null
+  isAccessible: boolean | null
   lists: string[]
   cast: string[]
   sites: string[]

@@ -56,6 +56,8 @@ type Actor struct {
 
 type RequestActorList struct {
 	DlState        optional.String   `json:"dlState"`
+	IsAvailable    optional.Bool     `json:"isAvailable"`
+	IsAccessible   optional.Bool     `json:"isAccessible"`
 	Limit          optional.Int      `json:"limit"`
 	Offset         optional.Int      `json:"offset"`
 	Lists          []optional.String `json:"lists"`
@@ -118,7 +120,10 @@ func (i *Actor) Save() error {
 
 func (i *Actor) CountActorTags() {
 	commonDb, _ := GetCommonDB()
+	countActorTags(commonDb)
+}
 
+func countActorTags(db *gorm.DB) {
 	type CountResults struct {
 		ID            int
 		Cnt           int
@@ -129,8 +134,10 @@ func (i *Actor) CountActorTags() {
 
 	var results []CountResults
 
-	commonDb.Model(&Actor{}).
-		Select("actors.id, count as existingcnt, count(*) cnt, sum(scenes.is_available ) is_available, avail_count as existingavail").
+	// avail_count excludes hidden scenes, consistent with the availability
+	// filters and the actor scene-rating subqueries
+	db.Model(&Actor{}).
+		Select("actors.id, count as existingcnt, count(*) cnt, sum(case when scenes.is_hidden = 0 then scenes.is_available else 0 end) is_available, avail_count as existingavail").
 		Group("actors.id").
 		Joins("join scene_cast on scene_cast.actor_id = actors.id").
 		Joins("join scenes on scenes.id=scene_cast.scene_id and scenes.deleted_at is null").
@@ -139,7 +146,7 @@ func (i *Actor) CountActorTags() {
 	for i := range results {
 		if results[i].Cnt != results[i].Existingcnt || results[i].IsAvailable != results[i].Existingavail {
 			// update directly instead of First+Save per actor
-			commonDb.Model(&Actor{}).Where("id = ?", results[i].ID).
+			db.Model(&Actor{}).Where("id = ?", results[i].ID).
 				Updates(map[string]interface{}{"count": results[i].Cnt, "avail_count": results[i].IsAvailable})
 		}
 	}
@@ -166,16 +173,85 @@ func QueryActorFull(r RequestActorList) ResponseActorList {
 	return q
 }
 
+// actorAccessibleSceneExists matches actors that have at least one scene
+// playable right now: non-hidden, has a video file, and its volume is online.
+// Used by the "Available right now" availability preset. It intentionally does
+// NOT rely on actors.avail_count — that column is only refreshed on
+// scrape/import/clean-tags, while is_available/is_accessible are maintained
+// immediately by Scene.UpdateStatus().
+//
+// The predicate is an UNCORRELATED in-subquery on purpose: the database
+// materializes it once per statement, whereas a correlated subquery runs per
+// actor row — a full scene_cast scan per row when scene_cast_actor_id_IDX is
+// missing, and pathologically slow on MySQL either way (measured: ~54s vs
+// ~14ms on 30k actors/120k scene_cast rows in sqlite without the index).
+const actorAccessibleSceneExists = "actors.id in (select sc.actor_id from scene_cast sc join scenes s on s.id=sc.scene_id and s.deleted_at is null and s.is_hidden = 0 and s.is_available = 1 and s.is_accessible = 1)"
+
 func QueryActors(r RequestActorList, enablePreload bool) ResponseActorList {
 	limit := r.Limit.OrElse(100)
 	offset := r.Offset.OrElse(0)
 
 	commonDb, _ := GetCommonDB()
 
-	var actors []Actor
-	tx := commonDb.Model(&actors)
-
 	var out ResponseActorList
+
+	preCountTx, tx := queryActors(commonDb, r)
+
+	countActorAvailability(preCountTx, &out)
+
+	tx.Count(&out.Results)
+
+	tx = tx.Preload("Scenes", func(db *gorm.DB) *gorm.DB {
+		return db.Order("release_date DESC").Where("is_hidden = 0")
+	})
+
+	if r.JumpTo.OrElse("") != "" {
+		// if we want to jump to actors starting with a specific letter, then we need to work out the offset to them
+		cnt := 0
+		txList := tx.Select(`distinct actors.name`)
+		txList.Find(&out.Actors)
+		for idx, actor := range out.Actors {
+			if strings.ToLower(actor.Name) >= strings.ToLower(r.JumpTo.OrElse("")) {
+				break
+			}
+			cnt = idx
+		}
+		offset = (cnt / limit) * limit
+	}
+	out.Offset = offset
+
+	tx = tx.Select(`distinct actors.*, 
+	(select AVG(s.star_rating) scene_avg from scene_cast sc join scenes s on s.id=sc.scene_id where sc.actor_id =actors.id and s.star_rating > 0 and is_hidden=0) as scene_rating_average	
+	`)
+
+	tx.Limit(limit).
+		Offset(offset).
+		Find(&out.Actors)
+
+	return out
+}
+
+// countActorAvailability computes the per-availability-option badge counts
+// under the other active filters (mirrors QueryScenes); CountHidden stays 0 —
+// actors have no hidden flag. Each count applies its preset's clause, see
+// queryActors.
+func countActorAvailability(preCountTx *gorm.DB, out *ResponseActorList) {
+	preCountTx.Count(&out.CountAny)
+	preCountTx.Where(actorAccessibleSceneExists).Count(&out.CountAvailable)
+	preCountTx.Where("actors.avail_count > 0").Count(&out.CountDownloaded)
+	preCountTx.Where("actors.avail_count = 0").Count(&out.CountNotDownloaded)
+}
+
+// queryActors builds the actor list query (all filters and the sort) so tests
+// can drive it with an in-memory DB, mirroring queryScenes. preCountTx is
+// captured before the availability filter so per-option counts can be computed
+// under the remaining filters.
+//
+// Availability is driven solely by the isAvailable/isAccessible flags;
+// r.DlState is deliberately ignored for actors (the old UI always sends
+// dlState:"available" but has no control for it).
+func queryActors(db *gorm.DB, r RequestActorList) (*gorm.DB, *gorm.DB) {
+	tx := db.Model(&Actor{})
 
 	for _, i := range r.Lists {
 		if i.OrElse("") == "watchlist" {
@@ -476,37 +552,25 @@ func QueryActors(r RequestActorList, enablePreload bool) ResponseActorList {
 		tx = tx.Order("name asc")
 	}
 
-	tx.Group("actors.id").
-		Count(&out.Results)
+	preCountTx := tx.Group("actors.id")
+	tx = tx.Group("actors.id")
 
-	tx = tx.Preload("Scenes", func(db *gorm.DB) *gorm.DB {
-		return db.Order("release_date DESC").Where("is_hidden = 0")
-	})
-
-	if r.JumpTo.OrElse("") != "" {
-		// if we want to jump to actors starting with a specific letter, then we need to work out the offset to them
-		cnt := 0
-		txList := tx.Select(`distinct actors.name`)
-		txList.Find(&out.Actors)
-		for idx, actor := range out.Actors {
-			if strings.ToLower(actor.Name) >= strings.ToLower(r.JumpTo.OrElse("")) {
-				break
-			}
-			cnt = idx
-		}
-		offset = (cnt / limit) * limit
+	// Apply availability after counting (mirrors queryScenes).
+	// isAccessible=false is never produced by the client presets and is ignored.
+	switch {
+	case r.IsAvailable.Present() && !r.IsAvailable.OrElse(true):
+		// Not downloaded: no non-hidden available scenes (avail_count excludes hidden).
+		tx = tx.Where("actors.avail_count = 0")
+	case r.IsAccessible.Present() && r.IsAccessible.OrElse(false):
+		// Available right now: live check — avail_count can be stale, so the
+		// default view must not depend on it.
+		tx = tx.Where(actorAccessibleSceneExists)
+	case r.IsAvailable.Present() && r.IsAvailable.OrElse(false):
+		// Downloaded: cheap denormalized column (same semantics as the card badge).
+		tx = tx.Where("actors.avail_count > 0")
 	}
-	out.Offset = offset
 
-	tx = tx.Select(`distinct actors.*, 
-	(select AVG(s.star_rating) scene_avg from scene_cast sc join scenes s on s.id=sc.scene_id where sc.actor_id =actors.id and s.star_rating > 0 and is_hidden=0) as scene_rating_average	
-	`)
-
-	tx.Limit(limit).
-		Offset(offset).
-		Find(&out.Actors)
-
-	return out
+	return preCountTx, tx
 }
 
 func (o *Actor) GetIfExist(id string) error {

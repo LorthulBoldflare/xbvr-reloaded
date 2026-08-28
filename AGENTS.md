@@ -56,6 +56,7 @@ Cinematic, dark-first, art-first. Purple accent, green = ok/positive, red = dang
 6. **Server quirks to call verbatim**: `GET /api/task/relink_alt_aource_scenes` (sic, misspelled), redacted secrets round-trip (`"***"` sentinel — the server keeps the stored value when it receives the sentinel; a missing/empty value clears it).
 7. **New sort values**: `file_added_desc/asc` (default sort) are server-side additions in `pkg/models/model_scene.go` — keep them working through saved-search round-trips.
 8. **Websocket**: `wampy` on `/ws/` (realm `default`); topics: `service.log`, `lock.change`, `state.change.optionsStorage`, `options.previews.previewReady`, `options.previews.queue`, `remote.state` (see `web/src/ws/socket.ts`).
+9. **Actor availability filter**: `POST /api/actor/list` filters availability only via the `isAvailable`/`isAccessible` flag pair (`applyActorDlState` in `web/src/store/actorFilters.ts`, default `available`). `dlState` is deliberately ignored server-side for actors — the old UI always sends `dlState:"available"` with no control for it. "Available right now" is a live `scene_cast`+`scenes` subquery (`actorAccessibleSceneExists`), NOT `actors.avail_count`: that column excludes hidden scenes but is only refreshed on scrape/import/clean-tags (`CountActorTags`), so it backs only "Downloaded"/"Not downloaded" and the card badge.
 
 ## Server conventions (for changes touching Go)
 

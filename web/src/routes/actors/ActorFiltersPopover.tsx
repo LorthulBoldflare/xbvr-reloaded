@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { ResponseGetActorFilters } from '../../api/types'
-import { normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
+import { ACTOR_DL_STATES, applyActorDlState, normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
 import { useToastStore } from '../../store/toasts'
 import { useUIStore } from '../../store/ui'
 import { useQueryClient } from '@tanstack/react-query'
@@ -67,7 +67,7 @@ function RangeFilter({
 }
 
 // Actors filters popover content.
-export function ActorFiltersPopoverContent() {
+export function ActorFiltersPopoverContent({ counts }: { counts?: Record<string, number> }) {
   const { filters, patch, setFilters } = useActorFilterStore()
   const { data: opts } = useActorFilterOptions()
   const queryClient = useQueryClient()
@@ -81,13 +81,43 @@ export function ActorFiltersPopoverContent() {
   const plainCast = filters.cast.filter((c) => !strip(c).startsWith('aka:'))
   const akaSelected = filters.cast.find((c) => strip(c).startsWith('aka:'))
 
+  const countsFor: Record<string, number | undefined> = {
+    any: counts?.count_any,
+    available: counts?.count_available,
+    downloaded: counts?.count_downloaded,
+    missing: counts?.count_not_downloaded
+  }
+
   return (
     <div className="space-y-3">
       <SavedSearchPicker
         type="actor"
         currentFilters={filters as unknown as Record<string, unknown>}
-        onApply={(f) => setFilters(normalizeActorFilters(f as never))}
+        onApply={(f) => {
+          // Saved searches may predate the availability filter — expand the
+          // (validated) dlState into its flag pair, like scenes do.
+          const normalized = normalizeActorFilters(f as never)
+          setFilters(applyActorDlState(normalized, normalized.dlState))
+        }}
       />
+
+      <div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Availability</div>
+        <div className="flex flex-col gap-1">
+          {ACTOR_DL_STATES.map((d) => (
+            <button
+              key={d.value}
+              onClick={() => setFilters(applyActorDlState(filters, d.value))}
+              className={`flex justify-between rounded-lg px-2 py-1 text-left text-sm ${
+                filters.dlState === d.value ? 'bg-accent-soft font-semibold text-accent-strong' : 'hover:bg-surface-2'
+              }`}
+            >
+              <span>{d.label}</span>
+              {countsFor[d.value] !== undefined && <span className="text-muted">{countsFor[d.value]}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Properties</div>

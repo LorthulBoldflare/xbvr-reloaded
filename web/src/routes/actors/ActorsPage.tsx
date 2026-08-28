@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { Actor, ActorFilters, ResponseActorList } from '../../api/types'
-import { ACTOR_PAGE_SIZE, ACTOR_SORTS, DEFAULT_ACTOR_FILTERS, normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
+import { ACTOR_PAGE_SIZE, ACTOR_SORTS, DEFAULT_ACTOR_FILTERS, applyActorDlState, normalizeActorFilters, useActorFilterStore } from '../../store/actorFilters'
 import { decodeJsonBase64, encodeJsonBase64 } from '../../lib/base64'
 import { useUIStore } from '../../store/ui'
 import { ActorCard } from '../../components/ActorCard'
@@ -30,7 +30,10 @@ export function ActorsPage() {
     const q = searchParams.get('q')
     if (q) {
       try {
-        setFilters(normalizeActorFilters(decodeJsonBase64<Partial<ActorFilters>>(q)))
+        // Deep links may predate the availability filter — expand the
+        // (validated) dlState into its flag pair, like ScenesPage does.
+        const normalized = normalizeActorFilters(decodeJsonBase64<Partial<ActorFilters>>(q))
+        setFilters(applyActorDlState(normalized, normalized.dlState))
       } catch {
         /* ignore */
       }
@@ -60,7 +63,7 @@ export function ActorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters])
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['actorList', filters, page],
     queryFn: () =>
       api.post<ResponseActorList>('/actor/list', { ...filters, offset: page * ACTOR_PAGE_SIZE, limit: ACTOR_PAGE_SIZE }),
@@ -70,6 +73,15 @@ export function ActorsPage() {
   const total = data?.results ?? 0
   const pageCount = Math.max(1, Math.ceil(total / ACTOR_PAGE_SIZE))
   const actors = data?.actors ?? []
+
+  const counts = data
+    ? {
+        count_any: data.count_any,
+        count_available: data.count_available,
+        count_downloaded: data.count_downloaded,
+        count_not_downloaded: data.count_not_downloaded
+      }
+    : undefined
 
   // Keep the loaded order for actor-modal prev/next navigation.
   useEffect(() => {
@@ -138,7 +150,7 @@ export function ActorsPage() {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Popover button={<>Filters <span className="text-muted">▾</span></>} width="w-[26rem]">
-          <ActorFiltersPopoverContent />
+          <ActorFiltersPopoverContent counts={counts} />
         </Popover>
         <select
           value={filters.sort}
@@ -153,7 +165,7 @@ export function ActorsPage() {
           ))}
         </select>
         <span className="flex-1" />
-        <span className="text-sm text-muted">{total} results</span>
+        {!isLoading && <span className="text-sm text-muted">{total} results</span>}
         {pager}
       </div>
 
@@ -176,7 +188,8 @@ export function ActorsPage() {
           <ActorCard key={a.id} actor={a} web={web} />
         ))}
       </div>
-      {actors.length === 0 && <div className="py-16 text-center text-muted">No actors match the current filters</div>}
+      {isLoading && <div className="py-16 text-center text-muted">Loading…</div>}
+      {!isLoading && actors.length === 0 && <div className="py-16 text-center text-muted">No actors match the current filters</div>}
 
       <div className="mt-4 flex justify-center">{pager}</div>
     </div>

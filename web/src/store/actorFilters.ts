@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import type { ActorFilters } from '../api/types'
 
 export const DEFAULT_ACTOR_FILTERS: ActorFilters = {
+  dlState: 'available',
+  isAvailable: true,
+  isAccessible: true,
   lists: [],
   cast: [],
   sites: [],
@@ -26,6 +29,31 @@ export const DEFAULT_ACTOR_FILTERS: ActorFilters = {
 }
 
 export const ACTOR_PAGE_SIZE = 24
+
+// Availability presets — the actor equivalent of DL_STATES for scenes (no
+// 'hidden': actors have no hidden flag). Must round-trip through ?q= and
+// saved searches unchanged.
+export const ACTOR_DL_STATES: { value: ActorFilters['dlState']; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 'available', label: 'Available right now' },
+  { value: 'downloaded', label: 'Downloaded' },
+  { value: 'missing', label: 'Not downloaded' }
+]
+
+// Mirrors applyDlState for scenes: expands a preset into the flag pair the
+// server filters on.
+export function applyActorDlState(f: ActorFilters, dl: ActorFilters['dlState']): ActorFilters {
+  switch (dl) {
+    case 'any':
+      return { ...f, dlState: dl, isAvailable: null, isAccessible: null }
+    case 'available':
+      return { ...f, dlState: dl, isAvailable: true, isAccessible: true }
+    case 'downloaded':
+      return { ...f, dlState: dl, isAvailable: true, isAccessible: null }
+    case 'missing':
+      return { ...f, dlState: dl, isAvailable: false, isAccessible: null }
+  }
+}
 
 export const ACTOR_SORTS: { value: string; label: string }[] = [
   { value: 'name_asc', label: '↑ Name' },
@@ -70,7 +98,12 @@ export function normalizeActorFilters(p: Partial<ActorFilters> | null | undefine
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
   const num = (v: unknown, def: number): number =>
     typeof v === 'number' && !isNaN(v) ? v : def
+  const boolOrNull = (v: unknown): boolean | null => (v === true || v === false ? v : null)
+  const dlState = ACTOR_DL_STATES.some((s) => s.value === src.dlState) ? (src.dlState as ActorFilters['dlState']) : d.dlState
   return {
+    dlState,
+    isAvailable: boolOrNull(src.isAvailable),
+    isAccessible: boolOrNull(src.isAccessible),
     lists: arr(src.lists),
     cast: arr(src.cast),
     sites: arr(src.sites),
