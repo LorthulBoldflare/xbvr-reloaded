@@ -79,10 +79,31 @@ type RequestSaveOptionsAdvanced struct {
 	UseAltSrcInFileMatching      bool      `json:"useAltSrcInFileMatching"`
 	UseAltSrcInScriptFilters     bool      `json:"useAltSrcInScriptFilters"`
 	AutoLimitScraping            bool      `json:"autoLimitScraping"`
-	IgnoreReleasedBefore         time.Time `json:"ignoreReleasedBefore"`
+	// IgnoreReleasedBefore is decoded as a string because the two UIs send
+	// different shapes: the old UI posts a JS Date (RFC3339) or null, the web
+	// UI posts a date-only "2006-01-02" or "". A time.Time field would fail
+	// the whole decode on the web UI's value and silently abort the save.
+	IgnoreReleasedBefore string `json:"ignoreReleasedBefore"`
 	// PublicURL is a pointer so absent = unchanged: the old UI saves this
 	// section without the field and must not clear the configured value.
 	PublicURL *string `json:"publicUrl"`
+}
+
+// parseIgnoreReleasedBefore accepts RFC3339 (old UI) or date-only
+// "2006-01-02" (web UI); empty or unparseable values mean "cleared" and
+// return the zero time.
+func parseIgnoreReleasedBefore(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t
+	}
+	return time.Time{}
 }
 
 type RequestSaveOptionsFunscripts struct {
@@ -614,7 +635,7 @@ func (i ConfigResource) saveOptionsAdvanced(req *restful.Request, resp *restful.
 	config.Config.Advanced.UseAltSrcInFileMatching = r.UseAltSrcInFileMatching
 	config.Config.Advanced.UseAltSrcInScriptFilters = r.UseAltSrcInScriptFilters
 	config.Config.Advanced.AutoLimitScraping = r.AutoLimitScraping
-	config.Config.Advanced.IgnoreReleasedBefore = r.IgnoreReleasedBefore
+	config.Config.Advanced.IgnoreReleasedBefore = parseIgnoreReleasedBefore(r.IgnoreReleasedBefore)
 	if r.PublicURL != nil {
 		config.Config.Server.PublicURL = config.NormalizePublicURL(*r.PublicURL)
 	}
