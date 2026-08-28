@@ -16,20 +16,30 @@ export function Modal({
   title?: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        onCloseRef.current()
       }
     }
     // capture so page-level Esc handlers don't also fire
     window.addEventListener('keydown', onKey, true)
-    ref.current?.querySelector<HTMLElement>('input, button, [tabindex]')?.focus()
+    // Move focus inside on open, but never steal it from an element already
+    // inside the dialog (guards against any effect re-run / remount cause).
+    // Prefer text inputs over the header close button.
+    if (!ref.current?.contains(document.activeElement)) {
+      const el =
+        ref.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), textarea, select, [autofocus]') ??
+        ref.current?.querySelector<HTMLElement>('button, [tabindex]')
+      el?.focus()
+    }
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
